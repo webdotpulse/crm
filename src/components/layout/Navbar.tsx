@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Search,
   Plus,
@@ -16,6 +16,13 @@ import {
   Briefcase,
   FileText,
   DollarSign,
+  Eye,
+  EyeOff,
+  Lock,
+  LogOut,
+  Shield,
+  Smartphone,
+  Check,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
@@ -41,10 +48,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
     setIsSpotlightOpen,
     setIsThemeCustomizerOpen,
     customTheme,
+    currentUser,
+    users,
+    switchUser,
+    lockScreen,
+    isPrivacyModeActive,
+    togglePrivacyMode,
+    setCurrentView,
+    setTwoFactorSetupModalUser,
   } = useApp()
 
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
   const [isEntityMenuOpen, setIsEntityMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+
+  // Keyboard shortcut listener for ⌘L (Lock Screen)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
+        e.preventDefault()
+        lockScreen()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [lockScreen])
 
   const activeProject = projects.find((p) => p.id === activeTimer.projectId)
 
@@ -92,43 +120,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-        {/* Quick Theme Customizer Palette Trigger */}
-        <button
-          id="btn-theme-customizer"
-          onClick={() => setIsThemeCustomizerOpen(true)}
-          className="btn-sandbox btn-sandbox-ghost"
-          style={{
-            padding: '0.42rem 0.7rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            border: '1px solid var(--sb-border)',
-            borderRadius: 'var(--sb-radius)',
-            color: 'var(--sb-primary)',
-            fontWeight: 700,
-            fontSize: '0.8rem',
-          }}
-          title="Customize CRM Theme & Colors"
-        >
-          <Palette size={15} />
-          <span style={{ display: 'inline' }}>Theme</span>
-        </button>
-
         {/* Language Selector (NL / FR / EN / DE) */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value as any)}
+          className="btn-sandbox btn-sandbox-ghost"
           style={{
-            padding: '0.42rem 0.55rem',
+            padding: '0.42rem 0.6rem',
             fontSize: '0.8rem',
             fontWeight: 700,
             border: '1px solid var(--sb-border)',
             borderRadius: 'var(--sb-radius)',
-            backgroundColor: 'var(--sb-card-bg, #ffffff)',
-            color: 'var(--sb-heading)',
             cursor: 'pointer',
+            backgroundColor: 'var(--sb-surface)',
+            color: 'var(--sb-heading)',
           }}
-          title="Interface Language"
+          title="Change System Language"
         >
           <option value="nl">🇳🇱 NL</option>
           <option value="fr">🇫🇷 FR</option>
@@ -136,30 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           <option value="de">🇩🇪 DE</option>
         </select>
 
-        {/* Currency Switcher */}
-        <select
-          value={selectedCurrency}
-          onChange={(e) => setSelectedCurrency(e.target.value as any)}
-          className="input-sandbox"
-          style={{
-            padding: '0.42rem 0.55rem',
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            border: '1px solid var(--sb-border)',
-            borderRadius: 'var(--sb-radius)',
-            backgroundColor: 'var(--sb-card-bg, #ffffff)',
-            color: 'var(--sb-heading)',
-            cursor: 'pointer',
-          }}
-          title="Display Currency"
-        >
-          <option value="EUR">€ EUR</option>
-          <option value="USD">$ USD</option>
-          <option value="GBP">£ GBP</option>
-          <option value="CHF">CHF</option>
-        </select>
-
-        {/* Multi-Entity Switcher */}
+        {/* Multi-Entity Switcher Dropdown */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setIsEntityMenuOpen(!isEntityMenuOpen)}
@@ -168,33 +152,46 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
               padding: '0.42rem 0.75rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.45rem',
               border: '1px solid var(--sb-border)',
               borderRadius: 'var(--sb-radius)',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              color: 'var(--sb-heading)',
             }}
           >
-            <Building2 size={15} color="var(--sb-primary)" />
-            <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{activeLegalEntity.name}</span>
-            <ChevronDown size={13} color="var(--sb-body)" />
+            <Building2 size={15} color={activeLegalEntity.accentColor || 'var(--sb-primary)'} />
+            <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeLegalEntity.name}
+            </span>
+            <ChevronDown size={14} />
           </button>
 
           {isEntityMenuOpen && (
             <div
+              className="card-sandbox"
               style={{
                 position: 'absolute',
-                top: '115%',
+                top: 'calc(100% + 5px)',
                 right: 0,
-                width: '260px',
-                backgroundColor: 'var(--sb-surface, #ffffff)',
-                borderRadius: 'var(--sb-radius)',
-                boxShadow: 'var(--sb-shadow-lg)',
-                border: '1px solid var(--sb-border)',
-                padding: '0.5rem',
+                width: '240px',
                 zIndex: 1000,
+                backgroundColor: 'var(--sb-surface)',
+                boxShadow: 'var(--sb-shadow-lg)',
+                padding: '0.5rem',
               }}
             >
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--sb-body)', padding: '0.35rem 0.6rem' }}>
-                SWITCH ISSUING ENTITY
+              <div
+                style={{
+                  padding: '0.4rem 0.6rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: 'var(--sb-body)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Switch Legal Entity
               </div>
               {legalEntities.map((entity) => (
                 <button
@@ -208,94 +205,118 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
                     width: '100%',
                     justifyContent: 'flex-start',
                     padding: '0.5rem 0.6rem',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     fontWeight: entity.id === activeLegalEntityId ? 700 : 500,
                     color: entity.id === activeLegalEntityId ? 'var(--sb-primary)' : 'var(--sb-heading)',
-                    backgroundColor: entity.id === activeLegalEntityId ? 'var(--sb-primary-soft)' : 'transparent',
+                    backgroundColor:
+                      entity.id === activeLegalEntityId ? 'var(--sb-primary-soft)' : 'transparent',
                   }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <span>{entity.name}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--sb-body)' }}>
-                      VAT: {entity.vatNumber} ({entity.countryCode})
-                    </span>
-                  </div>
+                  <Building2 size={14} style={{ marginRight: '0.5rem' }} />
+                  {entity.name}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Global Live Stopwatch Widget */}
-        <div
+        {/* Currency Switcher Dropdown */}
+        <select
+          value={selectedCurrency}
+          onChange={(e) => setSelectedCurrency(e.target.value as any)}
+          className="btn-sandbox btn-sandbox-ghost"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.35rem 0.75rem',
-            borderRadius: '999px',
-            backgroundColor: activeTimer.isRunning ? 'var(--sb-primary-soft)' : 'var(--sb-bg)',
-            border: activeTimer.isRunning ? '1px solid var(--sb-primary)' : '1px solid var(--sb-border)',
+            padding: '0.42rem 0.6rem',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            border: '1px solid var(--sb-border)',
+            borderRadius: 'var(--sb-radius)',
+            cursor: 'pointer',
+            backgroundColor: 'var(--sb-surface)',
+            color: 'var(--sb-heading)',
           }}
         >
+          <option value="EUR">€ EUR</option>
+          <option value="USD">$ USD</option>
+          <option value="GBP">£ GBP</option>
+          <option value="CHF">CHF</option>
+        </select>
+
+        {/* Active Timer Indicator */}
+        {activeTimer.isRunning && (
           <div
             style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: activeTimer.isRunning ? '#e2626b' : 'var(--sb-body-subtle)',
-              animation: activeTimer.isRunning ? 'pulseAnim 1.4s infinite' : 'none',
-            }}
-          />
-          <Clock size={13} style={{ color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-body)' }} />
-          <span
-            style={{
-              fontFamily: 'var(--sb-font-mono)',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-heading)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              backgroundColor: 'rgba(226, 98, 107, 0.1)',
+              border: '1px solid rgba(226, 98, 107, 0.25)',
+              padding: '0.35rem 0.75rem',
+              borderRadius: 'var(--sb-radius)',
+              animation: 'pulse 2s infinite',
             }}
           >
-            {formatTimer(activeTimer.elapsedSeconds)}
-          </span>
-
-          {activeTimer.isRunning && (
+            <Clock size={15} color="var(--sb-danger)" />
+            <span
+              style={{
+                fontFamily: 'var(--sb-font-mono)',
+                fontWeight: 700,
+                color: 'var(--sb-danger)',
+                fontSize: '0.84rem',
+              }}
+            >
+              {formatTimer(activeTimer.elapsedSeconds)}
+            </span>
+            <span
+              style={{
+                fontSize: '0.78rem',
+                color: 'var(--sb-body)',
+                maxWidth: '120px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {activeProject?.title || 'Project Timer'}
+            </span>
             <button
               onClick={stopTimer}
               className="btn-sandbox btn-sandbox-ghost"
-              style={{ padding: '0.15rem', color: '#e2626b' }}
-              title="Stop & Log Time"
+              style={{
+                padding: '0.2rem',
+                color: 'var(--sb-danger)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title="Stop and Save Time Log"
             >
-              <Square size={12} fill="#e2626b" />
+              <Square size={13} />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Quick Action Button (+ New) */}
+        {/* Global Quick Action Menu */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setIsQuickMenuOpen(!isQuickMenuOpen)}
             className="btn-sandbox btn-sandbox-primary"
-            style={{ padding: '0.42rem 0.9rem', fontSize: '0.82rem' }}
+            style={{ padding: '0.45rem 0.85rem', gap: '0.35rem', fontWeight: 700 }}
           >
-            <Plus size={15} />
-            <span>New</span>
-            <ChevronDown size={13} style={{ marginLeft: '0.15rem' }} />
+            <Plus size={16} /> Create New <ChevronDown size={14} />
           </button>
 
           {isQuickMenuOpen && (
             <div
+              className="card-sandbox"
               style={{
                 position: 'absolute',
-                top: '115%',
+                top: 'calc(100% + 5px)',
                 right: 0,
-                width: '220px',
-                backgroundColor: 'var(--sb-surface, #ffffff)',
-                borderRadius: 'var(--sb-radius)',
-                boxShadow: 'var(--sb-shadow-lg)',
-                border: '1px solid var(--sb-border)',
-                padding: '0.5rem',
+                width: '210px',
                 zIndex: 1000,
+                backgroundColor: 'var(--sb-surface)',
+                boxShadow: 'var(--sb-shadow-lg)',
+                padding: '0.5rem',
               }}
             >
               <button
@@ -352,6 +373,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           )}
         </div>
 
+        {/* Privacy Screen-Share Toggle */}
+        <button
+          onClick={togglePrivacyMode}
+          className={`btn-sandbox btn-sandbox-ghost ${isPrivacyModeActive ? 'active' : ''}`}
+          style={{
+            padding: '0.45rem',
+            borderRadius: '50%',
+            color: isPrivacyModeActive ? 'var(--sb-warning)' : 'var(--sb-body)',
+          }}
+          title={isPrivacyModeActive ? 'Privacy Mode Active (Amounts Blurred) - Click to Disable' : 'Enable Privacy Screen-Share Mode'}
+        >
+          {isPrivacyModeActive ? <EyeOff size={17} /> : <Eye size={17} />}
+        </button>
+
+        {/* Instant Screen Lock Button */}
+        <button
+          onClick={lockScreen}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{ padding: '0.45rem', borderRadius: '50%' }}
+          title="Lock Screen (⌘L)"
+        >
+          <Lock size={17} />
+        </button>
+
         {/* Dark/Light Mode Switcher */}
         <button
           onClick={toggleTheme}
@@ -362,32 +407,166 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
         </button>
 
-        {/* User Identity Avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', paddingLeft: '0.35rem' }}>
+        {/* User Identity Profile Menu */}
+        <div style={{ position: 'relative' }}>
           <div
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--sb-primary)',
-              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontSize: '0.82rem',
+              gap: '0.55rem',
+              paddingLeft: '0.35rem',
+              cursor: 'pointer',
+              userSelect: 'none',
             }}
           >
-            PW
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--sb-primary)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                boxShadow: 'var(--sb-shadow-xs)',
+              }}
+            >
+              {currentUser.name
+                .split(' ')
+                .map((n) => n[0])
+                .join('')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)', lineHeight: 1.15 }}>
+                {currentUser.name.split(' ')[0]}
+              </span>
+              <span style={{ fontSize: '0.68rem', color: currentUser.twoFactorEnabled ? 'var(--sb-success)' : 'var(--sb-body)', lineHeight: 1.15, fontWeight: 600 }}>
+                {currentUser.twoFactorEnabled ? '● 2FA Active' : currentUser.role}
+              </span>
+            </div>
+            <ChevronDown size={13} color="var(--sb-body)" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)', lineHeight: 1.15 }}>
-              {activeLegalEntity.name.split(' ')[0]} User
-            </span>
-            <span style={{ fontSize: '0.68rem', color: 'var(--sb-body)', lineHeight: 1.15 }}>
-              Peppol: {activeLegalEntity.peppolEndpoint}
-            </span>
-          </div>
+
+          {/* User Menu Dropdown */}
+          {isUserMenuOpen && (
+            <div
+              className="card-sandbox"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 10px)',
+                right: 0,
+                width: '260px',
+                zIndex: 2000,
+                backgroundColor: 'var(--sb-surface)',
+                boxShadow: 'var(--sb-shadow-lg)',
+                padding: '0.75rem',
+                border: '1px solid var(--sb-border)',
+              }}
+            >
+              {/* Account info header */}
+              <div style={{ paddingBottom: '0.6rem', borderBottom: '1px solid var(--sb-border)', marginBottom: '0.5rem' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--sb-heading)' }}>
+                  {currentUser.name}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--sb-body)' }}>{currentUser.email}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.4rem' }}>
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '9999px',
+                      backgroundColor: 'var(--sb-primary-soft)',
+                      color: 'var(--sb-primary-text)',
+                    }}
+                  >
+                    {currentUser.roleLabel}
+                  </span>
+                  {currentUser.twoFactorEnabled && (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: '9999px',
+                        backgroundColor: 'rgba(56, 185, 149, 0.15)',
+                        color: 'var(--sb-success-text)',
+                      }}
+                    >
+                      ✓ 2FA
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Navigation Actions */}
+              <button
+                onClick={() => {
+                  setCurrentView('security')
+                  setIsUserMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
+              >
+                <ShieldCheck size={16} color="var(--sb-success)" />
+                <strong>Security & 2FA Hub</strong>
+              </button>
+
+              <button
+                onClick={() => {
+                  lockScreen()
+                  setIsUserMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
+              >
+                <Lock size={15} /> Lock Screen (⌘L)
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentView('settings')
+                  setIsUserMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
+              >
+                <Palette size={15} /> Settings & Themes
+              </button>
+
+              {/* Switch User Submenu */}
+              <div style={{ borderTop: '1px solid var(--sb-border)', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--sb-body)', padding: '0.2rem 0.5rem', textTransform: 'uppercase' }}>
+                  Switch Team Profile:
+                </div>
+                {users.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => {
+                      switchUser(u.id)
+                      setIsUserMenuOpen(false)
+                    }}
+                    className="btn-sandbox btn-sandbox-ghost"
+                    style={{
+                      width: '100%',
+                      justifyContent: 'space-between',
+                      padding: '0.35rem 0.5rem',
+                      fontSize: '0.78rem',
+                      fontWeight: u.id === currentUser.id ? 700 : 500,
+                      color: u.id === currentUser.id ? 'var(--sb-primary)' : 'var(--sb-heading)',
+                    }}
+                  >
+                    <span>{u.name}</span>
+                    {u.id === currentUser.id && <Check size={14} color="var(--sb-primary)" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

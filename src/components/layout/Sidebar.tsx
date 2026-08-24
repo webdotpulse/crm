@@ -237,6 +237,13 @@ export const Sidebar: React.FC = () => {
           icon: <Code2 size={17} />,
         },
         {
+          id: 'security',
+          label: 'Security & 2FA Hub',
+          icon: <ShieldCheck size={17} />,
+          badge: '2FA',
+          badgeType: 'success',
+        },
+        {
           id: 'settings',
           label: 'Settings & Theme',
           icon: <Settings size={17} />,

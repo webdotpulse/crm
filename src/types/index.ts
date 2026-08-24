@@ -1076,5 +1076,104 @@ export interface CustomThemeConfig {
   customLogoUrl?: string
 }
 
+// ==========================================
+// 15. ENTERPRISE SECURITY, 2FA & ACCESS CONTROL (RBAC)
+// ==========================================
+export type UserRole =
+  | 'owner'
+  | 'admin'
+  | 'finance'
+  | 'sales'
+  | 'project_manager'
+  | 'accountant'
 
+export type UserPermission =
+  | 'manage_crm'
+  | 'manage_invoices'
+  | 'manage_peppol'
+  | 'export_financials'
+  | 'manage_users'
+  | 'manage_api_keys'
+  | 'view_audit_logs'
+  | 'manage_settings'
 
+export interface UserAccount {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  roleLabel: string
+  avatarUrl?: string
+  twoFactorEnabled: boolean
+  twoFactorSecret?: string
+  backupCodes?: string[]
+  passwordHash?: string
+  pinCode?: string
+  lastLogin: string
+  status: 'active' | 'suspended' | 'invited'
+  customPermissions?: UserPermission[]
+  phone?: string
+  department?: string
+}
+
+export interface SecurityPolicy {
+  passwordMinLength: number
+  requireNumbers: boolean
+  requireSymbols: boolean
+  sessionTimeoutMinutes: number // 0 = never, 5, 15, 30, 60
+  maxFailedAttempts: number
+  enforce2faOrgWide: boolean
+  stepUp2faForFinancials: boolean
+  stepUp2faForPeppol: boolean
+  stepUp2faForApiKeys: boolean
+  screenSharePrivacyDefault: boolean
+  auditLoggingRetentionDays: number
+}
+
+export interface ActiveSession {
+  id: string
+  userId: string
+  userName: string
+  device: string
+  browser: string
+  os: string
+  ipAddress: string
+  location: string
+  isCurrent: boolean
+  createdAt: string
+  lastActive: string
+}
+
+export type SecurityCategory =
+  | 'auth'
+  | '2fa'
+  | 'rbac'
+  | 'export'
+  | 'financial'
+  | 'peppol'
+  | 'security'
+  | 'session'
+  | 'privacy'
+
+export type SecuritySeverity = 'info' | 'warning' | 'critical'
+
+export interface SecurityAuditLog {
+  id: string
+  timestamp: string
+  actorId: string
+  actorName: string
+  actorEmail: string
+  action: string
+  category: SecurityCategory
+  severity: SecuritySeverity
+  ipAddress: string
+  details: string
+  integrityHash: string
+}
+
+export interface TwoFactorSetupData {
+  secret: string
+  otpauthUrl: string
+  qrCodeSvg: string
+  backupCodes: string[]
+}

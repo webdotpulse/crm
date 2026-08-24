@@ -57,9 +57,18 @@ export const SettingsView: React.FC = () => {
     setIsThemeCustomizerOpen,
     theme,
     toggleTheme,
+    currentUser,
+    users,
+    securityPolicy,
+    updateSecurityPolicy,
+    setCurrentView,
+    setTwoFactorSetupModalUser,
+    isPrivacyModeActive,
+    togglePrivacyMode,
+    lockScreen,
   } = useApp()
 
-  const [activeTab, setActiveTab] = useState<'entities' | 'vat' | 'templates' | 'branding' | 'backup'>('entities')
+  const [activeTab, setActiveTab] = useState<'entities' | 'vat' | 'templates' | 'branding' | 'security' | 'backup'>('entities')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [importJsonText, setImportJsonText] = useState('')
 
@@ -314,6 +323,24 @@ export const SettingsView: React.FC = () => {
         >
           <Palette size={18} />
           <span>🎨 Theme & Custom Styling</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('security')}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{
+            padding: '0.75rem 1.25rem',
+            borderBottom: activeTab === 'security' ? '2px solid var(--sb-primary)' : '2px solid transparent',
+            color: activeTab === 'security' ? 'var(--sb-primary)' : 'var(--sb-body)',
+            fontWeight: activeTab === 'security' ? 700 : 500,
+            borderRadius: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <ShieldCheck size={18} color="var(--sb-success)" />
+          <span>🛡️ Security & 2FA</span>
         </button>
 
         <button
@@ -927,7 +954,191 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: Data Management & Backup */}
+      {/* TAB 5: Security & Two-Factor Authentication (2FA) */}
+      {activeTab === 'security' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* 2FA Card */}
+          <div className="card-sandbox" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    backgroundColor: currentUser.twoFactorEnabled ? 'rgba(56, 185, 149, 0.15)' : 'rgba(226, 98, 107, 0.15)',
+                    color: currentUser.twoFactorEnabled ? 'var(--sb-success)' : 'var(--sb-danger)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ShieldCheck size={26} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: 'var(--sb-heading)' }}>
+                    Two-Factor Authentication (2FA / TOTP)
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', margin: '0.2rem 0 0 0' }}>
+                    Status for {currentUser.name}:{' '}
+                    <strong style={{ color: currentUser.twoFactorEnabled ? 'var(--sb-success)' : 'var(--sb-danger)' }}>
+                      {currentUser.twoFactorEnabled ? '✓ Protected (Google / Microsoft Authenticator)' : '⚠️ Not Enabled'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button
+                  onClick={() => setTwoFactorSetupModalUser(currentUser)}
+                  className="btn-sandbox btn-sandbox-primary"
+                  style={{ gap: '0.35rem', fontWeight: 700 }}
+                >
+                  {currentUser.twoFactorEnabled ? 'Re-enroll 2FA' : 'Configure 2FA Now'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Policies */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '1.25rem',
+            }}
+          >
+            {/* Org 2FA & Step-Up */}
+            <div className="card-sandbox" style={{ padding: '1.25rem' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--sb-heading)', margin: '0 0 1rem 0' }}>
+                Multi-Factor Enforcement
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                      Enforce 2FA Org-Wide
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--sb-body)' }}>
+                      Require all team members to set up 2FA
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={securityPolicy.enforce2faOrgWide}
+                    onChange={(e) => {
+                      updateSecurityPolicy({ enforce2faOrgWide: e.target.checked })
+                      showToast('✓ Security policy updated.')
+                    }}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--sb-primary)' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                      Step-Up 2FA for Financial Exports
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--sb-body)' }}>
+                      Require TOTP code to export tax/financial data
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={securityPolicy.stepUp2faForFinancials}
+                    onChange={(e) => {
+                      updateSecurityPolicy({ stepUp2faForFinancials: e.target.checked })
+                      showToast('✓ Security policy updated.')
+                    }}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--sb-primary)' }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Inactivity & Screen Lock */}
+            <div className="card-sandbox" style={{ padding: '1.25rem' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--sb-heading)', margin: '0 0 1rem 0' }}>
+                Inactivity Lock & Privacy
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.35rem' }}>
+                    Auto-Lock Session Inactivity
+                  </label>
+                  <select
+                    value={securityPolicy.sessionTimeoutMinutes}
+                    onChange={(e) => {
+                      updateSecurityPolicy({ sessionTimeoutMinutes: Number(e.target.value) })
+                      showToast(`✓ Inactivity lock set to ${e.target.value} minutes.`)
+                    }}
+                    className="input-sandbox"
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  >
+                    <option value={5}>5 Minutes</option>
+                    <option value={15}>15 Minutes (Standard)</option>
+                    <option value={30}>30 Minutes</option>
+                    <option value={60}>60 Minutes</option>
+                    <option value={0}>Disabled</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                      Screen-Share Privacy Mode
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--sb-body)' }}>
+                      Mask financial totals during presentations
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={togglePrivacyMode}
+                    className={`btn-sandbox ${isPrivacyModeActive ? 'btn-sandbox-warning' : 'btn-sandbox-outline'}`}
+                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                  >
+                    {isPrivacyModeActive ? 'Active' : 'Disabled'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Deep link banner to full Security Hub */}
+          <div
+            style={{
+              padding: '1.25rem',
+              borderRadius: 'var(--sb-radius)',
+              background: 'linear-gradient(135deg, rgba(63, 120, 224, 0.1) 0%, rgba(56, 185, 149, 0.1) 100%)',
+              border: '1px solid rgba(63, 120, 224, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--sb-heading)' }}>
+                Enterprise Security & Compliance Hub
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--sb-body)', marginTop: '0.15rem' }}>
+                Access the full Security Posture Dashboard, Connected Device Management, SHA-256 Audit Trail, and GDPR Data Subject Tools.
+              </div>
+            </div>
+            <button
+              onClick={() => setCurrentView('security')}
+              className="btn-sandbox btn-sandbox-primary"
+              style={{ fontWeight: 800 }}
+            >
+              Open Security Hub →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: Data Management & Backup */}
       {activeTab === 'backup' && (
         <div className="card-sandbox" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>

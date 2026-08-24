@@ -25,6 +25,9 @@ import { DunningView } from './components/dunning/DunningView'
 import { CashFlowForecastView } from './components/cashflow/CashFlowForecastView'
 import { MileageView } from './components/mileage/MileageView'
 import { ProcurementView } from './components/procurement/ProcurementView'
+import { SecurityHubView } from './components/security/SecurityHubView'
+import { LockScreenOverlay } from './components/security/LockScreenOverlay'
+import { TwoFactorChallengeModal } from './components/security/TwoFactorChallengeModal'
 
 import { DealModal } from './components/deals/DealModal'
 import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
@@ -38,7 +41,7 @@ import { ThemeCustomizerModal } from './components/settings/ThemeCustomizerModal
 import { Deal, Invoice, Quotation } from './types'
 
 export const App: React.FC = () => {
-  const { currentView, setCurrentView } = useApp()
+  const { currentView, setCurrentView, isPrivacyModeActive } = useApp()
 
   // Quick Action Modal states
   const [quickModalType, setQuickModalType] = useState<
@@ -71,7 +74,10 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)' }}>
+    <div
+      data-privacy={isPrivacyModeActive ? 'true' : undefined}
+      style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)' }}
+    >
       {/* Sidebar */}
       <Sidebar />
 
@@ -144,6 +150,8 @@ export const App: React.FC = () => {
 
           {currentView === 'integrations' && <IntegrationsView />}
 
+          {currentView === 'security' && <SecurityHubView />}
+
           {currentView === 'settings' && <SettingsView />}
         </main>
       </div>
@@ -184,6 +192,10 @@ export const App: React.FC = () => {
           onClose={() => setEmailModalData(null)}
         />
       )}
+
+      {/* Global Security Modals & Overlays */}
+      <LockScreenOverlay />
+      <TwoFactorChallengeModal />
 
       {/* Global Spotlight Search & Theme Customizer Drawers */}
       <SpotlightSearchModal />

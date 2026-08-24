@@ -986,3 +986,30 @@ a:hover {
   --sb-font-body: 'Inter', sans-serif;
 }
 
+/* Privacy Screen-Share Masking */
+.privacy-masked,
+[data-privacy='true'] .metric-amount,
+[data-privacy='true'] .financial-val,
+[data-privacy='true'] .privacy-hide {
+  filter: blur(5.5px) !important;
+  user-select: none !important;
+  transition: filter 0.2s ease-in-out;
+}
+
+.privacy-masked:hover,
+[data-privacy='true'] .metric-amount:hover,
+[data-privacy='true'] .financial-val:hover {
+  filter: blur(0px) !important;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.98); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+

