@@ -35,6 +35,9 @@ import {
   WebhookEventLog,
   SupportedCurrency,
   ExchangeRate,
+  IntegrationConfig,
+  IntegrationId,
+  IntegrationLog,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -63,12 +66,14 @@ import {
   initialApiKeys,
   initialWebhookEndpoints,
   initialWebhookLogs,
+  initialIntegrations,
 } from '../data/initialData'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
 import { parseCodaFile, parseCamt053File, parseCsvBankFile } from '../services/codaParser'
 import { generateSepaDirectDebitXml, SepaCollectionItem } from '../services/sepaDebitGenerator'
 import { parseInboundPeppolXml } from '../services/inboundPeppolParser'
 import { defaultExchangeRates } from '../services/currencyService'
+import { executeIntegrationSync, SyncResult } from '../services/integrationsService'
 
 export type AppView =
   | 'dashboard'
@@ -87,6 +92,7 @@ export type AppView =
   | 'peppol'
   | 'portal'
   | 'developers'
+  | 'integrations'
   | 'settings'
 
 interface AppContextType {
@@ -273,6 +279,13 @@ interface AppContextType {
   webhookLogs: WebhookEventLog[]
   dispatchWebhookEvent: (event: string, payload: any) => Promise<WebhookEventLog[]>
 
+  // Integrations Hub (8 Connectors)
+  integrations: IntegrationConfig[]
+  toggleIntegration: (id: IntegrationId, enabled?: boolean) => void
+  updateIntegrationCredentials: (id: IntegrationId, credentials: Record<string, any>) => void
+  syncIntegration: (id: IntegrationId) => Promise<SyncResult>
+  simulateIntegrationEvent: (id: IntegrationId) => Promise<{ success: boolean; message: string }>
+
   // Client Helper
   getClientDisplayName: (clientType?: ClientType, id?: string) => string
 
@@ -458,6 +471,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialWebhookLogs
   })
 
+  // Integrations Hub
+  const [integrations, setIntegrations] = useState<IntegrationConfig[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_integrations`)
+    return saved ? JSON.parse(saved) : initialIntegrations
+  })
+
   const activeLegalEntity =
     legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
 
@@ -489,6 +508,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY}_apikeys`, JSON.stringify(apiKeys))
       localStorage.setItem(`${STORAGE_KEY}_webhooks`, JSON.stringify(webhookEndpoints))
       localStorage.setItem(`${STORAGE_KEY}_webhooklogs`, JSON.stringify(webhookLogs))
+      localStorage.setItem(`${STORAGE_KEY}_integrations`, JSON.stringify(integrations))
     } catch (e) {
       console.warn('Storage sync error:', e)
     }
@@ -519,6 +539,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     apiKeys,
     webhookEndpoints,
     webhookLogs,
+    integrations,
   ])
 
   useEffect(() => {
@@ -1407,6 +1428,268 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newLogs
   }
 
+  const toggleIntegration = (id: IntegrationId, enabled?: boolean) => {
+    setIntegrations((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const nextEnabled = enabled !== undefined ? enabled : !item.enabled
+        return {
+          ...item,
+          enabled: nextEnabled,
+          status: nextEnabled ? 'connected' : 'disconnected',
+          logs: [
+            {
+              id: `log-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              type: 'auth',
+              status: nextEnabled ? 'success' : 'warning',
+              message: `Integration ${nextEnabled ? 'enabled & connected' : 'disabled & disconnected'}.`,
+            },
+            ...item.logs,
+          ],
+        }
+      })
+    )
+  }
+
+  const updateIntegrationCredentials = (id: IntegrationId, credentials: Record<string, any>) => {
+    setIntegrations((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              credentials: { ...item.credentials, ...credentials },
+              status: 'connected',
+              logs: [
+                {
+                  id: `log-${Date.now()}`,
+                  timestamp: new Date().toISOString(),
+                  type: 'auth',
+                  status: 'success',
+                  message: 'Configuration & credentials updated successfully.',
+                },
+                ...item.logs,
+              ],
+            }
+          : item
+      )
+    )
+  }
+
+  const syncIntegration = async (id: IntegrationId): Promise<SyncResult> => {
+    const target = integrations.find((i) => i.id === id)
+    if (!target) return { success: false, message: 'Integration not found', itemsSynced: 0 }
+
+    setIntegrations((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: 'syncing' } : i))
+    )
+
+    try {
+      const result = await executeIntegrationSync(target, {
+        invoices,
+        expenses,
+        deals,
+        companies,
+        individuals,
+      })
+
+      const newLog: IntegrationLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'sync',
+        status: result.success ? 'success' : 'error',
+        message: result.message,
+        details: result.details,
+      }
+
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                status: result.success ? 'connected' : 'error',
+                lastSyncAt: new Date().toISOString(),
+                syncCount: (i.syncCount || 0) + result.itemsSynced,
+                logs: [newLog, ...i.logs.slice(0, 19)],
+              }
+            : i
+        )
+      )
+
+      return result
+    } catch (err: any) {
+      const errorLog: IntegrationLog = {
+        id: `log-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        status: 'error',
+        message: err?.message || 'Sync failed due to network error.',
+      }
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === id ? { ...i, status: 'error', logs: [errorLog, ...i.logs] } : i
+        )
+      )
+      return { success: false, message: err?.message || 'Sync failed', itemsSynced: 0 }
+    }
+  }
+
+  const simulateIntegrationEvent = async (id: IntegrationId): Promise<{ success: boolean; message: string }> => {
+    const nowIso = new Date().toISOString()
+    const today = nowIso.slice(0, 10)
+
+    if (id === 'solvari') {
+      const solvariDealId = `deal-solvari-${Date.now()}`
+      const newCompany: Company = {
+        id: `comp-solvari-${Date.now()}`,
+        name: 'Vermeulen Residence (Solvari Lead)',
+        vatNumber: 'BE0988410294',
+        peppolScheme: '0208',
+        peppolEndpoint: '0988410294',
+        email: 'jan.vermeulen@telenet.be',
+        phone: '+32 9 224 88 19',
+        address: 'Kortrijksesteenweg 144',
+        city: 'Ghent',
+        postalCode: '9000',
+        country: 'Belgium',
+        countryCode: 'BE',
+        status: 'lead',
+        tags: ['Solvari Lead', 'Heat Pump', 'Ghent'],
+        notes: 'Inbound lead via Solvari.be: Request for 12kW Air-to-Water Heat Pump & Solar PV quotation.',
+        createdAt: nowIso,
+      }
+      addCompany(newCompany)
+
+      const newDeal: Deal = {
+        id: solvariDealId,
+        title: 'Solvari Lead: Heat Pump & Solar Panels Ghent',
+        companyId: newCompany.id,
+        value: 12850,
+        currency: 'EUR',
+        stage: 'lead',
+        probability: 60,
+        expectedCloseDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+        notes: 'Lead captured via Solvari Partner Webhook #SOL-9941. Contact within 2 hours.',
+        createdAt: nowIso,
+      }
+      addDeal(newDeal)
+
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === 'solvari'
+            ? {
+                ...i,
+                lastSyncAt: nowIso,
+                syncCount: (i.syncCount || 0) + 1,
+                logs: [
+                  {
+                    id: `log-${Date.now()}`,
+                    timestamp: nowIso,
+                    type: 'webhook',
+                    status: 'success',
+                    message: 'Captured live Solvari lead: Vermeulen Residence (Ghent) — €12,850.00 deal created.',
+                  },
+                  ...i.logs,
+                ],
+              }
+            : i
+        )
+      )
+
+      return {
+        success: true,
+        message: '🎉 Solvari Webhook received! Created CRM Company "Vermeulen Residence" & €12,850 Deal in Pipeline.',
+      }
+    } else if (id === 'ponto') {
+      const newTx: BankTransaction = {
+        id: `tx-ponto-${Date.now()}`,
+        statementId: bankStatements[0]?.id || 'stmt-1',
+        date: today,
+        valueDate: today,
+        amount: 3630.0,
+        currency: 'EUR',
+        counterpartyName: 'AeroDynamics Belgium BV',
+        counterpartyIban: 'BE40 0012 3456 7890',
+        counterpartyBic: 'GEBABEBB',
+        structuredReference: '+++090/9337/55493+++',
+        description: 'PONTO PSD2 LIVE FEED / INV-2026-001 SETTLEMENT +++090/9337/55493+++',
+        reconciled: false,
+      }
+
+      setBankTransactions((prev) => [newTx, ...prev])
+      autoReconcileAllTransactions()
+
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === 'ponto'
+            ? {
+                ...i,
+                lastSyncAt: nowIso,
+                syncCount: (i.syncCount || 0) + 1,
+                logs: [
+                  {
+                    id: `log-${Date.now()}`,
+                    timestamp: nowIso,
+                    type: 'sync',
+                    status: 'success',
+                    message: `Ponto PSD2: Ingested credit movement €3,630.00. Reconciled with OGM +++090/9337/55493+++.`,
+                  },
+                  ...i.logs,
+                ],
+              }
+            : i
+        )
+      )
+
+      return {
+        success: true,
+        message: '⚡ Ponto PSD2 live transaction ingested (€3,630.00) & automatically matched with Belgian OGM reference!',
+      }
+    } else if (id === 'mollie' || id === 'stripe') {
+      const openInv = invoices.find((i) => i.status === 'issued') || invoices[0]
+      if (openInv) {
+        recordPayment({
+          invoiceId: openInv.id,
+          amount: openInv.total - openInv.amountPaid,
+          paymentDate: today,
+          method: id === 'mollie' ? 'bancontact' : 'card',
+          reference: `${id.toUpperCase()} Gateway Settlement #${Math.floor(100000 + Math.random() * 900000)}`,
+          note: `Online payment via ${id === 'mollie' ? 'Mollie (Bancontact)' : 'Stripe (Credit Card)'}`,
+        })
+      }
+
+      setIntegrations((prev) =>
+        prev.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                lastSyncAt: nowIso,
+                syncCount: (i.syncCount || 0) + 1,
+                logs: [
+                  {
+                    id: `log-${Date.now()}`,
+                    timestamp: nowIso,
+                    type: 'webhook',
+                    status: 'success',
+                    message: `${i.name} Webhook: Payment received for Invoice ${openInv?.number || 'INV-2026-001'}. Ledger updated.`,
+                  },
+                  ...i.logs,
+                ],
+              }
+            : i
+        )
+      )
+
+      return {
+        success: true,
+        message: `💳 ${id === 'mollie' ? 'Mollie Bancontact' : 'Stripe'} payment webhook processed! Invoice ${openInv?.number || ''} marked as Paid.`,
+      }
+    } else {
+      const syncRes = await syncIntegration(id)
+      return { success: syncRes.success, message: syncRes.message }
+    }
+  }
+
   const resetToDemoData = () => {
     setLegalEntities(initialLegalEntities)
     setActiveLegalEntityId(initialLegalEntities[0].id)
@@ -1435,13 +1718,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setApiKeys(initialApiKeys)
     setWebhookEndpoints(initialWebhookEndpoints)
     setWebhookLogs(initialWebhookLogs)
+    setIntegrations(initialIntegrations)
     setPeppolLogs([])
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
     const backup = {
-      version: '2.5.0',
+      version: '2.6.0',
       exportedAt: new Date().toISOString(),
       legalEntities,
       companyProfile,
@@ -1469,6 +1753,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       apiKeys,
       webhookEndpoints,
       webhookLogs,
+      integrations,
     }
     return JSON.stringify(backup, null, 2)
   }
@@ -1501,6 +1786,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.apiKeys) setApiKeys(data.apiKeys)
       if (data.webhookEndpoints) setWebhookEndpoints(data.webhookEndpoints)
       if (data.webhookLogs) setWebhookLogs(data.webhookLogs)
+      if (data.integrations) setIntegrations(data.integrations)
       return true
     } catch (e) {
       console.error('Import error:', e)
@@ -1641,6 +1927,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteWebhookEndpoint,
         webhookLogs,
         dispatchWebhookEvent,
+        integrations,
+        toggleIntegration,
+        updateIntegrationCredentials,
+        syncIntegration,
+        simulateIntegrationEvent,
         resetToDemoData,
         exportDataJson,
         importDataJson,

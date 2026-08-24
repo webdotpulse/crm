@@ -17,6 +17,7 @@ import {
   Code2,
   Calculator,
   PenTool,
+  Plug,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -49,6 +50,7 @@ export const Sidebar: React.FC = () => {
     bankTransactions,
     products,
     events,
+    integrations,
   } = useApp()
 
   const navSections: NavSection[] = [
@@ -164,6 +166,13 @@ export const Sidebar: React.FC = () => {
     {
       title: 'INTEGRATIONS & PORTAL',
       items: [
+        {
+          id: 'integrations',
+          label: 'Integrations Hub',
+          icon: <Plug size={17} />,
+          badge: `${integrations.filter((i) => i.enabled).length}/${integrations.length}`,
+          badgeType: 'success',
+        },
         {
           id: 'peppol',
           label: 'Peppol BIS Hub',

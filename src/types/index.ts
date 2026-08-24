@@ -715,3 +715,62 @@ export interface WebhookEventLog {
   timestamp: string
 }
 
+// ==========================================
+// 7. INTEGRATIONS HUB (8 CORE CONNECTORS)
+// ==========================================
+export type IntegrationId =
+  | 'google_calendar'
+  | 'octopus'
+  | 'ponto'
+  | 'solvari'
+  | 'exact_online'
+  | 'yuki'
+  | 'mollie'
+  | 'stripe'
+
+export type IntegrationCategory =
+  | 'calendar'
+  | 'accounting'
+  | 'banking'
+  | 'leads'
+  | 'payments'
+
+export type IntegrationStatus = 'connected' | 'disconnected' | 'syncing' | 'error'
+
+export interface IntegrationSettingField {
+  key: string
+  label: string
+  type: 'text' | 'password' | 'select' | 'checkbox'
+  options?: { label: string; value: string }[]
+  placeholder?: string
+  description?: string
+  required?: boolean
+}
+
+export interface IntegrationLog {
+  id: string
+  timestamp: string
+  type: 'sync' | 'webhook' | 'auth' | 'error'
+  status: 'success' | 'warning' | 'error'
+  message: string
+  details?: any
+}
+
+export interface IntegrationConfig {
+  id: IntegrationId
+  name: string
+  tagline: string
+  description: string
+  category: IntegrationCategory
+  enabled: boolean
+  status: IntegrationStatus
+  icon: string
+  badge?: string
+  features: string[]
+  credentials: Record<string, any>
+  settingFields: IntegrationSettingField[]
+  lastSyncAt?: string
+  syncCount?: number
+  logs: IntegrationLog[]
+}
+

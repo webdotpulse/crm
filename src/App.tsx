@@ -19,6 +19,7 @@ import { ContractsView } from './components/contracts/ContractsView'
 import { AccountantView } from './components/accountant/AccountantView'
 import { ClientPortalView } from './components/portal/ClientPortalView'
 import { DevelopersView } from './components/developers/DevelopersView'
+import { IntegrationsView } from './components/integrations/IntegrationsView'
 
 import { DealModal } from './components/deals/DealModal'
 import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
@@ -123,6 +124,8 @@ export const App: React.FC = () => {
           {currentView === 'portal' && <ClientPortalView />}
 
           {currentView === 'developers' && <DevelopersView />}
+
+          {currentView === 'integrations' && <IntegrationsView />}
 
           {currentView === 'settings' && <SettingsView />}
         </main>

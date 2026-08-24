@@ -294,7 +294,18 @@ async function capture() {
   await sleep(800)
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '24_settings_multi_entities.png') })
 
-  // 25. Dashboard Dark Mode
+  // 25. Integrations Hub Marketplace (NEW)
+  console.log('📸 26_integrations_marketplace.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Integrations Hub')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '26_integrations_marketplace.png') })
+
+  // 26. Dashboard Dark Mode
   console.log('📸 25_dashboard_dark_mode.png')
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
@@ -311,7 +322,7 @@ async function capture() {
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '25_dashboard_dark_mode.png') })
 
   await browser.close()
-  console.log(`\n🎉 Successfully captured all 25 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
+  console.log(`\n🎉 Successfully captured all 26 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
 }
 
 capture().catch((err) => {
