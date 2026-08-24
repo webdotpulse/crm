@@ -32,6 +32,8 @@ import { ProjectModal } from './components/projects/ProjectModal'
 import { InvoiceEditorModal } from './components/invoices/InvoiceEditorModal'
 import { CompanyModal } from './components/crm/CompanyModal'
 import { SendEmailModal } from './components/email/SendEmailModal'
+import { SpotlightSearchModal } from './components/layout/SpotlightSearchModal'
+import { ThemeCustomizerModal } from './components/settings/ThemeCustomizerModal'
 
 import { Deal, Invoice, Quotation } from './types'
 
@@ -182,6 +184,10 @@ export const App: React.FC = () => {
           onClose={() => setEmailModalData(null)}
         />
       )}
+
+      {/* Global Spotlight Search & Theme Customizer Drawers */}
+      <SpotlightSearchModal />
+      <ThemeCustomizerModal />
     </div>
   )
 }

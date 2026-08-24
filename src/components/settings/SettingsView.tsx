@@ -18,9 +18,17 @@ import {
   Trash2,
   Edit2,
   Globe,
+  Palette,
+  Check,
+  Copy,
+  Layout,
+  Type,
+  Maximize2,
+  Code2,
 } from 'lucide-react'
-import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate } from '../../types'
+import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate, FontFamilyOption, BorderRadiusOption, DensityOption } from '../../types'
 import { useApp } from '../../context/AppContext'
+import { themePresets } from '../../services/themeService'
 
 export const SettingsView: React.FC = () => {
   const {
@@ -42,9 +50,16 @@ export const SettingsView: React.FC = () => {
     resetToDemoData,
     exportDataJson,
     importDataJson,
+    customTheme,
+    updateCustomTheme,
+    setThemePreset,
+    resetCustomTheme,
+    setIsThemeCustomizerOpen,
+    theme,
+    toggleTheme,
   } = useApp()
 
-  const [activeTab, setActiveTab] = useState<'entities' | 'vat' | 'templates' | 'backup'>('entities')
+  const [activeTab, setActiveTab] = useState<'entities' | 'vat' | 'templates' | 'branding' | 'backup'>('entities')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [importJsonText, setImportJsonText] = useState('')
 
@@ -281,6 +296,24 @@ export const SettingsView: React.FC = () => {
         >
           <Mail size={18} />
           <span>Email & Document Templates</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('branding')}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{
+            padding: '0.75rem 1.25rem',
+            borderBottom: activeTab === 'branding' ? '2px solid var(--sb-primary)' : '2px solid transparent',
+            color: activeTab === 'branding' ? 'var(--sb-primary)' : 'var(--sb-body)',
+            fontWeight: activeTab === 'branding' ? 700 : 500,
+            borderRadius: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <Palette size={18} />
+          <span>🎨 Theme & Custom Styling</span>
         </button>
 
         <button
@@ -612,6 +645,283 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Branding & Custom Theme Engine */}
+      {activeTab === 'branding' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Section 1: Presets Grid */}
+          <div className="card-sandbox" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '0.25rem' }}>Curated Theme Presets</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--sb-body)' }}>
+                  Select from pre-configured color schemes, white/dark navigation modes, and typography pairings.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsThemeCustomizerOpen(true)}
+                className="btn-sandbox btn-sandbox-primary"
+                style={{ gap: '0.4rem' }}
+              >
+                <Palette size={15} />
+                <span>Open Live Customizer Drawer</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {themePresets.map((preset) => {
+                const isActive = customTheme.preset === preset.id
+
+                return (
+                  <div
+                    key={preset.id}
+                    onClick={() => {
+                      setThemePreset(preset.id)
+                      showToast(`✓ Switched theme to ${preset.name}`)
+                    }}
+                    className={`theme-preset-card ${isActive ? 'active' : ''}`}
+                    style={{ padding: '1rem' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            backgroundColor: preset.previewColors.primary,
+                            boxShadow: 'var(--sb-shadow-xs)',
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            backgroundColor: preset.previewColors.sidebar,
+                            border: '1px solid var(--sb-border)',
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            backgroundColor: preset.previewColors.bg,
+                            border: '1px solid var(--sb-border)',
+                          }}
+                        />
+                      </div>
+                      {isActive && (
+                        <span className="badge-sandbox badge-soft-primary" style={{ fontSize: '0.7rem' }}>
+                          ACTIVE
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--sb-heading)', marginBottom: '0.2rem' }}>
+                      {preset.name}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--sb-body)', lineHeight: 1.4 }}>
+                      {preset.description}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Custom Colors & Workspace Branding */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            {/* Color Controls */}
+            <div className="card-sandbox" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Colors & Brand Accent</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', marginBottom: '1.25rem' }}>
+                Pick customized colors for primary buttons, active highlights, and navigation accents.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div>
+                  <label className="form-label">Primary Brand Color</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    <input
+                      type="color"
+                      value={customTheme.primaryColor || '#3f78e0'}
+                      onChange={(e) => updateCustomTheme({ primaryColor: e.target.value, preset: 'standard-white' })}
+                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--sb-border)', cursor: 'pointer', padding: 0 }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input-sandbox"
+                      value={customTheme.primaryColor || '#3f78e0'}
+                      onChange={(e) => updateCustomTheme({ primaryColor: e.target.value, preset: 'standard-white' })}
+                      style={{ fontFamily: 'var(--sb-font-mono)', fontWeight: 700, width: '120px' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Secondary Accent Color</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <input
+                      type="color"
+                      value={customTheme.secondaryColor || '#605dba'}
+                      onChange={(e) => updateCustomTheme({ secondaryColor: e.target.value })}
+                      style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid var(--sb-border)', cursor: 'pointer', padding: 0 }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input-sandbox"
+                      value={customTheme.secondaryColor || '#605dba'}
+                      onChange={(e) => updateCustomTheme({ secondaryColor: e.target.value })}
+                      style={{ fontFamily: 'var(--sb-font-mono)', fontWeight: 700, width: '120px' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Workspace / Product Brand Title</label>
+                  <input
+                    type="text"
+                    className="form-input-sandbox"
+                    value={customTheme.customBrandName || 'PulseWork'}
+                    onChange={(e) => updateCustomTheme({ customBrandName: e.target.value })}
+                    placeholder="e.g. PulseWork or MyCompany Suite"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Geometry & Typography */}
+            <div className="card-sandbox" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Typography & Geometry</h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', marginBottom: '1.25rem' }}>
+                Adjust corner roundness, font typeface, and spacing density.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Font Selector */}
+                <div>
+                  <label className="form-label">Font Family</label>
+                  <select
+                    value={customTheme.fontFamily || 'Urbanist'}
+                    onChange={(e) => updateCustomTheme({ fontFamily: e.target.value as FontFamilyOption })}
+                    className="form-select-sandbox"
+                  >
+                    <option value="Urbanist">Urbanist (Modern Geometric)</option>
+                    <option value="Inter">Inter (Enterprise SaaS Standard)</option>
+                    <option value="Plus Jakarta Sans">Plus Jakarta Sans (Contemporary)</option>
+                    <option value="Outfit">Outfit (Luxury Rounded)</option>
+                    <option value="Manrope">Manrope (Clean Humanist)</option>
+                    <option value="Space Grotesk">Space Grotesk (Tech Monospace Accent)</option>
+                  </select>
+                </div>
+
+                {/* Corner Radius */}
+                <div>
+                  <label className="form-label">Corner Radius</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                    {[
+                      { id: 'sharp', label: 'Sharp (2px)' },
+                      { id: 'subtle', label: 'Subtle (6px)' },
+                      { id: 'modern', label: 'Modern (10px)' },
+                      { id: 'rounded', label: 'Rounded (16px)' },
+                      { id: 'pill', label: 'Pill (Full)' },
+                    ].map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => updateCustomTheme({ borderRadius: r.id as BorderRadiusOption })}
+                        className="btn-sandbox btn-sandbox-ghost"
+                        style={{
+                          padding: '0.45rem',
+                          border: `1px solid ${customTheme.borderRadius === r.id ? 'var(--sb-primary)' : 'var(--sb-border)'}`,
+                          backgroundColor: customTheme.borderRadius === r.id ? 'var(--sb-primary-soft)' : 'var(--sb-surface)',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                        }}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Density */}
+                <div>
+                  <label className="form-label">Layout Spacing & Density</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                    {[
+                      { id: 'compact', label: 'Compact' },
+                      { id: 'comfortable', label: 'Comfortable' },
+                      { id: 'spacious', label: 'Spacious' },
+                    ].map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => updateCustomTheme({ density: d.id as DensityOption })}
+                        className="btn-sandbox btn-sandbox-ghost"
+                        style={{
+                          padding: '0.45rem',
+                          border: `1px solid ${customTheme.density === d.id ? 'var(--sb-primary)' : 'var(--sb-border)'}`,
+                          backgroundColor: customTheme.density === d.id ? 'var(--sb-primary-soft)' : 'var(--sb-surface)',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                        }}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Custom CSS Editor */}
+          <div className="card-sandbox" style={{ padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Injected Custom CSS</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', marginBottom: '1rem' }}>
+              Add custom CSS rules to fine-tune typography, shadows, borders, or layout components.
+            </p>
+
+            <textarea
+              className="form-textarea-sandbox"
+              rows={6}
+              style={{ fontFamily: 'var(--sb-font-mono)', fontSize: '0.8rem', lineHeight: 1.5 }}
+              placeholder={`/* Enter custom CSS rules */\n.navbar-sandbox { border-bottom-width: 2px; }\n.sidebar-sandbox { box-shadow: 2px 0 10px rgba(0,0,0,0.05); }`}
+              value={customTheme.customCss || ''}
+              onChange={(e) => updateCustomTheme({ customCss: e.target.value })}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+              <button
+                onClick={() => {
+                  resetCustomTheme()
+                  showToast('✓ Reset to default Standard Crisp White theme!')
+                }}
+                className="btn-sandbox btn-sandbox-secondary"
+                style={{ gap: '0.4rem' }}
+              >
+                <RotateCcw size={14} />
+                <span>Reset Theme to Standard White</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(customTheme, null, 2))
+                  showToast('✓ Theme configuration copied to clipboard!')
+                }}
+                className="btn-sandbox btn-sandbox-secondary"
+                style={{ gap: '0.4rem' }}
+              >
+                <Copy size={14} />
+                <span>Copy Theme JSON</span>
+              </button>
             </div>
           </div>
         </div>

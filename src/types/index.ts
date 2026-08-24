@@ -1032,4 +1032,49 @@ export interface ThreeWayMatchResult {
   approvedForPayment: boolean
 }
 
+// CRM Theme & Custom Styling Engine
+export type ThemePresetId =
+  | 'standard-white'
+  | 'elemis-blue'
+  | 'emerald-growth'
+  | 'royal-violet'
+  | 'ocean-teal'
+  | 'sunset-amber'
+  | 'crimson-rose'
+  | 'midnight-obsidian'
+  | 'minimal-slate'
+
+export type FontFamilyOption =
+  | 'Urbanist'
+  | 'Inter'
+  | 'Plus Jakarta Sans'
+  | 'Outfit'
+  | 'Manrope'
+  | 'Space Grotesk'
+
+export type BorderRadiusOption = 'sharp' | 'subtle' | 'modern' | 'rounded' | 'pill'
+export type DensityOption = 'compact' | 'comfortable' | 'spacious'
+export type SidebarStyleOption = 'white' | 'dark' | 'glass' | 'brand'
+
+export interface CustomThemeConfig {
+  preset: ThemePresetId
+  primaryColor: string
+  primaryHoverColor?: string
+  primarySoftColor?: string
+  secondaryColor?: string
+  sidebarBgMode: 'white' | 'dark' | 'glass' | 'brand' | 'custom'
+  sidebarBgCustom?: string
+  navbarBgMode: 'white' | 'dark' | 'glass' | 'custom'
+  navbarBgCustom?: string
+  cardBgCustom?: string
+  pageBgCustom?: string
+  borderRadius: BorderRadiusOption
+  fontFamily: FontFamilyOption
+  density: DensityOption
+  customCss?: string
+  customBrandName?: string
+  customLogoUrl?: string
+}
+
+
 

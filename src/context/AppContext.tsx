@@ -45,6 +45,8 @@ import {
   DunningNotice,
   DunningStage,
   LanguageCode,
+  CustomThemeConfig,
+  ThemePresetId,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -86,6 +88,7 @@ import { defaultExchangeRates } from '../services/currencyService'
 import { executeIntegrationSync, SyncResult } from '../services/integrationsService'
 import { calculateDunningEscalation, BELGIAN_STATUTORY_RECOVERY_FEE, STATUTORY_LATE_INTEREST_RATE } from '../services/dunningService'
 import { translate } from '../services/i18nService'
+import { defaultThemeConfig, themePresets, applyThemeConfig } from '../services/themeService'
 
 export type AppView =
   | 'dashboard'
@@ -121,6 +124,16 @@ interface AppContextType {
   language: LanguageCode
   setLanguage: (lang: LanguageCode) => void
   t: (key: string) => string
+
+  // Theme & Custom Styling Engine
+  customTheme: CustomThemeConfig
+  updateCustomTheme: (config: Partial<CustomThemeConfig>) => void
+  setThemePreset: (presetId: ThemePresetId) => void
+  resetCustomTheme: () => void
+  isThemeCustomizerOpen: boolean
+  setIsThemeCustomizerOpen: (open: boolean) => void
+  isSpotlightOpen: boolean
+  setIsSpotlightOpen: (open: boolean) => void
 
   // Multi-Entity
   legalEntities: LegalEntity[]
@@ -346,6 +359,14 @@ const STORAGE_KEY = 'pulsework_crm_state_v2'
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  // Theme & Custom Styling Engine
+  const [customTheme, setCustomTheme] = useState<CustomThemeConfig>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_custom_theme`)
+    return saved ? JSON.parse(saved) : defaultThemeConfig
+  })
+  const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false)
+  const [isSpotlightOpen, setIsSpotlightOpen] = useState(false)
 
   const [legalEntities, setLegalEntities] = useState<LegalEntity[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_entities`)
@@ -653,6 +674,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTheme(nextTheme)
     document.documentElement.setAttribute('data-theme', nextTheme)
   }
+
+  // Update Custom Theme Configuration
+  const updateCustomTheme = (updates: Partial<CustomThemeConfig>) => {
+    setCustomTheme((prev) => {
+      const updated = { ...prev, ...updates }
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_custom_theme`, JSON.stringify(updated))
+      } catch (e) {}
+      return updated
+    })
+  }
+
+  // Set Curated Preset Theme
+  const setThemePreset = (presetId: ThemePresetId) => {
+    const preset = themePresets.find((p) => p.id === presetId)
+    if (preset) {
+      const updated: CustomThemeConfig = {
+        ...preset.config,
+        customBrandName: customTheme.customBrandName,
+        customLogoUrl: customTheme.customLogoUrl,
+        customCss: customTheme.customCss,
+      }
+      setCustomTheme(updated)
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_custom_theme`, JSON.stringify(updated))
+      } catch (e) {}
+    }
+  }
+
+  // Reset Custom Theme to Default Standard Crisp White
+  const resetCustomTheme = () => {
+    setCustomTheme(defaultThemeConfig)
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_custom_theme`, JSON.stringify(defaultThemeConfig))
+    } catch (e) {}
+  }
+
+  // Live CSS Synchronization
+  useEffect(() => {
+    applyThemeConfig(customTheme, theme === 'dark')
+  }, [customTheme, theme])
+
+  // Global Keyboard Shortcut for Spotlight Search (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setIsSpotlightOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const addLegalEntity = (entity: LegalEntity) => setLegalEntities((prev) => [...prev, entity])
   const updateLegalEntity = (entity: LegalEntity) =>
@@ -2097,6 +2171,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentView,
         theme,
         toggleTheme,
+        customTheme,
+        updateCustomTheme,
+        setThemePreset,
+        resetCustomTheme,
+        isThemeCustomizerOpen,
+        setIsThemeCustomizerOpen,
+        isSpotlightOpen,
+        setIsSpotlightOpen,
         selectedCurrency,
         setSelectedCurrency,
         exchangeRates,

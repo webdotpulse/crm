@@ -11,6 +11,11 @@ import {
   ChevronDown,
   User,
   Package,
+  Palette,
+  Clock,
+  Briefcase,
+  FileText,
+  DollarSign,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
@@ -33,6 +38,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
     setSelectedCurrency,
     language,
     setLanguage,
+    setIsSpotlightOpen,
+    setIsThemeCustomizerOpen,
+    customTheme,
   } = useApp()
 
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
@@ -50,8 +58,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
   return (
     <header className="navbar-sandbox">
-      {/* Search Input */}
-      <div style={{ position: 'relative', width: '380px', maxWidth: '100%' }}>
+      {/* Upgraded Search Input with Spotlight Trigger */}
+      <div
+        className="search-container-sandbox"
+        id="global-search-container"
+        onClick={() => setIsSpotlightOpen(true)}
+      >
         <Search
           size={16}
           style={{
@@ -60,28 +72,59 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
             top: '50%',
             transform: 'translateY(-50%)',
             color: 'var(--sb-body)',
+            pointerEvents: 'none',
           }}
         />
         <input
+          id="global-search-input"
           type="text"
-          placeholder="Search clients, deals, projects, invoices..."
+          placeholder="Search clients, deals, quotes, invoices..."
           className="search-input-sandbox"
+          readOnly
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsSpotlightOpen(true)
+          }}
+          style={{ cursor: 'pointer' }}
         />
+        <span className="search-kbd-badge">⌘K</span>
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        {/* Quick Theme Customizer Palette Trigger */}
+        <button
+          id="btn-theme-customizer"
+          onClick={() => setIsThemeCustomizerOpen(true)}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{
+            padding: '0.42rem 0.7rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            border: '1px solid var(--sb-border)',
+            borderRadius: 'var(--sb-radius)',
+            color: 'var(--sb-primary)',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+          }}
+          title="Customize CRM Theme & Colors"
+        >
+          <Palette size={15} />
+          <span style={{ display: 'inline' }}>Theme</span>
+        </button>
+
         {/* Language Selector (NL / FR / EN / DE) */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value as any)}
           style={{
-            padding: '0.4rem 0.6rem',
+            padding: '0.42rem 0.55rem',
             fontSize: '0.8rem',
             fontWeight: 700,
             border: '1px solid var(--sb-border)',
             borderRadius: 'var(--sb-radius)',
-            backgroundColor: 'var(--sb-card-bg)',
+            backgroundColor: 'var(--sb-card-bg, #ffffff)',
             color: 'var(--sb-heading)',
             cursor: 'pointer',
           }}
@@ -99,13 +142,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           onChange={(e) => setSelectedCurrency(e.target.value as any)}
           className="input-sandbox"
           style={{
-            padding: '0.4rem 0.6rem',
+            padding: '0.42rem 0.55rem',
             fontSize: '0.8rem',
             fontWeight: 700,
             border: '1px solid var(--sb-border)',
             borderRadius: 'var(--sb-radius)',
-            backgroundColor: 'var(--sb-card-bg)',
+            backgroundColor: 'var(--sb-card-bg, #ffffff)',
             color: 'var(--sb-heading)',
+            cursor: 'pointer',
           }}
           title="Display Currency"
         >
@@ -121,7 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
             onClick={() => setIsEntityMenuOpen(!isEntityMenuOpen)}
             className="btn-sandbox btn-sandbox-ghost"
             style={{
-              padding: '0.4rem 0.75rem',
+              padding: '0.42rem 0.75rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
@@ -129,19 +173,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
               borderRadius: 'var(--sb-radius)',
             }}
           >
-            <Building2 size={16} color="var(--sb-primary)" />
+            <Building2 size={15} color="var(--sb-primary)" />
             <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{activeLegalEntity.name}</span>
-            <ChevronDown size={14} color="var(--sb-body)" />
+            <ChevronDown size={13} color="var(--sb-body)" />
           </button>
 
           {isEntityMenuOpen && (
             <div
               style={{
                 position: 'absolute',
-                top: '110%',
+                top: '115%',
                 right: 0,
                 width: '260px',
-                backgroundColor: 'var(--sb-card-bg)',
+                backgroundColor: 'var(--sb-surface, #ffffff)',
                 borderRadius: 'var(--sb-radius)',
                 boxShadow: 'var(--sb-shadow-lg)',
                 border: '1px solid var(--sb-border)',
@@ -187,11 +231,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.6rem',
-            padding: '0.35rem 0.85rem',
+            gap: '0.5rem',
+            padding: '0.35rem 0.75rem',
             borderRadius: '999px',
-            backgroundColor: activeTimer.isRunning ? 'var(--sb-primary-soft)' : 'var(--sb-border)',
-            border: activeTimer.isRunning ? '1px solid var(--sb-primary)' : '1px solid transparent',
+            backgroundColor: activeTimer.isRunning ? 'var(--sb-primary-soft)' : 'var(--sb-bg)',
+            border: activeTimer.isRunning ? '1px solid var(--sb-primary)' : '1px solid var(--sb-border)',
           }}
         >
           <div
@@ -199,15 +243,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: activeTimer.isRunning ? '#e2626b' : 'var(--sb-body)',
-              animation: activeTimer.isRunning ? 'pulse 1.2s infinite' : 'none',
+              backgroundColor: activeTimer.isRunning ? '#e2626b' : 'var(--sb-body-subtle)',
+              animation: activeTimer.isRunning ? 'pulseAnim 1.4s infinite' : 'none',
             }}
           />
+          <Clock size={13} style={{ color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-body)' }} />
           <span
             style={{
               fontFamily: 'var(--sb-font-mono)',
               fontWeight: 700,
-              fontSize: '0.88rem',
+              fontSize: '0.82rem',
               color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-heading)',
             }}
           >
@@ -218,10 +263,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
             <button
               onClick={stopTimer}
               className="btn-sandbox btn-sandbox-ghost"
-              style={{ padding: '0.2rem', color: '#e2626b' }}
+              style={{ padding: '0.15rem', color: '#e2626b' }}
               title="Stop & Log Time"
             >
-              <Square size={14} fill="#e2626b" />
+              <Square size={12} fill="#e2626b" />
             </button>
           )}
         </div>
@@ -231,21 +276,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           <button
             onClick={() => setIsQuickMenuOpen(!isQuickMenuOpen)}
             className="btn-sandbox btn-sandbox-primary"
-            style={{ padding: '0.45rem 1rem' }}
+            style={{ padding: '0.42rem 0.9rem', fontSize: '0.82rem' }}
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>New</span>
-            <ChevronDown size={14} style={{ marginLeft: '0.2rem' }} />
+            <ChevronDown size={13} style={{ marginLeft: '0.15rem' }} />
           </button>
 
           {isQuickMenuOpen && (
             <div
               style={{
                 position: 'absolute',
-                top: '110%',
+                top: '115%',
                 right: 0,
-                width: '210px',
-                backgroundColor: 'var(--sb-card-bg)',
+                width: '220px',
+                backgroundColor: 'var(--sb-surface, #ffffff)',
                 borderRadius: 'var(--sb-radius)',
                 boxShadow: 'var(--sb-shadow-lg)',
                 border: '1px solid var(--sb-border)',
@@ -311,18 +356,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
         <button
           onClick={toggleTheme}
           className="btn-sandbox btn-sandbox-ghost"
-          style={{ padding: '0.5rem', borderRadius: '50%' }}
+          style={{ padding: '0.45rem', borderRadius: '50%' }}
           title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
         >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
         </button>
 
         {/* User Identity Avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingLeft: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', paddingLeft: '0.35rem' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
+              width: '34px',
+              height: '34px',
               borderRadius: '50%',
               backgroundColor: 'var(--sb-primary)',
               color: '#ffffff',
@@ -330,16 +375,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
             }}
           >
             PW
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--sb-heading)', lineHeight: 1.15 }}>
               {activeLegalEntity.name.split(' ')[0]} User
             </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--sb-body)' }}>
+            <span style={{ fontSize: '0.68rem', color: 'var(--sb-body)', lineHeight: 1.15 }}>
               Peppol: {activeLegalEntity.peppolEndpoint}
             </span>
           </div>

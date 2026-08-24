@@ -23,6 +23,7 @@ import {
   Car,
   Truck,
   Sparkles,
+  Palette,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -43,6 +44,8 @@ export const Sidebar: React.FC = () => {
   const {
     currentView,
     setCurrentView,
+    setIsThemeCustomizerOpen,
+    customTheme,
     companies,
     individuals,
     deals,
@@ -235,28 +238,25 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'settings',
-          label: 'Settings & Entities',
+          label: 'Settings & Theme',
           icon: <Settings size={17} />,
         },
       ],
     },
   ]
 
+  const sidebarClass = `sidebar-sandbox ${
+    customTheme.sidebarBgMode === 'dark'
+      ? 'sidebar-style-dark'
+      : customTheme.sidebarBgMode === 'glass'
+      ? 'sidebar-style-glass'
+      : ''
+  }`
+
   return (
-    <aside
-      className="sidebar-sandbox"
-      style={{
-        width: '260px',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        overflowY: 'auto',
-      }}
-    >
+    <aside className={sidebarClass}>
       {/* Brand Header */}
-      <div style={{ padding: '1.25rem 1.25rem', borderBottom: '1px solid var(--sb-border)' }}>
+      <div style={{ padding: '1.25rem 1.25rem', borderBottom: '1px solid var(--sb-sidebar-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div
             style={{
@@ -275,9 +275,9 @@ export const Sidebar: React.FC = () => {
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.12rem', color: 'var(--sb-heading)', letterSpacing: '-0.02em' }}>
-              PulseWork
+              {customTheme.customBrandName || 'PulseWork'}
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Enterprise SMB Suite
             </div>
           </div>
@@ -285,24 +285,12 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation List */}
-      <nav style={{ padding: '0.75rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1 }}>
+      <nav style={{ padding: '0.75rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '1.15rem', flex: 1 }}>
         {navSections.map((section, sIdx) => (
           <div key={sIdx}>
-            <div
-              style={{
-                fontSize: '0.66rem',
-                fontWeight: 800,
-                color: 'var(--sb-body)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                padding: '0 0.65rem 0.35rem',
-                opacity: 0.8,
-              }}
-            >
-              {section.title}
-            </div>
+            <div className="sidebar-nav-section-title">{section.title}</div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
               {section.items.map((item) => {
                 const isActive = currentView === item.id
 
@@ -311,25 +299,15 @@ export const Sidebar: React.FC = () => {
                     key={item.id}
                     onClick={() => setCurrentView(item.id)}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.52rem 0.65rem',
-                      borderRadius: 'var(--sb-radius)',
-                      border: 'none',
-                      backgroundColor: isActive ? 'var(--sb-primary-soft)' : 'transparent',
-                      color: isActive ? 'var(--sb-primary)' : 'var(--sb-heading)',
-                      fontWeight: isActive ? 700 : 500,
-                      fontSize: '0.84rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      textAlign: 'left',
-                    }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span style={{ color: isActive ? 'var(--sb-primary)' : 'var(--sb-body)', display: 'flex' }}>
+                      <span
+                        className="sidebar-icon"
+                        style={{
+                          color: isActive ? 'var(--sb-primary)' : 'var(--sb-body)',
+                          display: 'flex',
+                        }}
+                      >
                         {item.icon}
                       </span>
                       <span>{item.label}</span>
@@ -351,18 +329,49 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Peppol Network Status */}
-      <div style={{ padding: '0.85rem 1rem', margin: '0.5rem', backgroundColor: 'var(--sb-card-bg)', borderRadius: 'var(--sb-radius)', border: '1px solid var(--sb-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <ShieldCheck size={15} color="var(--sb-success)" />
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--sb-heading)' }}>Peppol Gateway</span>
+      {/* Bottom Status & Theme Shortcut */}
+      <div style={{ padding: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        {/* Peppol Network Status */}
+        <div
+          style={{
+            padding: '0.75rem 0.85rem',
+            backgroundColor: 'var(--sb-surface, #ffffff)',
+            borderRadius: 'var(--sb-radius-sm)',
+            border: '1px solid var(--sb-sidebar-border)',
+            boxShadow: 'var(--sb-shadow-xs)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <ShieldCheck size={14} color="var(--sb-success)" />
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--sb-heading)' }}>Peppol Gateway</span>
+            </div>
+            <span className="badge-sandbox badge-soft-success" style={{ fontSize: '0.6rem', padding: '0.08rem 0.3rem' }}>
+              ONLINE
+            </span>
           </div>
-          <span className="badge-sandbox badge-soft-success" style={{ fontSize: '0.62rem', padding: '0.1rem 0.35rem' }}>
-            ONLINE
-          </span>
+          <div style={{ fontSize: '0.66rem', color: 'var(--sb-body)' }}>AS4 & EN 16931 Active</div>
         </div>
-        <div style={{ fontSize: '0.68rem', color: 'var(--sb-body)' }}>AS4 & EN 16931 Active</div>
+
+        {/* Quick Customize Styling Trigger */}
+        <button
+          onClick={() => setIsThemeCustomizerOpen(true)}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{
+            width: '100%',
+            justifyContent: 'center',
+            fontSize: '0.76rem',
+            fontWeight: 700,
+            padding: '0.45rem',
+            border: '1px dashed var(--sb-border)',
+            borderRadius: 'var(--sb-radius-sm)',
+            color: 'var(--sb-primary)',
+            gap: '0.4rem',
+          }}
+        >
+          <Palette size={13} />
+          <span>Customize CRM Styling</span>
+        </button>
       </div>
     </aside>
   )
