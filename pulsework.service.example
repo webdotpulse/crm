@@ -1,0 +1,18 @@
+[Unit]
+Description=PulseWork All-in-One CRM & Peppol Suite
+After=network.target
+
+[Service]
+Type=simple
+User=koen
+WorkingDirectory=/home/koen/git/crm
+ExecStart=/home/koen/.local/bin/npm run preview -- --host 0.0.0.0 --port 3000
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=pulsework-crm
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
