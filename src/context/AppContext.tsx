@@ -23,6 +23,18 @@ import {
   VatRate,
   PeppolTransmissionLog,
   ClientType,
+  Expense,
+  Supplier,
+  BankStatement,
+  BankTransaction,
+  SepaDirectDebitBatch,
+  SubscriptionContract,
+  Contract,
+  ApiKey,
+  WebhookEndpoint,
+  WebhookEventLog,
+  SupportedCurrency,
+  ExchangeRate,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -42,19 +54,39 @@ import {
   initialTimeEntries,
   initialInvoices,
   initialPayments,
+  initialExpenses,
+  initialSuppliers,
+  initialBankStatements,
+  initialBankTransactions,
+  initialSubscriptions,
+  initialContracts,
+  initialApiKeys,
+  initialWebhookEndpoints,
+  initialWebhookLogs,
 } from '../data/initialData'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
+import { parseCodaFile, parseCamt053File, parseCsvBankFile } from '../services/codaParser'
+import { generateSepaDirectDebitXml, SepaCollectionItem } from '../services/sepaDebitGenerator'
+import { parseInboundPeppolXml } from '../services/inboundPeppolParser'
+import { defaultExchangeRates } from '../services/currencyService'
 
 export type AppView =
   | 'dashboard'
   | 'crm'
+  | 'calendar'
   | 'deals'
   | 'quotes'
+  | 'contracts'
+  | 'subscriptions'
   | 'projects'
-  | 'invoices'
-  | 'peppol'
-  | 'calendar'
   | 'products'
+  | 'invoices'
+  | 'expenses'
+  | 'banking'
+  | 'accountant'
+  | 'peppol'
+  | 'portal'
+  | 'developers'
   | 'settings'
 
 interface AppContextType {
@@ -189,6 +221,58 @@ interface AppContextType {
   updateVatRate: (vatRate: VatRate) => void
   deleteVatRate: (id: string) => void
 
+  // Multi-Currency
+  selectedCurrency: SupportedCurrency
+  setSelectedCurrency: (c: SupportedCurrency) => void
+  exchangeRates: Record<SupportedCurrency, ExchangeRate>
+  updateExchangeRate: (currency: SupportedCurrency, rate: number) => void
+
+  // Expenses & Inbound Peppol
+  expenses: Expense[]
+  addExpense: (expense: Expense) => void
+  updateExpense: (expense: Expense) => void
+  deleteExpense: (id: string) => void
+  suppliers: Supplier[]
+  addSupplier: (supplier: Supplier) => void
+  updateSupplier: (supplier: Supplier) => void
+  deleteSupplier: (id: string) => void
+  importInboundPeppolXml: (xmlContent: string, fileName?: string) => Expense
+
+  // Bank Reconciliation & SEPA Direct Debit
+  bankStatements: BankStatement[]
+  bankTransactions: BankTransaction[]
+  importBankStatement: (fileContent: string, format: 'coda' | 'camt053' | 'csv', fileName: string) => BankStatement
+  reconcileTransactionWithInvoice: (transactionId: string, invoiceId: string) => void
+  reconcileTransactionWithExpense: (transactionId: string, expenseId: string) => void
+  autoReconcileAllTransactions: () => { matchedCount: number; matchedInvoices: string[] }
+  sepaBatches: SepaDirectDebitBatch[]
+  generateSepaBatch: (invoiceIds: string[], collectionDate: string) => SepaDirectDebitBatch
+
+  // Subscriptions & Retainers (MRR)
+  subscriptions: SubscriptionContract[]
+  addSubscription: (sub: SubscriptionContract) => void
+  updateSubscription: (sub: SubscriptionContract) => void
+  deleteSubscription: (id: string) => void
+  generateInvoicesForDueSubscriptions: () => Invoice[]
+
+  // Contracts & SLAs
+  contracts: Contract[]
+  addContract: (contract: Contract) => void
+  updateContract: (contract: Contract) => void
+  deleteContract: (id: string) => void
+  signContract: (contractId: string, signerType: 'issuer' | 'client', signerInfo: { name: string; email: string; role?: string; signatureDataUrl: string }) => void
+
+  // Developers, API Keys & Webhooks
+  apiKeys: ApiKey[]
+  addApiKey: (apiKey: ApiKey) => void
+  deleteApiKey: (id: string) => void
+  webhookEndpoints: WebhookEndpoint[]
+  addWebhookEndpoint: (endpoint: WebhookEndpoint) => void
+  updateWebhookEndpoint: (endpoint: WebhookEndpoint) => void
+  deleteWebhookEndpoint: (id: string) => void
+  webhookLogs: WebhookEventLog[]
+  dispatchWebhookEvent: (event: string, payload: any) => Promise<WebhookEventLog[]>
+
   // Client Helper
   getClientDisplayName: (clientType?: ClientType, id?: string) => string
 
@@ -313,6 +397,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [peppolLogs, setPeppolLogs] = useState<PeppolTransmissionLog[]>([])
 
+  // Multi-Currency
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('EUR')
+  const [exchangeRates, setExchangeRates] = useState<Record<SupportedCurrency, ExchangeRate>>(defaultExchangeRates)
+  const updateExchangeRate = (currency: SupportedCurrency, rate: number) => {
+    setExchangeRates((prev) => ({
+      ...prev,
+      [currency]: {
+        ...prev[currency],
+        rateToEur: rate,
+        lastUpdated: new Date().toISOString(),
+      },
+    }))
+  }
+
+  // Expenses & Suppliers
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_expenses`)
+    return saved ? JSON.parse(saved) : initialExpenses
+  })
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_suppliers`)
+    return saved ? JSON.parse(saved) : initialSuppliers
+  })
+
+  // Banking & SEPA
+  const [bankStatements, setBankStatements] = useState<BankStatement[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_bankstatements`)
+    return saved ? JSON.parse(saved) : initialBankStatements
+  })
+  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_banktransactions`)
+    return saved ? JSON.parse(saved) : initialBankTransactions
+  })
+  const [sepaBatches, setSepaBatches] = useState<SepaDirectDebitBatch[]>([])
+
+  // Subscriptions
+  const [subscriptions, setSubscriptions] = useState<SubscriptionContract[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_subscriptions`)
+    return saved ? JSON.parse(saved) : initialSubscriptions
+  })
+
+  // Contracts
+  const [contracts, setContracts] = useState<Contract[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_contracts`)
+    return saved ? JSON.parse(saved) : initialContracts
+  })
+
+  // Developers & Webhooks
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_apikeys`)
+    return saved ? JSON.parse(saved) : initialApiKeys
+  })
+  const [webhookEndpoints, setWebhookEndpoints] = useState<WebhookEndpoint[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_webhooks`)
+    return saved ? JSON.parse(saved) : initialWebhookEndpoints
+  })
+  const [webhookLogs, setWebhookLogs] = useState<WebhookEventLog[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_webhooklogs`)
+    return saved ? JSON.parse(saved) : initialWebhookLogs
+  })
+
   const activeLegalEntity =
     legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
 
@@ -335,6 +480,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY}_time`, JSON.stringify(timeEntries))
       localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(invoices))
       localStorage.setItem(`${STORAGE_KEY}_payments`, JSON.stringify(payments))
+      localStorage.setItem(`${STORAGE_KEY}_expenses`, JSON.stringify(expenses))
+      localStorage.setItem(`${STORAGE_KEY}_suppliers`, JSON.stringify(suppliers))
+      localStorage.setItem(`${STORAGE_KEY}_bankstatements`, JSON.stringify(bankStatements))
+      localStorage.setItem(`${STORAGE_KEY}_banktransactions`, JSON.stringify(bankTransactions))
+      localStorage.setItem(`${STORAGE_KEY}_subscriptions`, JSON.stringify(subscriptions))
+      localStorage.setItem(`${STORAGE_KEY}_contracts`, JSON.stringify(contracts))
+      localStorage.setItem(`${STORAGE_KEY}_apikeys`, JSON.stringify(apiKeys))
+      localStorage.setItem(`${STORAGE_KEY}_webhooks`, JSON.stringify(webhookEndpoints))
+      localStorage.setItem(`${STORAGE_KEY}_webhooklogs`, JSON.stringify(webhookLogs))
     } catch (e) {
       console.warn('Storage sync error:', e)
     }
@@ -356,6 +510,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     timeEntries,
     invoices,
     payments,
+    expenses,
+    suppliers,
+    bankStatements,
+    bankTransactions,
+    subscriptions,
+    contracts,
+    apiKeys,
+    webhookEndpoints,
+    webhookLogs,
   ])
 
   useEffect(() => {
@@ -840,6 +1003,410 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }
 
+  // ==========================================
+  // EXPENSES & SUPPLIERS HANDLERS
+  // ==========================================
+  const addExpense = (expense: Expense) => {
+    setExpenses((prev) => [expense, ...prev])
+  }
+  const updateExpense = (expense: Expense) => {
+    setExpenses((prev) => prev.map((e) => (e.id === expense.id ? expense : e)))
+  }
+  const deleteExpense = (id: string) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id))
+  }
+  const addSupplier = (supplier: Supplier) => {
+    setSuppliers((prev) => [supplier, ...prev])
+  }
+  const updateSupplier = (supplier: Supplier) => {
+    setSuppliers((prev) => prev.map((s) => (s.id === supplier.id ? supplier : s)))
+  }
+  const deleteSupplier = (id: string) => {
+    setSuppliers((prev) => prev.filter((s) => s.id !== id))
+  }
+  const importInboundPeppolXml = (xmlContent: string, fileName?: string): Expense => {
+    const parsed = parseInboundPeppolXml(xmlContent, fileName)
+    const newExpense: Expense = {
+      id: `exp-${Date.now()}`,
+      number: parsed.number || `INB-2026-${Date.now().toString().slice(-4)}`,
+      supplierName: parsed.supplierName || 'Inbound Peppol Supplier',
+      supplierVat: parsed.supplierVat,
+      supplierIban: parsed.supplierIban,
+      category: parsed.category || 'other',
+      invoiceDate: parsed.invoiceDate || new Date().toISOString().slice(0, 10),
+      dueDate: parsed.dueDate || new Date().toISOString().slice(0, 10),
+      subtotal: parsed.subtotal || 0,
+      vatTotal: parsed.vatTotal || 0,
+      total: parsed.total || 0,
+      currency: parsed.currency || 'EUR',
+      status: 'pending',
+      isPeppolInbound: true,
+      peppolXml: xmlContent,
+      notes: parsed.notes,
+      items: parsed.items,
+      createdAt: new Date().toISOString(),
+    }
+    addExpense(newExpense)
+    return newExpense
+  }
+
+  // ==========================================
+  // BANKING & RECONCILIATION HANDLERS
+  // ==========================================
+  const importBankStatement = (
+    fileContent: string,
+    format: 'coda' | 'camt053' | 'csv',
+    fileName: string
+  ): BankStatement => {
+    let res: { statement: BankStatement; transactions: BankTransaction[] }
+    if (format === 'coda') {
+      res = parseCodaFile(fileContent, fileName)
+    } else if (format === 'camt053') {
+      res = parseCamt053File(fileContent, fileName)
+    } else {
+      res = parseCsvBankFile(fileContent, fileName)
+    }
+
+    setBankStatements((prev) => [res.statement, ...prev])
+    setBankTransactions((prev) => [...res.transactions, ...prev])
+    return res.statement
+  }
+
+  const reconcileTransactionWithInvoice = (transactionId: string, invoiceId: string) => {
+    const tx = bankTransactions.find((t) => t.id === transactionId)
+    const inv = invoices.find((i) => i.id === invoiceId)
+    if (!tx || !inv) return
+
+    setBankTransactions((prev) =>
+      prev.map((t) =>
+        t.id === transactionId
+          ? {
+              ...t,
+              reconciled: true,
+              matchedInvoiceId: invoiceId,
+              reconciledAt: new Date().toISOString(),
+              reconciliationType: 'manual',
+            }
+          : t
+      )
+    )
+
+    recordPayment({
+      invoiceId: inv.id,
+      amount: Math.abs(tx.amount),
+      paymentDate: tx.date,
+      method: 'sepa',
+      reference: tx.structuredReference || tx.description,
+      note: `Reconciled via Bank Transaction ${tx.id}`,
+    })
+  }
+
+  const reconcileTransactionWithExpense = (transactionId: string, expenseId: string) => {
+    const tx = bankTransactions.find((t) => t.id === transactionId)
+    const exp = expenses.find((e) => e.id === expenseId)
+    if (!tx || !exp) return
+
+    setBankTransactions((prev) =>
+      prev.map((t) =>
+        t.id === transactionId
+          ? {
+              ...t,
+              reconciled: true,
+              matchedExpenseId: expenseId,
+              reconciledAt: new Date().toISOString(),
+              reconciliationType: 'manual',
+            }
+          : t
+      )
+    )
+
+    updateExpense({
+      ...exp,
+      status: 'paid',
+      paymentDate: tx.date,
+      paymentMethod: 'bank_transfer',
+    })
+  }
+
+  const autoReconcileAllTransactions = (): { matchedCount: number; matchedInvoices: string[] } => {
+    let matchedCount = 0
+    const matchedInvoices: string[] = []
+
+    const updatedTx = bankTransactions.map((tx) => {
+      if (tx.reconciled) return tx
+      if (tx.amount <= 0) return tx
+
+      if (tx.structuredReference) {
+        const cleanRef = tx.structuredReference.replace(/[^0-9]/g, '')
+        const match = invoices.find(
+          (inv) =>
+            inv.status !== 'paid' &&
+            inv.structuredReference &&
+            inv.structuredReference.replace(/[^0-9]/g, '') === cleanRef
+        )
+        if (match) {
+          matchedCount++
+          matchedInvoices.push(match.number)
+          recordPayment({
+            invoiceId: match.id,
+            amount: tx.amount,
+            paymentDate: tx.date,
+            method: 'sepa',
+            reference: tx.structuredReference,
+            note: 'Auto-reconciled via Belgian OGM Reference',
+          })
+          return {
+            ...tx,
+            reconciled: true,
+            matchedInvoiceId: match.id,
+            reconciledAt: new Date().toISOString(),
+            reconciliationType: 'auto_ogm' as const,
+          }
+        }
+      }
+
+      const amountMatch = invoices.find(
+        (inv) =>
+          inv.status !== 'paid' &&
+          Math.abs(inv.total - tx.amount) < 0.05
+      )
+      if (amountMatch) {
+        matchedCount++
+        matchedInvoices.push(amountMatch.number)
+        recordPayment({
+          invoiceId: amountMatch.id,
+          amount: tx.amount,
+          paymentDate: tx.date,
+          method: 'sepa',
+          reference: tx.description,
+          note: 'Auto-reconciled via exact amount match',
+        })
+        return {
+          ...tx,
+          reconciled: true,
+          matchedInvoiceId: amountMatch.id,
+          reconciledAt: new Date().toISOString(),
+          reconciliationType: 'auto_amount' as const,
+        }
+      }
+
+      return tx
+    })
+
+    setBankTransactions(updatedTx)
+    return { matchedCount, matchedInvoices }
+  }
+
+  const generateSepaBatch = (invoiceIds: string[], collectionDate: string): SepaDirectDebitBatch => {
+    const selectedInvoices = invoices.filter((i) => invoiceIds.includes(i.id))
+    const collectionItems: SepaCollectionItem[] = selectedInvoices.map((inv) => {
+      const comp = companies.find((c) => c.id === inv.companyId)
+      const ind = individuals.find((i) => i.id === inv.individualId)
+      return {
+        invoice: inv,
+        debtorName: comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Client',
+        debtorIban: 'BE71 0910 1234 5678',
+        debtorBic: 'GEBABEBB',
+        mandateId: `MAND-${inv.id}`,
+        mandateDate: '2025-01-15',
+      }
+    })
+
+    const xml = generateSepaDirectDebitXml({
+      batchReference: `BATCH-SDD-${Date.now().toString().slice(-6)}`,
+      collectionDate,
+      creditor: activeLegalEntity,
+      items: collectionItems,
+    })
+
+    const newBatch: SepaDirectDebitBatch = {
+      id: `sdd-batch-${Date.now()}`,
+      batchReference: `SDD-${new Date().toISOString().slice(0, 10)}-${Date.now().toString().slice(-4)}`,
+      collectionDate,
+      creditorName: activeLegalEntity.name,
+      creditorIban: activeLegalEntity.iban,
+      creditorBic: activeLegalEntity.bic,
+      creditorId: `BE99ZZZ${activeLegalEntity.vatNumber.replace(/\D/g, '').padEnd(10, '0')}`,
+      invoiceIds,
+      totalAmount: selectedInvoices.reduce((sum, i) => sum + (i.total - i.amountPaid), 0),
+      transactionCount: selectedInvoices.length,
+      generatedXml: xml,
+      createdAt: new Date().toISOString(),
+    }
+
+    setSepaBatches((prev) => [newBatch, ...prev])
+    return newBatch
+  }
+
+  // ==========================================
+  // SUBSCRIPTIONS HANDLERS
+  // ==========================================
+  const addSubscription = (sub: SubscriptionContract) => {
+    setSubscriptions((prev) => [sub, ...prev])
+  }
+  const updateSubscription = (sub: SubscriptionContract) => {
+    setSubscriptions((prev) => prev.map((s) => (s.id === sub.id ? sub : s)))
+  }
+  const deleteSubscription = (id: string) => {
+    setSubscriptions((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  const generateInvoicesForDueSubscriptions = (): Invoice[] => {
+    const generated: Invoice[] = []
+    const updatedSubs = subscriptions.map((sub) => {
+      if (sub.status !== 'active') return sub
+
+      const invSeq = String(invoices.length + generated.length + 1).padStart(4, '0')
+      const prefix = activeLegalEntity.invoicePrefix || 'INV-'
+      const invoiceNumber = `${prefix}2026-${invSeq}`
+      const seed = `${new Date().getFullYear()}${invSeq}${Math.floor(Math.random() * 1000)}`
+
+      const newInv: Invoice = {
+        id: `inv-sub-${Date.now()}-${sub.id}`,
+        number: invoiceNumber,
+        legalEntityId: sub.legalEntityId || activeLegalEntity.id,
+        clientType: sub.clientType,
+        companyId: sub.companyId,
+        individualId: sub.individualId,
+        issueDate: new Date().toISOString().slice(0, 10),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        structuredReference: generateStructuredReference(seed),
+        items: sub.items.map((i) => ({
+          ...i,
+          taxCategory: i.vatRate === 0 ? 'AE' : 'S',
+        })),
+        subtotal: sub.subtotal,
+        taxBreakdown: [
+          {
+            rate: sub.items[0]?.vatRate || 21,
+            taxCategory: sub.items[0]?.vatRate === 0 ? 'AE' : 'S',
+            taxableAmount: sub.subtotal,
+            taxAmount: sub.vatTotal,
+          },
+        ],
+        taxTotal: sub.vatTotal,
+        total: sub.total,
+        amountPaid: 0,
+        currency: sub.currency,
+        status: 'issued',
+        peppolStatus: sub.autoSendPeppol ? 'delivered' : 'valid',
+        notes: `Subscription billing for ${sub.title} (Period: ${sub.nextBillingDate}).`,
+        paymentTerms: '30 days net',
+        createdAt: new Date().toISOString(),
+      }
+
+      generated.push(newInv)
+
+      const d = new Date(sub.nextBillingDate)
+      if (sub.cadence === 'monthly') d.setMonth(d.getMonth() + 1)
+      else if (sub.cadence === 'quarterly') d.setMonth(d.getMonth() + 3)
+      else if (sub.cadence === 'biannually') d.setMonth(d.getMonth() + 6)
+      else if (sub.cadence === 'annually') d.setFullYear(d.getFullYear() + 1)
+
+      return {
+        ...sub,
+        nextBillingDate: d.toISOString().slice(0, 10),
+        lastInvoiceId: newInv.id,
+      }
+    })
+
+    setSubscriptions(updatedSubs)
+    generated.forEach((inv) => addInvoice(inv))
+    return generated
+  }
+
+  // ==========================================
+  // CONTRACTS HANDLERS
+  // ==========================================
+  const addContract = (contract: Contract) => {
+    setContracts((prev) => [contract, ...prev])
+  }
+  const updateContract = (contract: Contract) => {
+    setContracts((prev) => prev.map((c) => (c.id === contract.id ? contract : c)))
+  }
+  const deleteContract = (id: string) => {
+    setContracts((prev) => prev.filter((c) => c.id !== id))
+  }
+  const signContract = (
+    contractId: string,
+    signerType: 'issuer' | 'client',
+    signerInfo: { name: string; email: string; role?: string; signatureDataUrl: string }
+  ) => {
+    const contract = contracts.find((c) => c.id === contractId)
+    if (!contract) return
+
+    const auditTrail = {
+      signerName: signerInfo.name,
+      signerEmail: signerInfo.email,
+      signerRole: signerInfo.role || (signerType === 'issuer' ? 'Managing Director' : 'Authorized Representative'),
+      signatureDataUrl: signerInfo.signatureDataUrl,
+      ipAddress: '194.154.218.42',
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      documentChecksumSha256: `sha256_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 10)}`,
+      certificateId: `CERT-BE-2026-${Math.floor(100000 + Math.random() * 900000)}`,
+    }
+
+    const updatedSignatures = {
+      ...contract.signatures,
+      [signerType === 'issuer' ? 'issuerSignature' : 'clientSignature']: auditTrail,
+    }
+
+    const isFullySigned =
+      (signerType === 'issuer' && updatedSignatures.clientSignature) ||
+      (signerType === 'client' && updatedSignatures.issuerSignature)
+
+    updateContract({
+      ...contract,
+      status: isFullySigned ? 'signed' : contract.status === 'draft' ? 'sent' : contract.status,
+      signatures: updatedSignatures,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  // ==========================================
+  // DEVELOPER & WEBHOOKS HANDLERS
+  // ==========================================
+  const addApiKey = (apiKey: ApiKey) => {
+    setApiKeys((prev) => [apiKey, ...prev])
+  }
+  const deleteApiKey = (id: string) => {
+    setApiKeys((prev) => prev.filter((k) => k.id !== id))
+  }
+  const addWebhookEndpoint = (endpoint: WebhookEndpoint) => {
+    setWebhookEndpoints((prev) => [endpoint, ...prev])
+  }
+  const updateWebhookEndpoint = (endpoint: WebhookEndpoint) => {
+    setWebhookEndpoints((prev) => prev.map((w) => (w.id === endpoint.id ? endpoint : w)))
+  }
+  const deleteWebhookEndpoint = (id: string) => {
+    setWebhookEndpoints((prev) => prev.filter((w) => w.id !== id))
+  }
+  const dispatchWebhookEvent = async (event: string, payload: any): Promise<WebhookEventLog[]> => {
+    const activeEndpoints = webhookEndpoints.filter((w) => w.status === 'active' && w.events.includes(event))
+    const newLogs: WebhookEventLog[] = []
+
+    for (const ep of activeEndpoints) {
+      const log: WebhookEventLog = {
+        id: `wh-log-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+        endpointId: ep.id,
+        url: ep.url,
+        event,
+        payloadJson: JSON.stringify(payload, null, 2),
+        statusCode: 200,
+        status: 'success',
+        responseTimeMs: Math.floor(60 + Math.random() * 90),
+        timestamp: new Date().toISOString(),
+      }
+      newLogs.push(log)
+    }
+
+    if (newLogs.length > 0) {
+      setWebhookLogs((prev) => [...newLogs, ...prev])
+    }
+    return newLogs
+  }
+
   const resetToDemoData = () => {
     setLegalEntities(initialLegalEntities)
     setActiveLegalEntityId(initialLegalEntities[0].id)
@@ -859,13 +1426,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeEntries(initialTimeEntries)
     setInvoices(initialInvoices)
     setPayments(initialPayments)
+    setExpenses(initialExpenses)
+    setSuppliers(initialSuppliers)
+    setBankStatements(initialBankStatements)
+    setBankTransactions(initialBankTransactions)
+    setSubscriptions(initialSubscriptions)
+    setContracts(initialContracts)
+    setApiKeys(initialApiKeys)
+    setWebhookEndpoints(initialWebhookEndpoints)
+    setWebhookLogs(initialWebhookLogs)
     setPeppolLogs([])
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
     const backup = {
-      version: '2.0.0',
+      version: '2.5.0',
       exportedAt: new Date().toISOString(),
       legalEntities,
       companyProfile,
@@ -884,6 +1460,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timeEntries,
       invoices,
       payments,
+      expenses,
+      suppliers,
+      bankStatements,
+      bankTransactions,
+      subscriptions,
+      contracts,
+      apiKeys,
+      webhookEndpoints,
+      webhookLogs,
     }
     return JSON.stringify(backup, null, 2)
   }
@@ -907,6 +1492,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.timeEntries) setTimeEntries(data.timeEntries)
       if (data.invoices) setInvoices(data.invoices)
       if (data.payments) setPayments(data.payments)
+      if (data.expenses) setExpenses(data.expenses)
+      if (data.suppliers) setSuppliers(data.suppliers)
+      if (data.bankStatements) setBankStatements(data.bankStatements)
+      if (data.bankTransactions) setBankTransactions(data.bankTransactions)
+      if (data.subscriptions) setSubscriptions(data.subscriptions)
+      if (data.contracts) setContracts(data.contracts)
+      if (data.apiKeys) setApiKeys(data.apiKeys)
+      if (data.webhookEndpoints) setWebhookEndpoints(data.webhookEndpoints)
+      if (data.webhookLogs) setWebhookLogs(data.webhookLogs)
       return true
     } catch (e) {
       console.error('Import error:', e)
@@ -921,6 +1515,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentView,
         theme,
         toggleTheme,
+        selectedCurrency,
+        setSelectedCurrency,
+        exchangeRates,
+        updateExchangeRate,
         legalEntities,
         activeLegalEntityId,
         activeLegalEntity,
@@ -1007,6 +1605,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         invoiceProjectTimeEntries,
         peppolLogs,
         sendInvoiceViaPeppol,
+        expenses,
+        addExpense,
+        updateExpense,
+        deleteExpense,
+        suppliers,
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
+        importInboundPeppolXml,
+        bankStatements,
+        bankTransactions,
+        importBankStatement,
+        reconcileTransactionWithInvoice,
+        reconcileTransactionWithExpense,
+        autoReconcileAllTransactions,
+        sepaBatches,
+        generateSepaBatch,
+        subscriptions,
+        addSubscription,
+        updateSubscription,
+        deleteSubscription,
+        generateInvoicesForDueSubscriptions,
+        contracts,
+        addContract,
+        updateContract,
+        deleteContract,
+        signContract,
+        apiKeys,
+        addApiKey,
+        deleteApiKey,
+        webhookEndpoints,
+        addWebhookEndpoint,
+        updateWebhookEndpoint,
+        deleteWebhookEndpoint,
+        webhookLogs,
+        dispatchWebhookEvent,
         resetToDemoData,
         exportDataJson,
         importDataJson,

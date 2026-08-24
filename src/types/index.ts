@@ -12,6 +12,14 @@ export type PeppolScheme =
   | '9925' // Italy VAT
 
 export type ClientType = 'company' | 'individual' | 'contact'
+export type SupportedCurrency = 'EUR' | 'USD' | 'GBP' | 'CHF'
+
+export interface ExchangeRate {
+  currency: SupportedCurrency
+  symbol: string
+  rateToEur: number
+  lastUpdated: string
+}
 
 // B2B Company
 export interface Company {
@@ -446,3 +454,264 @@ export interface CompanyProfile {
   peppolApiKey: string
   peppolSenderId: string
 }
+
+// ==========================================
+// 1. EXPENSES & INBOUND PEPPOL
+// ==========================================
+export type ExpenseCategory =
+  | 'hosting_software'
+  | 'subcontractors'
+  | 'office_rent'
+  | 'hardware'
+  | 'telecom'
+  | 'travel_meals'
+  | 'professional_services'
+  | 'marketing'
+  | 'other'
+
+export type ExpenseStatus = 'pending' | 'approved' | 'paid' | 'rejected'
+
+export interface ExpenseItem {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+  vatRate: number
+  total: number
+}
+
+export interface Expense {
+  id: string
+  number: string // e.g. EXP-2026-001 or Supplier invoice number
+  supplierName: string
+  supplierVat?: string
+  supplierIban?: string
+  category: ExpenseCategory
+  invoiceDate: string
+  dueDate: string
+  subtotal: number
+  vatTotal: number
+  total: number
+  currency: string
+  status: ExpenseStatus
+  paymentMethod?: 'bank_transfer' | 'direct_debit' | 'card' | 'cash'
+  paymentDate?: string
+  isPeppolInbound?: boolean
+  peppolXml?: string
+  receiptUrl?: string
+  notes?: string
+  projectId?: string
+  legalEntityId?: string
+  items?: ExpenseItem[]
+  createdAt: string
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  vatNumber?: string
+  peppolEndpoint?: string
+  email?: string
+  phone?: string
+  iban?: string
+  bic?: string
+  defaultCategory: ExpenseCategory
+  address?: string
+  city?: string
+  country?: string
+  notes?: string
+  createdAt: string
+}
+
+// ==========================================
+// 2. BANK RECONCILIATION & SEPA DIRECT DEBIT
+// ==========================================
+export interface BankTransaction {
+  id: string
+  statementId?: string
+  date: string
+  valueDate?: string
+  amount: number // positive for incoming credit, negative for debit
+  currency: string
+  counterpartyName: string
+  counterpartyIban: string
+  counterpartyBic?: string
+  description: string
+  structuredReference?: string // e.g. +++090/9337/55493+++
+  reconciled: boolean
+  matchedInvoiceId?: string
+  matchedExpenseId?: string
+  reconciledAt?: string
+  reconciliationType?: 'auto_ogm' | 'auto_amount' | 'manual'
+}
+
+export interface BankStatement {
+  id: string
+  statementNumber: string
+  accountIban: string
+  accountName: string
+  fileName: string
+  importDate: string
+  format: 'coda' | 'camt053' | 'csv'
+  openingBalance: number
+  closingBalance: number
+  currency: string
+  transactionCount: number
+  reconciledCount: number
+}
+
+export interface SepaDirectDebitBatch {
+  id: string
+  batchReference: string
+  collectionDate: string
+  creditorName: string
+  creditorIban: string
+  creditorBic: string
+  creditorId: string
+  invoiceIds: string[]
+  totalAmount: number
+  transactionCount: number
+  generatedXml: string
+  createdAt: string
+}
+
+// ==========================================
+// 3. RECURRING INVOICES & SUBSCRIPTIONS
+// ==========================================
+export type BillingCadence = 'monthly' | 'quarterly' | 'biannually' | 'annually'
+export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'pending_renewal'
+
+export interface SubscriptionContract {
+  id: string
+  contractNumber: string
+  title: string
+  clientType: ClientType
+  companyId?: string
+  individualId?: string
+  cadence: BillingCadence
+  status: SubscriptionStatus
+  startDate: string
+  nextBillingDate: string
+  autoRenew: boolean
+  autoSendPeppol: boolean
+  autoSendEmail: boolean
+  items: QuoteItem[]
+  subtotal: number
+  vatTotal: number
+  total: number
+  currency: string
+  notes?: string
+  legalEntityId?: string
+  lastInvoiceId?: string
+  createdAt: string
+}
+
+// ==========================================
+// 4. BELGIAN & EU ACCOUNTANT & VAT DECLARATION
+// ==========================================
+export interface BelgianVatGridResult {
+  grid00: number // Sales at 0% (intra-community / reverse charge)
+  grid01: number // Sales at 6%
+  grid02: number // Sales at 12%
+  grid03: number // Sales at 21%
+  grid54: number // Total output VAT payable on sales
+  grid81: number // Inbound purchases: raw materials / merchandise
+  grid82: number // Inbound purchases: miscellaneous goods & services
+  grid83: number // Inbound purchases: investment / capital goods
+  grid55: number // Deductible input VAT on expenses
+  grid71_netToPay: number // Grid 54 - Grid 55 (if > 0)
+  grid72_netToRefund: number // Grid 55 - Grid 54 (if > 0)
+  totalSalesExclusive: number
+  totalSalesVat: number
+  totalPurchasesExclusive: number
+  totalPurchasesVat: number
+}
+
+export interface BelgianKlantenlistingCustomer {
+  vatNumber: string
+  cleanVatNumber: string
+  companyName: string
+  countryCode: string
+  totalTurnover: number
+  totalVat: number
+}
+
+// ==========================================
+// 5. CONTRACTS & SLA LIFECYCLE MANAGEMENT
+// ==========================================
+export type ContractType = 'nda' | 'msa' | 'sla' | 'handover' | 'custom'
+export type ContractStatus = 'draft' | 'sent' | 'signed' | 'expired' | 'terminated'
+
+export interface ContractSignatureAudit {
+  signerName: string
+  signerEmail: string
+  signerRole?: string
+  signatureDataUrl: string
+  ipAddress: string
+  timestamp: string
+  userAgent: string
+  documentChecksumSha256: string
+  certificateId: string
+}
+
+export interface Contract {
+  id: string
+  contractNumber: string
+  title: string
+  type: ContractType
+  status: ContractStatus
+  clientType: ClientType
+  companyId?: string
+  individualId?: string
+  effectiveDate: string
+  expiryDate?: string
+  value?: number
+  currency?: string
+  contentHtml: string
+  legalEntityId?: string
+  signatures: {
+    issuerSignature?: ContractSignatureAudit
+    clientSignature?: ContractSignatureAudit
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+// ==========================================
+// 6. DEVELOPER, WEBHOOKS & REST API
+// ==========================================
+export interface ApiKey {
+  id: string
+  name: string
+  keyPrefix: string
+  secretKey: string
+  permissions: string[]
+  lastUsedAt?: string
+  createdAt: string
+  expiresAt?: string
+  status: 'active' | 'revoked'
+}
+
+export interface WebhookEndpoint {
+  id: string
+  url: string
+  description: string
+  events: string[]
+  secret: string
+  status: 'active' | 'paused'
+  failureCount: number
+  createdAt: string
+}
+
+export interface WebhookEventLog {
+  id: string
+  endpointId?: string
+  url: string
+  event: string
+  payloadJson: string
+  statusCode: number
+  status: 'success' | 'failed'
+  responseTimeMs: number
+  timestamp: string
+}
+

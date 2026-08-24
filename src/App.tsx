@@ -12,6 +12,13 @@ import { PeppolHubView } from './components/peppol/PeppolHubView'
 import { CalendarView } from './components/calendar/CalendarView'
 import { ProductsView } from './components/products/ProductsView'
 import { SettingsView } from './components/settings/SettingsView'
+import { ExpensesView } from './components/expenses/ExpensesView'
+import { BankingReconciliationView } from './components/banking/BankingReconciliationView'
+import { SubscriptionsView } from './components/subscriptions/SubscriptionsView'
+import { ContractsView } from './components/contracts/ContractsView'
+import { AccountantView } from './components/accountant/AccountantView'
+import { ClientPortalView } from './components/portal/ClientPortalView'
+import { DevelopersView } from './components/developers/DevelopersView'
 
 import { DealModal } from './components/deals/DealModal'
 import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
@@ -86,6 +93,10 @@ export const App: React.FC = () => {
             <QuotesView onOpenQuickModal={handleOpenQuickModal} />
           )}
 
+          {currentView === 'contracts' && <ContractsView />}
+
+          {currentView === 'subscriptions' && <SubscriptionsView />}
+
           {currentView === 'projects' && (
             <ProjectsView onOpenQuickModal={handleOpenQuickModal} />
           )}
@@ -99,9 +110,19 @@ export const App: React.FC = () => {
             />
           )}
 
+          {currentView === 'expenses' && <ExpensesView />}
+
+          {currentView === 'banking' && <BankingReconciliationView />}
+
+          {currentView === 'accountant' && <AccountantView />}
+
           {currentView === 'peppol' && (
             <PeppolHubView selectedInvoice={peppolSelectedInvoice} />
           )}
+
+          {currentView === 'portal' && <ClientPortalView />}
+
+          {currentView === 'developers' && <DevelopersView />}
 
           {currentView === 'settings' && <SettingsView />}
         </main>

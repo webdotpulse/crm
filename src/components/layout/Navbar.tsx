@@ -72,6 +72,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        {/* Currency Switcher */}
+        <select
+          value={useApp().selectedCurrency}
+          onChange={(e) => useApp().setSelectedCurrency(e.target.value as any)}
+          className="input-sandbox"
+          style={{
+            padding: '0.4rem 0.6rem',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            border: '1px solid var(--sb-border)',
+            borderRadius: 'var(--sb-radius)',
+            backgroundColor: 'var(--sb-card-bg)',
+            color: 'var(--sb-heading)',
+          }}
+          title="Display Currency"
+        >
+          <option value="EUR">€ EUR</option>
+          <option value="USD">$ USD</option>
+          <option value="GBP">£ GBP</option>
+          <option value="CHF">CHF</option>
+        </select>
+
         {/* Multi-Entity Switcher */}
         <div style={{ position: 'relative' }}>
           <button

@@ -206,8 +206,85 @@ async function capture() {
   await sleep(600)
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '16_peppol_en16931_validator.png') })
 
-  // 17. Settings Legal Entities
-  console.log('📸 17_settings_multi_entities.png')
+  // 17. Expenses & Accounts Payable (NEW)
+  console.log('📸 17_expenses_accounts_payable.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Expenses')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '17_expenses_accounts_payable.png') })
+
+  // 18. Bank Statement Reconciliation & OGM (NEW)
+  console.log('📸 18_banking_coda_reconciliation.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Reconciliation')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '18_banking_coda_reconciliation.png') })
+
+  // 19. Subscriptions & MRR Engine (NEW)
+  console.log('📸 19_subscriptions_mrr_engine.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Subscriptions')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '19_subscriptions_mrr_engine.png') })
+
+  // 20. Contracts & SLAs (NEW)
+  console.log('📸 20_contracts_sla_management.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Contracts')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '20_contracts_sla_management.png') })
+
+  // 21. Belgian VAT Declaration & Klantenlisting (NEW)
+  console.log('📸 21_accountant_belgian_vat_grids.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Belgian VAT')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '21_accountant_belgian_vat_grids.png') })
+
+  // 22. Client Extranet Portal (NEW)
+  console.log('📸 22_client_extranet_portal.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Client Extranet')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '22_client_extranet_portal.png') })
+
+  // 23. Developers REST API & Webhooks (NEW)
+  console.log('📸 23_developers_api_webhooks.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('REST API')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '23_developers_api_webhooks.png') })
+
+  // 24. Settings Legal Entities
+  console.log('📸 24_settings_multi_entities.png')
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
       el.textContent.includes('Settings')
@@ -215,21 +292,10 @@ async function capture() {
     if (btn) btn.click()
   })
   await sleep(800)
-  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '17_settings_multi_entities.png') })
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '24_settings_multi_entities.png') })
 
-  // 18. Settings VAT Rates
-  console.log('📸 18_settings_vat_rates.png')
-  await page.evaluate(() => {
-    const btn = Array.from(document.querySelectorAll('button')).find((el) =>
-      el.textContent.includes('VAT & Tax')
-    )
-    if (btn) btn.click()
-  })
-  await sleep(600)
-  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '18_settings_vat_rates.png') })
-
-  // 19. Dashboard Dark Mode
-  console.log('📸 19_dashboard_dark_mode.png')
+  // 25. Dashboard Dark Mode
+  console.log('📸 25_dashboard_dark_mode.png')
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
       el.textContent.includes('Dashboard')
@@ -242,10 +308,10 @@ async function capture() {
     if (toggle) toggle.click()
   })
   await sleep(800)
-  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '19_dashboard_dark_mode.png') })
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '25_dashboard_dark_mode.png') })
 
   await browser.close()
-  console.log(`\n🎉 Successfully captured all 19 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
+  console.log(`\n🎉 Successfully captured all 25 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
 }
 
 capture().catch((err) => {
