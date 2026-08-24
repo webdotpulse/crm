@@ -237,7 +237,6 @@ async function capture() {
     if (btn) btn.click()
   })
   await sleep(600)
-  // Toggle dark mode
   await page.evaluate(() => {
     const toggle = document.querySelector('button[title*="Dark"], button[title*="Theme"]')
     if (toggle) toggle.click()

@@ -1,20 +1,16 @@
 import React, { useState } from 'react'
 import {
   Search,
-  Moon,
-  Sun,
   Plus,
   Play,
-  Pause,
   Square,
-  Clock,
-  Briefcase,
-  FileText,
-  DollarSign,
-  Building,
-  CheckCircle2,
+  Moon,
+  Sun,
+  ShieldCheck,
+  Building2,
   ChevronDown,
-  Sparkles,
+  User,
+  Package,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
@@ -26,304 +22,267 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
   const {
     theme,
     toggleTheme,
-    currentView,
-    setCurrentView,
-    searchQuery,
-    setSearchQuery,
     activeTimer,
-    startTimer,
-    pauseTimer,
-    resumeTimer,
-    stopAndSaveTimer,
+    stopTimer,
     projects,
-    companyProfile,
+    legalEntities,
+    activeLegalEntityId,
+    setActiveLegalEntityId,
+    activeLegalEntity,
   } = useApp()
 
-  const [showQuickMenu, setShowQuickMenu] = useState(false)
-  const [showTimerDropdown, setShowTimerDropdown] = useState(false)
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
+  const [isEntityMenuOpen, setIsEntityMenuOpen] = useState(false)
 
+  const activeProject = projects.find((p) => p.id === activeTimer.projectId)
+
+  // Format stopwatch seconds -> HH:MM:SS
   const formatTimer = (totalSeconds: number) => {
     const hrs = Math.floor(totalSeconds / 3600)
     const mins = Math.floor((totalSeconds % 3600) / 60)
     const secs = totalSeconds % 60
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
 
-  const activeProject = projects.find((p) => p.id === activeTimer.projectId)
-
   return (
-    <header
-      style={{
-        height: '70px',
-        borderBottom: '1px solid var(--sb-border)',
-        backgroundColor: 'var(--sb-surface)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 1.75rem',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-      }}
-    >
-      {/* Left: Search Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, maxWidth: '420px' }}>
-        <div
+    <header className="navbar-sandbox">
+      {/* Search Input */}
+      <div style={{ position: 'relative', width: '380px', maxWidth: '100%' }}>
+        <Search
+          size={16}
           style={{
-            position: 'relative',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
+            position: 'absolute',
+            left: '0.85rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: 'var(--sb-body)',
           }}
-        >
-          <Search
-            size={18}
+        />
+        <input
+          type="text"
+          placeholder="Search companies, clients, quotes, projects..."
+          className="form-input-sandbox"
+          style={{
+            paddingLeft: '2.4rem',
+            backgroundColor: 'var(--sb-bg)',
+            borderColor: 'transparent',
+          }}
+        />
+      </div>
+
+      {/* Right Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        {/* Multi-Entity Switcher */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setIsEntityMenuOpen(!isEntityMenuOpen)}
+            className="btn-sandbox btn-sandbox-ghost"
             style={{
-              position: 'absolute',
-              left: '12px',
-              color: 'var(--sb-body-subtle)',
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search companies, deals, projects, invoices..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="form-input-sandbox"
-            style={{
-              paddingLeft: '38px',
-              borderRadius: 'var(--sb-radius-pill)',
-              backgroundColor: 'var(--sb-bg)',
+              padding: '0.4rem 0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
               border: '1px solid var(--sb-border)',
-              height: '38px',
+              borderRadius: 'var(--sb-radius)',
             }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
+          >
+            <Building2 size={16} color="var(--sb-primary)" />
+            <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{activeLegalEntity.name}</span>
+            <ChevronDown size={14} color="var(--sb-body)" />
+          </button>
+
+          {isEntityMenuOpen && (
+            <div
               style={{
                 position: 'absolute',
-                right: '12px',
-                background: 'none',
-                border: 'none',
-                color: 'var(--sb-body-subtle)',
-                cursor: 'pointer',
-                fontSize: '12px',
+                top: '110%',
+                right: 0,
+                width: '260px',
+                backgroundColor: 'var(--sb-card-bg)',
+                borderRadius: 'var(--sb-radius)',
+                boxShadow: 'var(--sb-shadow-lg)',
+                border: '1px solid var(--sb-border)',
+                padding: '0.5rem',
+                zIndex: 1000,
               }}
             >
-              ✕
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--sb-body)', padding: '0.35rem 0.6rem' }}>
+                SWITCH ISSUING ENTITY
+              </div>
+              {legalEntities.map((entity) => (
+                <button
+                  key={entity.id}
+                  onClick={() => {
+                    setActiveLegalEntityId(entity.id)
+                    setIsEntityMenuOpen(false)
+                  }}
+                  className="btn-sandbox btn-sandbox-ghost"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    padding: '0.5rem 0.6rem',
+                    fontSize: '0.82rem',
+                    fontWeight: entity.id === activeLegalEntityId ? 700 : 500,
+                    color: entity.id === activeLegalEntityId ? 'var(--sb-primary)' : 'var(--sb-heading)',
+                    backgroundColor: entity.id === activeLegalEntityId ? 'var(--sb-primary-soft)' : 'transparent',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <span>{entity.name}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--sb-body)' }}>
+                      VAT: {entity.vatNumber} ({entity.countryCode})
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Global Live Stopwatch Widget */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.35rem 0.85rem',
+            borderRadius: '999px',
+            backgroundColor: activeTimer.isRunning ? 'var(--sb-primary-soft)' : 'var(--sb-border)',
+            border: activeTimer.isRunning ? '1px solid var(--sb-primary)' : '1px solid transparent',
+          }}
+        >
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: activeTimer.isRunning ? '#e2626b' : 'var(--sb-body)',
+              animation: activeTimer.isRunning ? 'pulse 1.2s infinite' : 'none',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: 'var(--sb-font-mono)',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-heading)',
+            }}
+          >
+            {formatTimer(activeTimer.elapsedSeconds)}
+          </span>
+
+          {activeTimer.isRunning && (
+            <button
+              onClick={stopTimer}
+              className="btn-sandbox btn-sandbox-ghost"
+              style={{ padding: '0.2rem', color: '#e2626b' }}
+              title="Stop & Log Time"
+            >
+              <Square size={14} fill="#e2626b" />
             </button>
           )}
         </div>
-      </div>
 
-      {/* Right Controls: Timer + Quick Actions + Theme + Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {/* Floating Timer Widget */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            backgroundColor: activeTimer.isRunning ? 'var(--sb-primary-soft)' : 'var(--sb-bg)',
-            padding: '0.35rem 0.85rem',
-            borderRadius: 'var(--sb-radius-pill)',
-            border: `1px solid ${activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-border)'}`,
-            transition: 'all 0.2s',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span
-              className={activeTimer.isRunning ? 'pulse-indicator' : ''}
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: activeTimer.isRunning ? 'var(--sb-success)' : 'var(--sb-body-subtle)',
-                display: 'inline-block',
-              }}
-            />
-            <Clock size={15} style={{ color: activeTimer.isRunning ? 'var(--sb-primary)' : 'var(--sb-body)' }} />
-            <span
-              style={{
-                fontFamily: 'var(--sb-font-mono)',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                color: activeTimer.isRunning ? 'var(--sb-primary-text)' : 'var(--sb-heading)',
-              }}
-            >
-              {formatTimer(activeTimer.seconds)}
-            </span>
-          </div>
-
-          {activeProject && (
-            <span
-              style={{
-                fontSize: '0.75rem',
-                maxWidth: '110px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                color: 'var(--sb-body)',
-                fontWeight: 500,
-              }}
-            >
-              • {activeProject.title}
-            </span>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-            {activeTimer.isRunning ? (
-              <button
-                onClick={pauseTimer}
-                className="btn-sandbox btn-icon btn-sandbox-soft-primary"
-                style={{ width: '26px', height: '26px', padding: 0, borderRadius: '50%' }}
-                title="Pause Timer"
-              >
-                <Pause size={13} />
-              </button>
-            ) : activeTimer.seconds > 0 ? (
-              <button
-                onClick={resumeTimer}
-                className="btn-sandbox btn-icon btn-sandbox-primary"
-                style={{ width: '26px', height: '26px', padding: 0, borderRadius: '50%' }}
-                title="Resume Timer"
-              >
-                <Play size={13} />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  const defaultProj = projects[0]?.id
-                  startTimer(defaultProj, undefined, 'Work Session')
-                }}
-                className="btn-sandbox btn-icon btn-sandbox-soft-primary"
-                style={{ width: '26px', height: '26px', padding: 0, borderRadius: '50%' }}
-                title="Start Timer"
-              >
-                <Play size={13} />
-              </button>
-            )}
-
-            {activeTimer.seconds > 0 && (
-              <button
-                onClick={stopAndSaveTimer}
-                className="btn-sandbox btn-icon btn-sandbox-success"
-                style={{ width: '26px', height: '26px', padding: 0, borderRadius: '50%' }}
-                title="Save Logged Time"
-              >
-                <Square size={12} fill="currentColor" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Action Button */}
+        {/* Quick Action Button (+ New) */}
         <div style={{ position: 'relative' }}>
           <button
-            onClick={() => setShowQuickMenu(!showQuickMenu)}
+            onClick={() => setIsQuickMenuOpen(!isQuickMenuOpen)}
             className="btn-sandbox btn-sandbox-primary"
-            style={{ borderRadius: 'var(--sb-radius-pill)', gap: '0.4rem', padding: '0.45rem 1rem' }}
+            style={{ padding: '0.45rem 1rem' }}
           >
             <Plus size={16} />
             <span>New</span>
-            <ChevronDown size={14} />
+            <ChevronDown size={14} style={{ marginLeft: '0.2rem' }} />
           </button>
 
-          {showQuickMenu && (
+          {isQuickMenuOpen && (
             <div
-              className="card-sandbox"
               style={{
                 position: 'absolute',
+                top: '110%',
                 right: 0,
-                top: '44px',
                 width: '210px',
-                padding: '0.5rem',
-                zIndex: 100,
+                backgroundColor: 'var(--sb-card-bg)',
+                borderRadius: 'var(--sb-radius)',
                 boxShadow: 'var(--sb-shadow-lg)',
+                border: '1px solid var(--sb-border)',
+                padding: '0.5rem',
+                zIndex: 1000,
               }}
-              onMouseLeave={() => setShowQuickMenu(false)}
             >
               <button
                 onClick={() => {
-                  setShowQuickMenu(false)
-                  onOpenQuickModal('deal')
-                }}
-                className="btn-sandbox btn-sandbox-secondary"
-                style={{ width: '100%', justifyContent: 'flex-start', border: 'none', padding: '0.5rem 0.75rem' }}
-              >
-                <Briefcase size={15} color="var(--sb-primary)" />
-                <span>New Deal</span>
-              </button>
-              <button
-                onClick={() => {
-                  setShowQuickMenu(false)
                   onOpenQuickModal('quote')
+                  setIsQuickMenuOpen(false)
                 }}
-                className="btn-sandbox btn-sandbox-secondary"
-                style={{ width: '100%', justifyContent: 'flex-start', border: 'none', padding: '0.5rem 0.75rem' }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem' }}
               >
-                <FileText size={15} color="var(--sb-secondary)" />
-                <span>New Quotation</span>
+                📝 Quotation Proposal
               </button>
               <button
                 onClick={() => {
-                  setShowQuickMenu(false)
                   onOpenQuickModal('invoice')
+                  setIsQuickMenuOpen(false)
                 }}
-                className="btn-sandbox btn-sandbox-secondary"
-                style={{ width: '100%', justifyContent: 'flex-start', border: 'none', padding: '0.5rem 0.75rem' }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem' }}
               >
-                <DollarSign size={15} color="var(--sb-success)" />
-                <span>New Invoice</span>
+                🧾 Commercial Invoice
               </button>
               <button
                 onClick={() => {
-                  setShowQuickMenu(false)
-                  onOpenQuickModal('company')
+                  onOpenQuickModal('project')
+                  setIsQuickMenuOpen(false)
                 }}
-                className="btn-sandbox btn-sandbox-secondary"
-                style={{ width: '100%', justifyContent: 'flex-start', border: 'none', padding: '0.5rem 0.75rem' }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem' }}
               >
-                <Building size={15} color="var(--sb-warning)" />
-                <span>New Company</span>
+                🚀 Project & Milestone
+              </button>
+              <button
+                onClick={() => {
+                  onOpenQuickModal('deal')
+                  setIsQuickMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem' }}
+              >
+                💼 Sales Opportunity
+              </button>
+              <button
+                onClick={() => {
+                  onOpenQuickModal('company')
+                  setIsQuickMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem' }}
+              >
+                🏢 Client / Company
               </button>
             </div>
           )}
         </div>
 
-        {/* Theme Toggle */}
+        {/* Dark/Light Mode Switcher */}
         <button
           onClick={toggleTheme}
-          className="btn-sandbox btn-icon btn-sandbox-secondary"
-          style={{ borderRadius: '50%' }}
-          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{ padding: '0.5rem', borderRadius: '50%' }}
+          title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
         >
-          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
-        {/* User / Org Avatar */}
-        <div
-          onClick={() => setCurrentView('settings')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.65rem',
-            padding: '0.35rem 0.65rem',
-            borderRadius: 'var(--sb-radius-pill)',
-            cursor: 'pointer',
-            backgroundColor: 'var(--sb-bg)',
-            border: '1px solid var(--sb-border)',
-          }}
-          title="Manage Company Profile & Peppol Settings"
-        >
+        {/* User Identity Avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingLeft: '0.5rem' }}>
           <div
             style={{
-              width: '32px',
-              height: '32px',
+              width: '36px',
+              height: '36px',
               borderRadius: '50%',
               backgroundColor: 'var(--sb-primary)',
-              color: 'white',
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -333,12 +292,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           >
             PW
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--sb-heading)', lineHeight: 1.1 }}>
-              {companyProfile.name.slice(0, 14)}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+              {activeLegalEntity.name.split(' ')[0]} User
             </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--sb-body-subtle)', lineHeight: 1.1 }}>
-              Peppol: {companyProfile.peppolEndpoint}
+            <span style={{ fontSize: '0.7rem', color: 'var(--sb-body)' }}>
+              Peppol: {activeLegalEntity.peppolEndpoint}
             </span>
           </div>
         </div>

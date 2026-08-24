@@ -11,8 +11,12 @@ export type PeppolScheme =
   | '9956' // Belgium VAT (General)
   | '9925' // Italy VAT
 
+export type ClientType = 'company' | 'individual' | 'contact'
+
+// B2B Company
 export interface Company {
   id: string
+  clientType?: 'company'
   name: string
   legalName?: string
   vatNumber: string
@@ -33,6 +37,28 @@ export interface Company {
   createdAt: string
 }
 
+// B2C Individual / Private Person
+export interface IndividualClient {
+  id: string
+  clientType: 'individual'
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  countryCode: string
+  nationalId?: string // National register / personal tax ID
+  status: 'lead' | 'prospect' | 'customer' | 'partner' | 'inactive'
+  tags: string[]
+  notes?: string
+  avatar?: string
+  createdAt: string
+}
+
+// Company Employee / Employer / Contact
 export interface Contact {
   id: string
   companyId: string
@@ -41,9 +67,150 @@ export interface Contact {
   email: string
   phone: string
   role: string
+  department?: string
+  isEmployer?: boolean
+  canBeBilledDirectly?: boolean
   isPrimary?: boolean
   avatar?: string
   createdAt: string
+}
+
+// Multi-Entity / Issuing Legal Companies
+export interface LegalEntity {
+  id: string
+  name: string
+  legalName: string
+  vatNumber: string
+  peppolScheme: string
+  peppolEndpoint: string
+  email: string
+  phone: string
+  website: string
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  countryCode: string
+  iban: string
+  bic: string
+  defaultCurrency: string
+  invoicePrefix: string // e.g. "BE-INV-" or "NL-INV-"
+  isDefault: boolean
+  logoUrl?: string
+  accentColor?: string
+}
+
+// Products & Stock Management
+export type ProductCategory = 
+  | 'service' 
+  | 'hardware' 
+  | 'software_license' 
+  | 'subscription' 
+  | 'physical_product'
+
+export interface Product {
+  id: string
+  sku: string
+  name: string
+  description: string
+  category: ProductCategory
+  type: 'physical' | 'service' | 'digital'
+  buyPrice: number
+  sellPrice: number
+  vatRate: number
+  unit: string // 'pcs', 'hours', 'days', 'licenses', 'months'
+  stockQuantity: number
+  minStockAlert: number
+  imageUrl?: string
+  barcode?: string
+  isActive: boolean
+  createdAt: string
+}
+
+// Calendar & Planner
+export type CalendarEventType = 
+  | 'meeting' 
+  | 'call' 
+  | 'deadline' 
+  | 'site_visit' 
+  | 'task_milestone' 
+  | 'quote_followup'
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  description?: string
+  eventType: CalendarEventType
+  startDate: string // ISO timestamp or YYYY-MM-DDTHH:mm
+  endDate: string
+  allDay: boolean
+  clientType?: ClientType
+  clientId?: string
+  clientName?: string
+  projectId?: string
+  dealId?: string
+  assignee: string
+  location?: string
+  videoMeetingUrl?: string
+  color?: string
+  status: 'scheduled' | 'completed' | 'cancelled'
+  createdAt: string
+}
+
+// Document Templates (Quotations & Invoices)
+export interface DocumentTemplate {
+  id: string
+  name: string
+  type: 'quotation' | 'invoice'
+  category: string
+  title: string
+  description: string
+  items: QuoteItem[]
+  defaultTerms?: string
+  defaultNotes?: string
+  defaultVatRate?: number
+  createdAt: string
+}
+
+// Email Integration & Templates
+export type EmailTemplateType = 
+  | 'quote_send' 
+  | 'invoice_send' 
+  | 'payment_reminder' 
+  | 'project_milestone' 
+  | 'welcome' 
+  | 'custom'
+
+export interface EmailTemplate {
+  id: string
+  name: string
+  type: EmailTemplateType
+  subject: string
+  bodyHtml: string
+  variables: string[] // e.g. ['client_name', 'document_number', 'total_amount', 'due_date', 'payment_reference']
+}
+
+export interface EmailMessage {
+  id: string
+  to: string
+  recipientName: string
+  subject: string
+  body: string
+  sentAt: string
+  status: 'sent' | 'queued'
+  relatedType?: 'quote' | 'invoice' | 'deal' | 'project'
+  relatedId?: string
+}
+
+// Configurable VAT Rates
+export interface VatRate {
+  id: string
+  name: string
+  rate: number
+  countryCode: string
+  taxCategory: 'S' | 'Z' | 'E' | 'AE' | 'AA'
+  isDefault?: boolean
+  description?: string
 }
 
 export type DealStage = 'lead' | 'qualified' | 'meeting' | 'proposal' | 'negotiation' | 'won' | 'lost'
@@ -51,7 +218,9 @@ export type DealStage = 'lead' | 'qualified' | 'meeting' | 'proposal' | 'negotia
 export interface Deal {
   id: string
   title: string
-  companyId: string
+  clientType?: ClientType
+  companyId?: string
+  individualId?: string
   contactId?: string
   value: number
   currency: string
@@ -64,6 +233,7 @@ export interface Deal {
 
 export interface QuoteItem {
   id: string
+  productId?: string
   description: string
   quantity: number
   unit: string
@@ -78,8 +248,11 @@ export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired'
 export interface Quotation {
   id: string
   number: string
+  legalEntityId?: string
   dealId?: string
-  companyId: string
+  clientType?: ClientType
+  companyId?: string
+  individualId?: string
   contactId?: string
   title: string
   issueDate: string
@@ -105,7 +278,9 @@ export interface Project {
   id: string
   title: string
   quoteId?: string
-  companyId: string
+  clientType?: ClientType
+  companyId?: string
+  individualId?: string
   status: ProjectStatus
   startDate: string
   endDate: string
@@ -152,6 +327,7 @@ export interface TimeEntry {
 
 export interface InvoiceItem {
   id: string
+  productId?: string
   description: string
   quantity: number
   unit: string
@@ -159,7 +335,7 @@ export interface InvoiceItem {
   discountPercent: number
   vatRate: number
   total: number
-  taxCategory: 'S' | 'Z' | 'E' | 'AE' // Standard, Zero, Exempt, Reverse Charge
+  taxCategory: 'S' | 'Z' | 'E' | 'AE' | 'AA'
 }
 
 export interface TaxBreakdownItem {
@@ -175,9 +351,12 @@ export type PeppolStatus = 'not_sent' | 'valid' | 'invalid' | 'transmitted' | 'd
 export interface Invoice {
   id: string
   number: string
+  legalEntityId?: string // Issuing company entity
   quoteId?: string
   projectId?: string
-  companyId: string
+  clientType?: ClientType
+  companyId?: string
+  individualId?: string
   contactId?: string
   issueDate: string
   dueDate: string

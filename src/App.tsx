@@ -9,6 +9,8 @@ import { QuotesView } from './components/quotes/QuotesView'
 import { ProjectsView } from './components/projects/ProjectsView'
 import { InvoicesView } from './components/invoices/InvoicesView'
 import { PeppolHubView } from './components/peppol/PeppolHubView'
+import { CalendarView } from './components/calendar/CalendarView'
+import { ProductsView } from './components/products/ProductsView'
 import { SettingsView } from './components/settings/SettingsView'
 
 import { DealModal } from './components/deals/DealModal'
@@ -16,8 +18,9 @@ import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
 import { ProjectModal } from './components/projects/ProjectModal'
 import { InvoiceEditorModal } from './components/invoices/InvoiceEditorModal'
 import { CompanyModal } from './components/crm/CompanyModal'
+import { SendEmailModal } from './components/email/SendEmailModal'
 
-import { Deal, Invoice } from './types'
+import { Deal, Invoice, Quotation } from './types'
 
 export const App: React.FC = () => {
   const { currentView, setCurrentView } = useApp()
@@ -28,6 +31,14 @@ export const App: React.FC = () => {
   >(null)
   const [dealForQuote, setDealForQuote] = useState<Deal | null>(null)
   const [peppolSelectedInvoice, setPeppolSelectedInvoice] = useState<Invoice | null>(null)
+
+  // Email modal state
+  const [emailModalData, setEmailModalData] = useState<{
+    recipientEmail: string
+    recipientName: string
+    documentType?: 'quote' | 'invoice' | 'deal' | 'project'
+    document?: any
+  } | null>(null)
 
   const handleOpenQuickModal = (type: 'deal' | 'quote' | 'project' | 'invoice' | 'company') => {
     setDealForQuote(null)
@@ -62,6 +73,8 @@ export const App: React.FC = () => {
             <CRMView onOpenQuickModal={handleOpenQuickModal} />
           )}
 
+          {currentView === 'calendar' && <CalendarView />}
+
           {currentView === 'deals' && (
             <DealsKanbanView
               onOpenQuickModal={handleOpenQuickModal}
@@ -76,6 +89,8 @@ export const App: React.FC = () => {
           {currentView === 'projects' && (
             <ProjectsView onOpenQuickModal={handleOpenQuickModal} />
           )}
+
+          {currentView === 'products' && <ProductsView />}
 
           {currentView === 'invoices' && (
             <InvoicesView
@@ -117,6 +132,16 @@ export const App: React.FC = () => {
 
       {quickModalType === 'company' && (
         <CompanyModal onClose={() => setQuickModalType(null)} />
+      )}
+
+      {emailModalData && (
+        <SendEmailModal
+          recipientEmail={emailModalData.recipientEmail}
+          recipientName={emailModalData.recipientName}
+          documentType={emailModalData.documentType}
+          document={emailModalData.document}
+          onClose={() => setEmailModalData(null)}
+        />
       )}
     </div>
   )

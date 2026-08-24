@@ -3,35 +3,40 @@ import {
   LayoutDashboard,
   Building2,
   TrendingUp,
-  FileSignature,
+  FileText,
   FolderKanban,
   Receipt,
-  Network,
+  FileCode2,
   Settings,
-  Sparkles,
   ShieldCheck,
+  Calendar as CalendarIcon,
+  Package,
 } from 'lucide-react'
-import { useApp, ViewType } from '../../context/AppContext'
+import { useApp, AppView } from '../../context/AppContext'
+
+interface NavItem {
+  id: AppView
+  label: string
+  icon: React.ReactNode
+  badge?: string | number
+  badgeType?: 'primary' | 'success' | 'warning' | 'purple'
+}
 
 export const Sidebar: React.FC = () => {
   const {
     currentView,
     setCurrentView,
-    setSelectedProjectId,
     companies,
+    individuals,
     deals,
     quotations,
     projects,
     invoices,
-    peppolLogs,
+    products,
+    events,
   } = useApp()
 
-  const activeDealsCount = deals.filter((d) => d.stage !== 'won' && d.stage !== 'lost').length
-  const pendingQuotesCount = quotations.filter((q) => q.status === 'sent' || q.status === 'draft').length
-  const activeProjectsCount = projects.filter((p) => p.status === 'in_progress').length
-  const unpaidInvoicesCount = invoices.filter((i) => i.status !== 'paid').length
-
-  const navItems: { id: ViewType; label: string; icon: React.ReactNode; badge?: string | number; badgeColor?: string }[] = [
+  const navItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -39,45 +44,59 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'crm',
-      label: 'CRM & Companies',
+      label: 'CRM & Clients',
       icon: <Building2 size={18} />,
-      badge: companies.length,
-      badgeColor: 'badge-soft-primary',
+      badge: companies.length + individuals.length,
+      badgeType: 'primary',
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar & Planner',
+      icon: <CalendarIcon size={18} />,
+      badge: events.length,
+      badgeType: 'purple',
     },
     {
       id: 'deals',
       label: 'Sales Pipeline',
       icon: <TrendingUp size={18} />,
-      badge: activeDealsCount,
-      badgeColor: 'badge-soft-warning',
+      badge: deals.filter((d) => d.stage !== 'won' && d.stage !== 'lost').length,
+      badgeType: 'warning',
     },
     {
       id: 'quotes',
       label: 'Quotations',
-      icon: <FileSignature size={18} />,
-      badge: pendingQuotesCount,
-      badgeColor: 'badge-soft-purple',
+      icon: <FileText size={18} />,
+      badge: quotations.filter((q) => q.status === 'sent').length || undefined,
+      badgeType: 'primary',
     },
     {
       id: 'projects',
       label: 'Projects & Tasks',
       icon: <FolderKanban size={18} />,
-      badge: activeProjectsCount,
-      badgeColor: 'badge-soft-info',
+      badge: projects.filter((p) => p.status === 'in_progress').length,
+      badgeType: 'primary',
+    },
+    {
+      id: 'products',
+      label: 'Products & Stock',
+      icon: <Package size={18} />,
+      badge: products.length,
+      badgeType: 'primary',
     },
     {
       id: 'invoices',
       label: 'Invoices & Billing',
       icon: <Receipt size={18} />,
-      badge: unpaidInvoicesCount,
-      badgeColor: unpaidInvoicesCount > 0 ? 'badge-soft-danger' : 'badge-soft-success',
+      badge: invoices.filter((i) => i.status === 'issued').length || undefined,
+      badgeType: 'danger' as any,
     },
     {
       id: 'peppol',
       label: 'Peppol BIS Hub',
-      icon: <Network size={18} />,
+      icon: <FileCode2 size={18} />,
       badge: 'EN 16931',
-      badgeColor: 'badge-soft-success',
+      badgeType: 'success',
     },
     {
       id: 'settings',
@@ -87,141 +106,93 @@ export const Sidebar: React.FC = () => {
   ]
 
   return (
-    <aside
-      style={{
-        width: '260px',
-        minWidth: '260px',
-        backgroundColor: 'var(--sb-surface)',
-        borderRight: '1px solid var(--sb-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-      }}
-    >
+    <aside className="sidebar-sandbox">
       {/* Brand Header */}
-      <div
-        style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: '1px solid var(--sb-border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-        }}
-      >
-        <div
-          style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--sb-primary), #605dba)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            boxShadow: '0 4px 12px rgba(63, 120, 224, 0.3)',
-          }}
-        >
-          <Sparkles size={20} />
-        </div>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span
-              style={{
-                fontFamily: 'var(--sb-font-heading)',
-                fontSize: '1.2rem',
-                fontWeight: 800,
-                color: 'var(--sb-heading)',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              PulseWork
-            </span>
+      <div style={{ padding: '1.5rem 1.25rem', borderBottom: '1px solid var(--sb-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              backgroundColor: 'var(--sb-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: 'var(--sb-shadow-sm)',
+            }}
+          >
+            <ShieldCheck size={24} />
           </div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--sb-body-subtle)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            All-in-One Work Suite
-          </span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--sb-heading)', letterSpacing: '-0.02em' }}>
+              PulseWork
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              All-in-One Work Suite
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Nav Menu */}
-      <nav style={{ padding: '1rem 0.75rem', flex: 1, overflowY: 'auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          {navItems.map((item) => {
-            const isActive = currentView === item.id
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentView(item.id)
-                  if (item.id === 'projects') {
-                    setSelectedProjectId(null)
-                  }
-                }}
-                className={`btn-sandbox ${isActive ? 'btn-sandbox-primary' : 'btn-sandbox-secondary'}`}
-                style={{
-                  width: '100%',
-                  justifyContent: 'flex-start',
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: 'var(--sb-radius-sm)',
-                  border: 'none',
-                  backgroundColor: isActive ? 'var(--sb-primary)' : 'transparent',
-                  color: isActive ? '#ffffff' : 'var(--sb-heading)',
-                  boxShadow: isActive ? 'var(--sb-shadow-sm)' : 'none',
-                  fontWeight: isActive ? 700 : 600,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', color: isActive ? '#fff' : 'var(--sb-primary)' }}>
-                  {item.icon}
+      {/* Navigation List */}
+      <nav style={{ padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
+        {navItems.map((item) => {
+          const isActive = currentView === item.id
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => setCurrentView(item.id)}
+              className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.65rem 0.85rem',
+                borderRadius: 'var(--sb-radius)',
+                border: 'none',
+                backgroundColor: isActive ? 'var(--sb-primary-soft)' : 'transparent',
+                color: isActive ? 'var(--sb-primary)' : 'var(--sb-heading)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ color: isActive ? 'var(--sb-primary)' : 'var(--sb-body)' }}>{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+
+              {item.badge !== undefined && (
+                <span
+                  className={`badge-sandbox badge-soft-${item.badgeType || 'primary'}`}
+                  style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}
+                >
+                  {item.badge}
                 </span>
-                <span style={{ flex: 1, textAlign: 'left', fontSize: '0.875rem' }}>{item.label}</span>
-                {item.badge !== undefined && (
-                  <span
-                    className={`badge-soft ${item.badgeColor || 'badge-soft-primary'}`}
-                    style={{
-                      fontSize: '0.7rem',
-                      padding: '0.15rem 0.45rem',
-                      ...(isActive ? { backgroundColor: 'rgba(255,255,255,0.25)', color: '#ffffff' } : {}),
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+              )}
+            </button>
+          )
+        })}
       </nav>
 
-      {/* Peppol Network Status Card in Bottom */}
-      <div style={{ padding: '1rem', borderTop: '1px solid var(--sb-border)' }}>
-        <div
-          className="card-sandbox"
-          style={{
-            padding: '0.85rem',
-            backgroundColor: 'var(--sb-bg)',
-            border: '1px solid var(--sb-border)',
-            borderRadius: 'var(--sb-radius-sm)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <ShieldCheck size={16} color="var(--sb-success)" />
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
-                Peppol Network
-              </span>
-            </div>
-            <span className="badge-soft badge-soft-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
-              ONLINE
-            </span>
+      {/* Network & Peppol Status Widget */}
+      <div style={{ padding: '1rem', margin: '0.75rem', backgroundColor: 'var(--sb-card-bg)', borderRadius: 'var(--sb-radius)', border: '1px solid var(--sb-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <ShieldCheck size={16} color="var(--sb-success)" />
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)' }}>Peppol Network</span>
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--sb-body)', lineHeight: 1.3 }}>
-            AS4 Gateway ready. EN 16931 Schematron validation active.
-          </p>
+          <span className="badge-sandbox badge-soft-success" style={{ fontSize: '0.65rem' }}>ONLINE</span>
         </div>
+        <p style={{ fontSize: '0.72rem', color: 'var(--sb-body)', margin: 0, lineHeight: 1.4 }}>
+          AS4 Gateway ready. EN 16931 Schematron validation active.
+        </p>
       </div>
     </aside>
   )

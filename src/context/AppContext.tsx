@@ -1,26 +1,40 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import confetti from 'canvas-confetti'
 import {
   Company,
+  IndividualClient,
   Contact,
   Deal,
   DealStage,
   Quotation,
-  QuoteItem,
   Project,
+  ProjectStatus,
   Task,
   TaskStatus,
   TimeEntry,
   Invoice,
-  InvoiceItem,
   Payment,
   CompanyProfile,
+  LegalEntity,
+  Product,
+  CalendarEvent,
+  DocumentTemplate,
+  EmailTemplate,
+  EmailMessage,
+  VatRate,
   PeppolTransmissionLog,
+  ClientType,
 } from '../types'
 import {
   initialCompanyProfile,
+  initialLegalEntities,
   initialCompanies,
+  initialIndividuals,
   initialContacts,
+  initialProducts,
+  initialEvents,
+  initialDocumentTemplates,
+  initialEmailTemplates,
+  initialVatRates,
   initialDeals,
   initialQuotations,
   initialProjects,
@@ -28,12 +42,10 @@ import {
   initialTimeEntries,
   initialInvoices,
   initialPayments,
-  initialPeppolLogs,
 } from '../data/initialData'
-import { generateStructuredReference } from '../services/peppolGenerator'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
 
-export type ViewType =
+export type AppView =
   | 'dashboard'
   | 'crm'
   | 'deals'
@@ -41,363 +53,576 @@ export type ViewType =
   | 'projects'
   | 'invoices'
   | 'peppol'
+  | 'calendar'
+  | 'products'
   | 'settings'
 
-interface ActiveTimer {
-  isRunning: boolean
-  projectId?: string
-  taskId?: string
-  description: string
-  seconds: number
-  startTime?: number
-}
-
 interface AppContextType {
+  // Navigation & Theme
+  currentView: AppView
+  setCurrentView: (view: AppView) => void
   theme: 'light' | 'dark'
   toggleTheme: () => void
-  currentView: ViewType
-  setCurrentView: (view: ViewType) => void
-  selectedProjectId: string | null
-  setSelectedProjectId: (id: string | null) => void
-  selectedCompanyId: string | null
-  setSelectedCompanyId: (id: string | null) => void
-  searchQuery: string
-  setSearchQuery: (query: string) => void
 
-  // Profile & Entities
+  // Multi-Entity
+  legalEntities: LegalEntity[]
+  activeLegalEntityId: string
+  activeLegalEntity: LegalEntity
+  setActiveLegalEntityId: (id: string) => void
+  addLegalEntity: (entity: LegalEntity) => void
+  updateLegalEntity: (entity: LegalEntity) => void
+  deleteLegalEntity: (id: string) => void
+
+  // Company Profile & Settings
   companyProfile: CompanyProfile
   updateCompanyProfile: (profile: CompanyProfile) => void
 
+  // CRM: Companies (B2B)
   companies: Company[]
-  addCompany: (comp: Omit<Company, 'id' | 'createdAt'>) => Company
-  updateCompany: (comp: Company) => void
+  addCompany: (company: any) => void
+  updateCompany: (company: Company) => void
   deleteCompany: (id: string) => void
 
+  // CRM: Individuals (B2C)
+  individuals: IndividualClient[]
+  addIndividual: (individual: any) => void
+  updateIndividual: (individual: IndividualClient) => void
+  deleteIndividual: (id: string) => void
+
+  // CRM: Contacts & Employers
   contacts: Contact[]
-  addContact: (cont: Omit<Contact, 'id' | 'createdAt'>) => Contact
-  updateContact: (cont: Contact) => void
+  addContact: (contact: any) => void
+  updateContact: (contact: Contact) => void
   deleteContact: (id: string) => void
 
+  // Deals
   deals: Deal[]
-  addDeal: (deal: Omit<Deal, 'id' | 'createdAt'>) => Deal
+  addDeal: (deal: any) => void
   updateDeal: (deal: Deal) => void
-  moveDealStage: (dealId: string, newStage: DealStage) => void
   deleteDeal: (id: string) => void
+  moveDealStage: (dealId: string, stage: DealStage) => void
 
+  // Quotations
   quotations: Quotation[]
-  addQuotation: (quote: Omit<Quotation, 'id' | 'createdAt'>) => Quotation
-  updateQuotation: (quote: Quotation) => void
-  signQuotation: (quoteId: string, signerName: string, notes?: string) => void
+  addQuotation: (quotation: Quotation) => void
+  updateQuotation: (quotation: Quotation) => void
+  deleteQuotation: (id: string) => void
+  signQuotation: (quoteId: string, signerName: string, signerNotes?: string) => void
   convertQuoteToProject: (quoteId: string) => Project | null
   convertQuoteToInvoice: (quoteId: string) => Invoice | null
-  deleteQuotation: (id: string) => void
 
+  // Projects & Tasks
   projects: Project[]
-  addProject: (proj: Omit<Project, 'id' | 'createdAt'>) => Project
-  updateProject: (proj: Project) => void
+  addProject: (project: any) => void
+  updateProject: (project: Project) => void
   deleteProject: (id: string) => void
+  activeProjectId: string | null
+  setActiveProjectId: (id: string | null) => void
+  selectedProjectId: string | null
+  setSelectedProjectId: (id: string | null) => void
 
   tasks: Task[]
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'loggedHours'>) => Task
+  addTask: (task: any) => void
   updateTask: (task: Task) => void
-  moveTaskStatus: (taskId: string, newStatus: TaskStatus) => void
   deleteTask: (id: string) => void
+  moveTaskStatus: (taskId: string, status: TaskStatus) => void
 
+  // Timesheets & Stopwatch
   timeEntries: TimeEntry[]
-  addTimeEntry: (entry: Omit<TimeEntry, 'id' | 'createdAt'>) => TimeEntry
+  addTimeEntry: (entry: any) => void
   updateTimeEntry: (entry: TimeEntry) => void
   deleteTimeEntry: (id: string) => void
+  activeTimer: {
+    isRunning: boolean
+    projectId: string
+    taskId?: string
+    description: string
+    startTime: number | null
+    elapsedSeconds: number
+  }
+  startTimer: (projectId: string, taskId?: string, description?: string) => void
+  stopTimer: () => void
+
+  // Invoices & Payments
+  invoices: Invoice[]
+  addInvoice: (invoice: Invoice) => void
+  updateInvoice: (invoice: Invoice) => void
+  deleteInvoice: (id: string) => void
+  payments: Payment[]
+  recordPayment: (payment: any) => void
   invoiceProjectTimeEntries: (projectId: string) => Invoice | null
 
-  invoices: Invoice[]
-  addInvoice: (inv: Omit<Invoice, 'id' | 'createdAt'>) => Invoice
-  updateInvoice: (inv: Invoice) => void
-  deleteInvoice: (id: string) => void
-  sendInvoiceViaPeppol: (invoiceId: string) => Promise<{ success: boolean; error?: string }>
-  recordPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => void
-
-  payments: Payment[]
+  // Peppol Transmission Logs
   peppolLogs: PeppolTransmissionLog[]
+  sendInvoiceViaPeppol: (invoiceId: string) => Promise<{ success: boolean; error?: string }>
 
-  // Timer
-  activeTimer: ActiveTimer
-  startTimer: (projectId?: string, taskId?: string, description?: string) => void
-  pauseTimer: () => void
-  resumeTimer: () => void
-  stopAndSaveTimer: () => void
-  resetTimer: () => void
-  setTimerDescription: (desc: string) => void
-  setTimerProject: (projectId: string) => void
-  setTimerTask: (taskId: string) => void
+  // Products & Stock Management
+  products: Product[]
+  addProduct: (product: Product) => void
+  updateProduct: (product: Product) => void
+  deleteProduct: (id: string) => void
+  adjustProductStock: (productId: string, quantityDelta: number) => void
 
-  // Demo / System
+  // Calendar & Planner
+  events: CalendarEvent[]
+  addCalendarEvent: (event: CalendarEvent) => void
+  updateCalendarEvent: (event: CalendarEvent) => void
+  deleteCalendarEvent: (id: string) => void
+
+  // Document & Email Templates
+  documentTemplates: DocumentTemplate[]
+  addDocumentTemplate: (template: DocumentTemplate) => void
+  updateDocumentTemplate: (template: DocumentTemplate) => void
+  deleteDocumentTemplate: (id: string) => void
+
+  emailTemplates: EmailTemplate[]
+  addEmailTemplate: (template: EmailTemplate) => void
+  updateEmailTemplate: (template: EmailTemplate) => void
+  deleteEmailTemplate: (id: string) => void
+
+  emailMessages: EmailMessage[]
+  sendEmail: (message: Omit<EmailMessage, 'id' | 'sentAt' | 'status'>) => void
+
+  // VAT Rates
+  vatRates: VatRate[]
+  addVatRate: (vatRate: VatRate) => void
+  updateVatRate: (vatRate: VatRate) => void
+  deleteVatRate: (id: string) => void
+
+  // Client Helper
+  getClientDisplayName: (clientType?: ClientType, id?: string) => string
+
+  // Reset & Data Management
   resetToDemoData: () => void
   exportDataJson: () => string
-  importDataJson: (jsonStr: string) => boolean
+  importDataJson: (jsonString: string) => boolean
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
-const STORAGE_PREFIX = 'pulsework_crm_'
+const STORAGE_KEY = 'pulsework_crm_state_v2'
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load initial states from LocalStorage or defaults
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem(`${STORAGE_PREFIX}theme`) as 'light' | 'dark') || 'light'
+  const [currentView, setCurrentView] = useState<AppView>('dashboard')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  const [legalEntities, setLegalEntities] = useState<LegalEntity[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_entities`)
+    return saved ? JSON.parse(saved) : initialLegalEntities
+  })
+  const [activeLegalEntityId, setActiveLegalEntityId] = useState<string>(() => {
+    return initialLegalEntities[0].id
   })
 
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard')
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}profile`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_profile`)
     return saved ? JSON.parse(saved) : initialCompanyProfile
   })
 
   const [companies, setCompanies] = useState<Company[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}companies`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_companies`)
     return saved ? JSON.parse(saved) : initialCompanies
   })
 
+  const [individuals, setIndividuals] = useState<IndividualClient[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_individuals`)
+    return saved ? JSON.parse(saved) : initialIndividuals
+  })
+
   const [contacts, setContacts] = useState<Contact[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}contacts`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_contacts`)
     return saved ? JSON.parse(saved) : initialContacts
   })
 
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_products`)
+    return saved ? JSON.parse(saved) : initialProducts
+  })
+
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_events`)
+    return saved ? JSON.parse(saved) : initialEvents
+  })
+
+  const [documentTemplates, setDocumentTemplates] = useState<DocumentTemplate[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_doctemplates`)
+    return saved ? JSON.parse(saved) : initialDocumentTemplates
+  })
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_emailtemplates`)
+    return saved ? JSON.parse(saved) : initialEmailTemplates
+  })
+  const [emailMessages, setEmailMessages] = useState<EmailMessage[]>([])
+
+  const [vatRates, setVatRates] = useState<VatRate[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_vatrates`)
+    return saved ? JSON.parse(saved) : initialVatRates
+  })
+
   const [deals, setDeals] = useState<Deal[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}deals`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_deals`)
     return saved ? JSON.parse(saved) : initialDeals
   })
 
   const [quotations, setQuotations] = useState<Quotation[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}quotes`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_quotations`)
     return saved ? JSON.parse(saved) : initialQuotations
   })
 
   const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}projects`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_projects`)
     return saved ? JSON.parse(saved) : initialProjects
   })
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
   const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}tasks`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_tasks`)
     return saved ? JSON.parse(saved) : initialTasks
   })
 
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}times`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_time`)
     return saved ? JSON.parse(saved) : initialTimeEntries
   })
 
+  const [activeTimer, setActiveTimer] = useState<{
+    isRunning: boolean
+    projectId: string
+    taskId?: string
+    description: string
+    startTime: number | null
+    elapsedSeconds: number
+  }>({
+    isRunning: false,
+    projectId: '',
+    taskId: '',
+    description: '',
+    startTime: null,
+    elapsedSeconds: 0,
+  })
+
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}invoices`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_invoices`)
     return saved ? JSON.parse(saved) : initialInvoices
   })
 
   const [payments, setPayments] = useState<Payment[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}payments`)
+    const saved = localStorage.getItem(`${STORAGE_KEY}_payments`)
     return saved ? JSON.parse(saved) : initialPayments
   })
 
-  const [peppolLogs, setPeppolLogs] = useState<PeppolTransmissionLog[]>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}peppol_logs`)
-    return saved ? JSON.parse(saved) : initialPeppolLogs
-  })
+  const [peppolLogs, setPeppolLogs] = useState<PeppolTransmissionLog[]>([])
 
-  const [activeTimer, setActiveTimer] = useState<ActiveTimer>(() => {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX}timer`)
-    return saved ? JSON.parse(saved) : { isRunning: false, description: '', seconds: 0 }
-  })
-
-  // Synchronize with LocalStorage
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem(`${STORAGE_PREFIX}theme`, theme)
-  }, [theme])
+  const activeLegalEntity =
+    legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(companyProfile))
-  }, [companyProfile])
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_entities`, JSON.stringify(legalEntities))
+      localStorage.setItem(`${STORAGE_KEY}_profile`, JSON.stringify(companyProfile))
+      localStorage.setItem(`${STORAGE_KEY}_companies`, JSON.stringify(companies))
+      localStorage.setItem(`${STORAGE_KEY}_individuals`, JSON.stringify(individuals))
+      localStorage.setItem(`${STORAGE_KEY}_contacts`, JSON.stringify(contacts))
+      localStorage.setItem(`${STORAGE_KEY}_products`, JSON.stringify(products))
+      localStorage.setItem(`${STORAGE_KEY}_events`, JSON.stringify(events))
+      localStorage.setItem(`${STORAGE_KEY}_doctemplates`, JSON.stringify(documentTemplates))
+      localStorage.setItem(`${STORAGE_KEY}_emailtemplates`, JSON.stringify(emailTemplates))
+      localStorage.setItem(`${STORAGE_KEY}_vatrates`, JSON.stringify(vatRates))
+      localStorage.setItem(`${STORAGE_KEY}_deals`, JSON.stringify(deals))
+      localStorage.setItem(`${STORAGE_KEY}_quotations`, JSON.stringify(quotations))
+      localStorage.setItem(`${STORAGE_KEY}_projects`, JSON.stringify(projects))
+      localStorage.setItem(`${STORAGE_KEY}_tasks`, JSON.stringify(tasks))
+      localStorage.setItem(`${STORAGE_KEY}_time`, JSON.stringify(timeEntries))
+      localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(invoices))
+      localStorage.setItem(`${STORAGE_KEY}_payments`, JSON.stringify(payments))
+    } catch (e) {
+      console.warn('Storage sync error:', e)
+    }
+  }, [
+    legalEntities,
+    companyProfile,
+    companies,
+    individuals,
+    contacts,
+    products,
+    events,
+    documentTemplates,
+    emailTemplates,
+    vatRates,
+    deals,
+    quotations,
+    projects,
+    tasks,
+    timeEntries,
+    invoices,
+    payments,
+  ])
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}companies`, JSON.stringify(companies))
-  }, [companies])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}contacts`, JSON.stringify(contacts))
-  }, [contacts])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}deals`, JSON.stringify(deals))
-  }, [deals])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}quotes`, JSON.stringify(quotations))
-  }, [quotations])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}projects`, JSON.stringify(projects))
-  }, [projects])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}tasks`, JSON.stringify(tasks))
-  }, [tasks])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}times`, JSON.stringify(timeEntries))
-  }, [timeEntries])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}invoices`, JSON.stringify(invoices))
-  }, [invoices])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}payments`, JSON.stringify(payments))
-  }, [payments])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}peppol_logs`, JSON.stringify(peppolLogs))
-  }, [peppolLogs])
-
-  useEffect(() => {
-    localStorage.setItem(`${STORAGE_PREFIX}timer`, JSON.stringify(activeTimer))
-  }, [activeTimer])
-
-  // Timer Tick
-  useEffect(() => {
-    let interval: any
+    let interval: NodeJS.Timeout | null = null
     if (activeTimer.isRunning) {
       interval = setInterval(() => {
         setActiveTimer((prev) => ({
           ...prev,
-          seconds: prev.seconds + 1,
+          elapsedSeconds: prev.elapsedSeconds + 1,
         }))
       }, 1000)
     }
-    return () => clearInterval(interval)
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [activeTimer.isRunning])
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+    const nextTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(nextTheme)
+    document.documentElement.setAttribute('data-theme', nextTheme)
   }
 
-  // Company Actions
-  const addCompany = (compData: Omit<Company, 'id' | 'createdAt'>): Company => {
-    const newComp: Company = {
-      ...compData,
-      id: `comp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  const addLegalEntity = (entity: LegalEntity) => setLegalEntities((prev) => [...prev, entity])
+  const updateLegalEntity = (entity: LegalEntity) =>
+    setLegalEntities((prev) => prev.map((e) => (e.id === entity.id ? entity : e)))
+  const deleteLegalEntity = (id: string) => {
+    if (legalEntities.length <= 1) return
+    setLegalEntities((prev) => prev.filter((e) => e.id !== id))
+    if (activeLegalEntityId === id) {
+      const remaining = legalEntities.filter((e) => e.id !== id)
+      setActiveLegalEntityId(remaining[0].id)
     }
-    setCompanies((prev) => [newComp, ...prev])
-    return newComp
   }
 
-  const updateCompany = (comp: Company) => {
-    setCompanies((prev) => prev.map((c) => (c.id === comp.id ? comp : c)))
-  }
+  const updateCompanyProfile = (profile: CompanyProfile) => setCompanyProfile(profile)
 
-  const deleteCompany = (id: string) => {
-    setCompanies((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  // Contact Actions
-  const addContact = (contData: Omit<Contact, 'id' | 'createdAt'>): Contact => {
-    const newContact: Contact = {
-      ...contData,
-      id: `cont-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  const addCompany = (c: any) => {
+    const item: Company = {
+      ...c,
+      id: c.id || `comp-${Date.now()}`,
+      createdAt: c.createdAt || new Date().toISOString(),
     }
-    setContacts((prev) => [newContact, ...prev])
-    return newContact
+    setCompanies((prev) => [item, ...prev])
   }
+  const updateCompany = (c: Company) => setCompanies((prev) => prev.map((item) => (item.id === c.id ? c : item)))
+  const deleteCompany = (id: string) => setCompanies((prev) => prev.filter((item) => item.id !== id))
 
-  const updateContact = (cont: Contact) => {
-    setContacts((prev) => prev.map((c) => (c.id === cont.id ? cont : c)))
-  }
-
-  const deleteContact = (id: string) => {
-    setContacts((prev) => prev.filter((c) => c.id !== id))
-  }
-
-  // Deal Actions
-  const addDeal = (dealData: Omit<Deal, 'id' | 'createdAt'>): Deal => {
-    const newDeal: Deal = {
-      ...dealData,
-      id: `deal-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  const addIndividual = (ind: any) => {
+    const item: IndividualClient = {
+      ...ind,
+      id: ind.id || `ind-${Date.now()}`,
+      createdAt: ind.createdAt || new Date().toISOString(),
     }
-    setDeals((prev) => [newDeal, ...prev])
-    return newDeal
+    setIndividuals((prev) => [item, ...prev])
   }
+  const updateIndividual = (ind: IndividualClient) =>
+    setIndividuals((prev) => prev.map((item) => (item.id === ind.id ? ind : item)))
+  const deleteIndividual = (id: string) => setIndividuals((prev) => prev.filter((item) => item.id !== id))
 
-  const updateDeal = (deal: Deal) => {
-    setDeals((prev) => prev.map((d) => (d.id === deal.id ? deal : d)))
+  const addContact = (cont: any) => {
+    const item: Contact = {
+      ...cont,
+      id: cont.id || `cont-${Date.now()}`,
+      createdAt: cont.createdAt || new Date().toISOString(),
+    }
+    setContacts((prev) => [...prev, item])
   }
+  const updateContact = (cont: Contact) => setContacts((prev) => prev.map((item) => (item.id === cont.id ? cont : item)))
+  const deleteContact = (id: string) => setContacts((prev) => prev.filter((item) => item.id !== id))
 
-  const moveDealStage = (dealId: string, newStage: DealStage) => {
-    setDeals((prev) =>
-      prev.map((d) => {
-        if (d.id === dealId) {
-          const isWon = newStage === 'won'
-          if (isWon && d.stage !== 'won') {
-            confetti({
-              particleCount: 80,
-              spread: 70,
-              origin: { y: 0.6 },
-            })
-          }
-          return {
-            ...d,
-            stage: newStage,
-            probability: isWon ? 100 : newStage === 'lost' ? 0 : d.probability,
-          }
-        }
-        return d
-      })
+  const addProduct = (p: Product) => setProducts((prev) => [p, ...prev])
+  const updateProduct = (p: Product) => setProducts((prev) => prev.map((item) => (item.id === p.id ? p : item)))
+  const deleteProduct = (id: string) => setProducts((prev) => prev.filter((item) => item.id !== id))
+  const adjustProductStock = (productId: string, quantityDelta: number) => {
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.id === productId
+          ? { ...item, stockQuantity: Math.max(0, item.stockQuantity + quantityDelta) }
+          : item
+      )
     )
   }
 
-  const deleteDeal = (id: string) => {
-    setDeals((prev) => prev.filter((d) => d.id !== id))
-  }
+  const addCalendarEvent = (evt: CalendarEvent) => setEvents((prev) => [evt, ...prev])
+  const updateCalendarEvent = (evt: CalendarEvent) =>
+    setEvents((prev) => prev.map((item) => (item.id === evt.id ? evt : item)))
+  const deleteCalendarEvent = (id: string) => setEvents((prev) => prev.filter((item) => item.id !== id))
 
-  // Quotation Actions
-  const addQuotation = (quoteData: Omit<Quotation, 'id' | 'createdAt'>): Quotation => {
-    const newQuote: Quotation = {
-      ...quoteData,
-      id: `quote-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  const addDocumentTemplate = (t: DocumentTemplate) => setDocumentTemplates((prev) => [...prev, t])
+  const updateDocumentTemplate = (t: DocumentTemplate) =>
+    setDocumentTemplates((prev) => prev.map((item) => (item.id === t.id ? t : item)))
+  const deleteDocumentTemplate = (id: string) =>
+    setDocumentTemplates((prev) => prev.filter((item) => item.id !== id))
+
+  const addEmailTemplate = (t: EmailTemplate) => setEmailTemplates((prev) => [...prev, t])
+  const updateEmailTemplate = (t: EmailTemplate) =>
+    setEmailTemplates((prev) => prev.map((item) => (item.id === t.id ? t : item)))
+  const deleteEmailTemplate = (id: string) =>
+    setEmailTemplates((prev) => prev.filter((item) => item.id !== id))
+
+  const sendEmail = (message: Omit<EmailMessage, 'id' | 'sentAt' | 'status'>) => {
+    const newMsg: EmailMessage = {
+      ...message,
+      id: `em-${Date.now()}`,
+      sentAt: new Date().toISOString(),
+      status: 'sent',
     }
-    setQuotations((prev) => [newQuote, ...prev])
-    return newQuote
+    setEmailMessages((prev) => [newMsg, ...prev])
   }
 
-  const updateQuotation = (quote: Quotation) => {
-    setQuotations((prev) => prev.map((q) => (q.id === quote.id ? quote : q)))
+  const addVatRate = (vr: VatRate) => setVatRates((prev) => [...prev, vr])
+  const updateVatRate = (vr: VatRate) => setVatRates((prev) => prev.map((item) => (item.id === vr.id ? vr : item)))
+  const deleteVatRate = (id: string) => setVatRates((prev) => prev.filter((item) => item.id !== id))
+
+  const getClientDisplayName = (clientType?: ClientType, id?: string): string => {
+    if (!id) return 'Unassigned'
+    if (clientType === 'individual') {
+      const ind = individuals.find((i) => i.id === id)
+      return ind ? `${ind.firstName} ${ind.lastName} (Private)` : 'Unknown Client'
+    }
+    const comp = companies.find((c) => c.id === id)
+    return comp ? comp.name : 'Unknown Company'
   }
 
-  const signQuotation = (quoteId: string, signerName: string, notes?: string) => {
+  const addDeal = (deal: any) => {
+    const item: Deal = {
+      ...deal,
+      id: deal.id || `deal-${Date.now()}`,
+      createdAt: deal.createdAt || new Date().toISOString(),
+    }
+    setDeals((prev) => [item, ...prev])
+  }
+  const updateDeal = (deal: Deal) => setDeals((prev) => prev.map((d) => (d.id === deal.id ? deal : d)))
+  const deleteDeal = (id: string) => setDeals((prev) => prev.filter((d) => d.id !== id))
+  const moveDealStage = (dealId: string, stage: DealStage) => {
+    setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage } : d)))
+  }
+
+  const addQuotation = (q: Quotation) => setQuotations((prev) => [q, ...prev])
+  const updateQuotation = (q: Quotation) => setQuotations((prev) => prev.map((item) => (item.id === q.id ? q : item)))
+  const deleteQuotation = (id: string) => setQuotations((prev) => prev.filter((item) => item.id !== id))
+  const signQuotation = (quoteId: string, signerName: string, signerNotes?: string) => {
     setQuotations((prev) =>
-      prev.map((q) => {
-        if (q.id === quoteId) {
-          confetti({
-            particleCount: 100,
-            spread: 90,
-            origin: { y: 0.5 },
-          })
-          return {
-            ...q,
-            status: 'accepted',
-            clientSignedAt: new Date().toISOString(),
-            clientSignedBy: signerName,
-            clientNotes: notes,
-          }
+      prev.map((q) =>
+        q.id === quoteId
+          ? {
+              ...q,
+              status: 'accepted',
+              clientSignedAt: new Date().toISOString(),
+              clientSignedBy: signerName,
+            }
+          : q
+      )
+    )
+  }
+
+  const addProject = (p: any) => {
+    const item: Project = {
+      ...p,
+      id: p.id || `proj-${Date.now()}`,
+      createdAt: p.createdAt || new Date().toISOString(),
+    }
+    setProjects((prev) => [item, ...prev])
+  }
+  const updateProject = (p: Project) => setProjects((prev) => prev.map((item) => (item.id === p.id ? p : item)))
+  const deleteProject = (id: string) => setProjects((prev) => prev.filter((item) => item.id !== id))
+
+  const addTask = (t: any) => {
+    const item: Task = {
+      ...t,
+      id: t.id || `task-${Date.now()}`,
+      loggedHours: t.loggedHours || 0,
+      createdAt: t.createdAt || new Date().toISOString(),
+    }
+    setTasks((prev) => [...prev, item])
+  }
+  const updateTask = (t: Task) => setTasks((prev) => prev.map((item) => (item.id === t.id ? t : item)))
+  const deleteTask = (id: string) => setTasks((prev) => prev.filter((item) => item.id !== id))
+  const moveTaskStatus = (taskId: string, status: TaskStatus) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)))
+  }
+
+  const addTimeEntry = (entry: any) => {
+    const item: TimeEntry = {
+      ...entry,
+      id: entry.id || `time-${Date.now()}`,
+      createdAt: entry.createdAt || new Date().toISOString(),
+    }
+    setTimeEntries((prev) => [item, ...prev])
+  }
+  const updateTimeEntry = (entry: TimeEntry) =>
+    setTimeEntries((prev) => prev.map((item) => (item.id === entry.id ? entry : item)))
+  const deleteTimeEntry = (id: string) => setTimeEntries((prev) => prev.filter((item) => item.id !== id))
+
+  const startTimer = (projectId: string, taskId?: string, description = '') => {
+    setActiveTimer({
+      isRunning: true,
+      projectId,
+      taskId,
+      description,
+      startTime: Date.now(),
+      elapsedSeconds: 0,
+    })
+  }
+
+  const stopTimer = () => {
+    if (!activeTimer.isRunning || activeTimer.elapsedSeconds < 10) {
+      setActiveTimer({ isRunning: false, projectId: '', description: '', startTime: null, elapsedSeconds: 0 })
+      return
+    }
+    const hours = Number((activeTimer.elapsedSeconds / 3600).toFixed(2))
+    const proj = projects.find((p) => p.id === activeTimer.projectId)
+    const newEntry: TimeEntry = {
+      id: `time-${Date.now()}`,
+      projectId: activeTimer.projectId,
+      taskId: activeTimer.taskId,
+      memberName: 'Koen De Vries',
+      date: new Date().toISOString().slice(0, 10),
+      hours: Math.max(0.1, hours),
+      description: activeTimer.description || 'Tracked live session',
+      isBillable: true,
+      hourlyRate: proj ? proj.hourlyRate : 110.0,
+      createdAt: new Date().toISOString(),
+    }
+    addTimeEntry(newEntry)
+    setActiveTimer({ isRunning: false, projectId: '', description: '', startTime: null, elapsedSeconds: 0 })
+  }
+
+  const addInvoice = (inv: Invoice) => {
+    setInvoices((prev) => [inv, ...prev])
+    inv.items.forEach((item) => {
+      if (item.productId) {
+        adjustProductStock(item.productId, -item.quantity)
+      }
+    })
+  }
+  const updateInvoice = (inv: Invoice) => setInvoices((prev) => prev.map((item) => (item.id === inv.id ? inv : item)))
+  const deleteInvoice = (id: string) => setInvoices((prev) => prev.filter((item) => item.id !== id))
+
+  const recordPayment = (p: any) => {
+    const item: Payment = {
+      ...p,
+      id: p.id || `pay-${Date.now()}`,
+      createdAt: p.createdAt || new Date().toISOString(),
+    }
+    setPayments((prev) => [...prev, item])
+    setInvoices((prev) =>
+      prev.map((inv) => {
+        if (inv.id === item.invoiceId) {
+          const newPaid = inv.amountPaid + item.amount
+          const status = newPaid >= inv.total ? 'paid' : 'partial'
+          return { ...inv, amountPaid: newPaid, status }
         }
-        return q
+        return inv
       })
     )
+  }
+
+  const generateStructuredReference = (seedNumber: string): string => {
+    const cleanSeed = seedNumber.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0')
+    const numVal = BigInt(cleanSeed)
+    const mod97 = Number(numVal % 97n)
+    const check = mod97 === 0 ? 97 : mod97
+    const checkStr = String(check).padStart(2, '0')
+    const full12 = cleanSeed + checkStr
+    return `+++${full12.slice(0, 3)}/${full12.slice(3, 7)}/${full12.slice(7, 12)}+++`
   }
 
   const convertQuoteToProject = (quoteId: string): Project | null => {
@@ -405,49 +630,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!quote) return null
 
     const totalHours = quote.items
-      .filter((i) => i.unit.includes('hour') || i.unit.includes('hr'))
-      .reduce((sum, i) => sum + i.quantity, 0) || Math.round(quote.subtotal / 110)
+      .filter((i) => i.unit === 'hours' || i.unit === 'h')
+      .reduce((sum, i) => sum + i.quantity, 0)
 
     const newProject: Project = {
       id: `proj-${Date.now()}`,
-      title: quote.title || `Project for ${companies.find((c) => c.id === quote.companyId)?.name || 'Client'}`,
+      title: quote.title,
       quoteId: quote.id,
-      companyId: quote.companyId,
+      clientType: quote.clientType || 'company',
+      companyId: quote.companyId || '',
+      individualId: quote.individualId,
       status: 'in_progress',
       startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      budgetHours: totalHours,
+      endDate: quote.validUntilDate,
+      budgetHours: totalHours || 120,
       budgetAmount: quote.subtotal,
-      hourlyRate: 110,
+      hourlyRate: 110.0,
       progressPercent: 0,
-      description: `Project initialized from accepted quotation ${quote.number}.`,
+      description: `Project generated from Quotation ${quote.number}`,
       color: '#3f78e0',
       createdAt: new Date().toISOString(),
     }
 
-    setProjects((prev) => [newProject, ...prev])
+    addProject(newProject)
 
-    // Generate initial tasks from quote line items
-    const generatedTasks: Task[] = quote.items.map((item, idx) => ({
-      id: `task-${Date.now()}-${idx}`,
-      projectId: newProject.id,
-      title: item.description,
-      assignee: 'Unassigned',
-      priority: 'medium',
-      status: 'todo',
-      estimatedHours: item.quantity,
-      loggedHours: 0,
-      dueDate: newProject.endDate,
-      createdAt: new Date().toISOString(),
-    }))
+    quote.items.forEach((item, index) => {
+      const newTask: Task = {
+        id: `task-${Date.now()}-${index}`,
+        projectId: newProject.id,
+        title: item.description,
+        description: `Deliverable milestone from quote item #${index + 1}`,
+        assignee: 'Koen De Vries',
+        priority: 'high',
+        status: 'todo',
+        estimatedHours: item.quantity,
+        loggedHours: 0,
+        dueDate: quote.validUntilDate,
+        createdAt: new Date().toISOString(),
+      }
+      addTask(newTask)
+    })
 
-    setTasks((prev) => [...generatedTasks, ...prev])
-
-    // Mark quote as converted
-    setQuotations((prev) =>
-      prev.map((q) => (q.id === quoteId ? { ...q, convertedToProjectId: newProject.id } : q))
-    )
-
+    updateQuotation({ ...quote, convertedToProjectId: newProject.id, status: 'accepted' })
     return newProject
   }
 
@@ -455,30 +679,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const quote = quotations.find((q) => q.id === quoteId)
     if (!quote) return null
 
-    const nextInvoiceNum = `INV-2026-${String(invoices.length + 183).padStart(4, '0')}`
-    const invoiceItems: InvoiceItem[] = quote.items.map((qi, idx) => ({
-      id: `ii-${Date.now()}-${idx}`,
-      description: qi.description,
-      quantity: qi.quantity,
-      unit: qi.unit,
-      unitPrice: qi.unitPrice,
-      discountPercent: qi.discountPercent,
-      vatRate: qi.vatRate,
-      total: qi.total,
-      taxCategory: qi.vatRate === 0 ? 'AE' : 'S',
-    }))
+    const invSeq = String(invoices.length + 1).padStart(4, '0')
+    const prefix = activeLegalEntity.invoicePrefix || 'INV-'
+    const invoiceNumber = `${prefix}2026-${invSeq}`
+    const seed = `${new Date().getFullYear()}${invSeq}${Math.floor(Math.random() * 1000)}`
 
     const newInvoice: Invoice = {
       id: `inv-${Date.now()}`,
-      number: nextInvoiceNum,
+      number: invoiceNumber,
+      legalEntityId: activeLegalEntity.id,
       quoteId: quote.id,
-      companyId: quote.companyId,
+      clientType: quote.clientType || 'company',
+      companyId: quote.companyId || '',
+      individualId: quote.individualId,
       contactId: quote.contactId,
       issueDate: new Date().toISOString().slice(0, 10),
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      reference: quote.number,
-      structuredReference: generateStructuredReference(Date.now()),
-      items: invoiceItems,
+      structuredReference: generateStructuredReference(seed),
+      items: quote.items.map((i) => ({
+        ...i,
+        taxCategory: i.vatRate === 0 ? 'AE' : 'S',
+      })),
       subtotal: quote.subtotal,
       taxBreakdown: [
         {
@@ -491,319 +712,146 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       taxTotal: quote.taxTotal,
       total: quote.total,
       amountPaid: 0,
-      currency: quote.currency || 'EUR',
+      currency: quote.currency,
       status: 'issued',
       peppolStatus: 'valid',
-      notes: `Invoice generated from quotation ${quote.number}. ${quote.terms || ''}`,
-      paymentTerms: 'Payment within 30 days.',
+      notes: quote.terms || 'Payment due within 30 days.',
+      paymentTerms: '30 days net',
       createdAt: new Date().toISOString(),
     }
 
-    setInvoices((prev) => [newInvoice, ...prev])
-
-    setQuotations((prev) =>
-      prev.map((q) => (q.id === quoteId ? { ...q, convertedToInvoiceId: newInvoice.id } : q))
-    )
-
+    addInvoice(newInvoice)
+    updateQuotation({ ...quote, convertedToInvoiceId: newInvoice.id })
     return newInvoice
   }
 
-  const deleteQuotation = (id: string) => {
-    setQuotations((prev) => prev.filter((q) => q.id !== id))
-  }
-
-  // Project Actions
-  const addProject = (projData: Omit<Project, 'id' | 'createdAt'>): Project => {
-    const newProj: Project = {
-      ...projData,
-      id: `proj-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setProjects((prev) => [newProj, ...prev])
-    return newProj
-  }
-
-  const updateProject = (proj: Project) => {
-    setProjects((prev) => prev.map((p) => (p.id === proj.id ? proj : p)))
-  }
-
-  const deleteProject = (id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id))
-    setTasks((prev) => prev.filter((t) => t.projectId !== id))
-  }
-
-  // Task Actions
-  const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'loggedHours'>): Task => {
-    const newTask: Task = {
-      ...taskData,
-      id: `task-${Date.now()}`,
-      loggedHours: 0,
-      createdAt: new Date().toISOString(),
-    }
-    setTasks((prev) => [newTask, ...prev])
-    return newTask
-  }
-
-  const updateTask = (task: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)))
-  }
-
-  const moveTaskStatus = (taskId: string, newStatus: TaskStatus) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    )
-  }
-
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id))
-  }
-
-  // Time Tracking Actions
-  const addTimeEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>): TimeEntry => {
-    const newEntry: TimeEntry = {
-      ...entryData,
-      id: `time-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setTimeEntries((prev) => [newEntry, ...prev])
-
-    // Update logged hours on task if linked
-    if (newEntry.taskId) {
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === newEntry.taskId
-            ? { ...t, loggedHours: (t.loggedHours || 0) + newEntry.hours }
-            : t
-        )
-      )
-    }
-
-    return newEntry
-  }
-
-  const updateTimeEntry = (entry: TimeEntry) => {
-    setTimeEntries((prev) => prev.map((t) => (t.id === entry.id ? entry : t)))
-  }
-
-  const deleteTimeEntry = (id: string) => {
-    setTimeEntries((prev) => prev.filter((t) => t.id !== id))
-  }
-
   const invoiceProjectTimeEntries = (projectId: string): Invoice | null => {
+    const unbilled = timeEntries.filter((t) => t.projectId === projectId && !t.invoiceId && t.isBillable)
+    if (unbilled.length === 0) return null
+
     const proj = projects.find((p) => p.id === projectId)
     if (!proj) return null
 
-    const unbilledEntries = timeEntries.filter(
-      (t) => t.projectId === projectId && t.isBillable && !t.invoiceId
-    )
+    const invSeq = String(invoices.length + 1).padStart(4, '0')
+    const prefix = activeLegalEntity.invoicePrefix || 'INV-'
+    const invoiceNumber = `${prefix}2026-${invSeq}`
+    const seed = `${new Date().getFullYear()}${invSeq}${Math.floor(Math.random() * 1000)}`
 
-    if (unbilledEntries.length === 0) return null
+    const items = unbilled.map((entry, idx) => ({
+      id: `ii-time-${idx}-${Date.now()}`,
+      description: `${entry.memberName} — ${entry.description} (${entry.date})`,
+      quantity: entry.hours,
+      unit: 'hours',
+      unitPrice: entry.hourlyRate,
+      discountPercent: 0,
+      vatRate: 21,
+      total: Number((entry.hours * entry.hourlyRate).toFixed(2)),
+      taxCategory: 'S' as const,
+    }))
 
-    const totalHours = unbilledEntries.reduce((sum, e) => sum + e.hours, 0)
-    const rate = proj.hourlyRate || 110
-    const subtotal = totalHours * rate
-    const vatRate = 21
-    const taxTotal = subtotal * (vatRate / 100)
-    const total = subtotal + taxTotal
-    const nextInvoiceNum = `INV-2026-${String(invoices.length + 183).padStart(4, '0')}`
+    const subtotal = Number(items.reduce((s, i) => s + i.total, 0).toFixed(2))
+    const taxTotal = Number((subtotal * 0.21).toFixed(2))
+    const total = Number((subtotal + taxTotal).toFixed(2))
 
     const newInvoice: Invoice = {
       id: `inv-${Date.now()}`,
-      number: nextInvoiceNum,
+      number: invoiceNumber,
+      legalEntityId: activeLegalEntity.id,
       projectId: proj.id,
+      clientType: proj.clientType || 'company',
       companyId: proj.companyId,
+      individualId: proj.individualId,
       issueDate: new Date().toISOString().slice(0, 10),
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      reference: `TIME-${proj.title.slice(0, 12).toUpperCase()}`,
-      structuredReference: generateStructuredReference(Date.now()),
-      items: [
-        {
-          id: `ii-${Date.now()}`,
-          description: `Services rendered for ${proj.title} (${totalHours.toFixed(1)} billable hours @ €${rate}/hr)`,
-          quantity: totalHours,
-          unit: 'hours',
-          unitPrice: rate,
-          discountPercent: 0,
-          vatRate: 21,
-          total: subtotal,
-          taxCategory: 'S',
-        },
-      ],
+      structuredReference: generateStructuredReference(seed),
+      items,
       subtotal,
-      taxBreakdown: [
-        {
-          rate: 21,
-          taxCategory: 'S',
-          taxableAmount: subtotal,
-          taxAmount: taxTotal,
-        },
-      ],
+      taxBreakdown: [{ rate: 21, taxCategory: 'S', taxableAmount: subtotal, taxAmount: taxTotal }],
       taxTotal,
       total,
       amountPaid: 0,
       currency: 'EUR',
       status: 'issued',
       peppolStatus: 'valid',
-      notes: `Invoiced from tracked project timesheets.`,
-      paymentTerms: 'Payment within 30 days.',
+      notes: `Billing for completed project engineering hours (${unbilled.length} timesheet entries).`,
+      paymentTerms: '30 days net',
       createdAt: new Date().toISOString(),
     }
 
-    setInvoices((prev) => [newInvoice, ...prev])
+    addInvoice(newInvoice)
 
-    // Mark entries as invoiced
     setTimeEntries((prev) =>
-      prev.map((e) =>
-        e.projectId === projectId && e.isBillable && !e.invoiceId
-          ? { ...e, invoiceId: newInvoice.id }
-          : e
-      )
+      prev.map((t) => (t.projectId === projectId && !t.invoiceId ? { ...t, invoiceId: newInvoice.id } : t))
     )
 
     return newInvoice
   }
 
-  // Invoice & Peppol Actions
-  const addInvoice = (invData: Omit<Invoice, 'id' | 'createdAt'>): Invoice => {
-    const newInv: Invoice = {
-      ...invData,
-      id: `inv-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setInvoices((prev) => [newInv, ...prev])
-    return newInv
-  }
-
-  const updateInvoice = (inv: Invoice) => {
-    setInvoices((prev) => prev.map((i) => (i.id === inv.id ? inv : i)))
-  }
-
-  const deleteInvoice = (id: string) => {
-    setInvoices((prev) => prev.filter((i) => i.id !== id))
-  }
-
-  const sendInvoiceViaPeppol = async (
-    invoiceId: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  const sendInvoiceViaPeppol = async (invoiceId: string): Promise<{ success: boolean; error?: string }> => {
     const inv = invoices.find((i) => i.id === invoiceId)
     if (!inv) return { success: false, error: 'Invoice not found' }
 
-    const buyer = companies.find((c) => c.id === inv.companyId)
-    if (!buyer) return { success: false, error: 'Customer company details not found' }
+    const company = companies.find((c) => c.id === inv.companyId)
+    const fallbackCompany: Company = {
+      id: 'custom-comp',
+      name: 'Client Entity',
+      vatNumber: 'BE0842123456',
+      peppolScheme: '0208',
+      peppolEndpoint: '0842123456',
+      email: 'billing@client.com',
+      phone: '+32 2 000 0000',
+      address: 'Business Street 1',
+      city: 'Brussels',
+      postalCode: '1000',
+      country: 'Belgium',
+      countryCode: 'BE',
+      status: 'customer',
+      tags: [],
+      createdAt: new Date().toISOString(),
+    }
 
-    const result = await dispatchPeppolInvoice(inv, companyProfile, buyer)
+    const sellerProfile: CompanyProfile = {
+      ...companyProfile,
+      name: activeLegalEntity.name,
+      legalName: activeLegalEntity.legalName,
+      vatNumber: activeLegalEntity.vatNumber,
+      peppolScheme: activeLegalEntity.peppolScheme,
+      peppolEndpoint: activeLegalEntity.peppolEndpoint,
+      iban: activeLegalEntity.iban,
+      bic: activeLegalEntity.bic,
+    }
 
-    // Append log
+    const result = await dispatchPeppolInvoice(inv, sellerProfile, company || fallbackCompany)
+
     setPeppolLogs((prev) => [result.log, ...prev])
 
     if (result.success) {
-      setInvoices((prev) =>
-        prev.map((i) =>
-          i.id === invoiceId
-            ? {
-                ...i,
-                status: 'peppol_sent',
-                peppolStatus: 'delivered',
-                peppolMessageId: result.log.accessPointReceiptId,
-                peppolDeliveredAt: result.log.timestamp,
-              }
-            : i
-        )
-      )
+      updateInvoice({
+        ...inv,
+        status: 'peppol_sent',
+        peppolStatus: 'delivered',
+        peppolMessageId: result.log.accessPointReceiptId,
+        peppolDeliveredAt: new Date().toISOString(),
+      })
       return { success: true }
     } else {
-      setInvoices((prev) =>
-        prev.map((i) =>
-          i.id === invoiceId ? { ...i, peppolStatus: 'invalid' } : i
-        )
-      )
-      return { success: false, error: result.error }
+      updateInvoice({ ...inv, peppolStatus: 'failed' })
+      return { success: false, error: result.log.responseMessage }
     }
   }
 
-  const recordPayment = (payData: Omit<Payment, 'id' | 'createdAt'>) => {
-    const newPayment: Payment = {
-      ...payData,
-      id: `pay-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setPayments((prev) => [newPayment, ...prev])
-
-    // Update invoice balance
-    setInvoices((prev) =>
-      prev.map((inv) => {
-        if (inv.id === payData.invoiceId) {
-          const newPaid = (inv.amountPaid || 0) + payData.amount
-          const isFullyPaid = newPaid >= inv.total - 0.05
-          return {
-            ...inv,
-            amountPaid: newPaid,
-            status: isFullyPaid ? 'paid' : 'partial',
-          }
-        }
-        return inv
-      })
-    )
-  }
-
-  // Timer Controls
-  const startTimer = (projectId?: string, taskId?: string, description?: string) => {
-    setActiveTimer({
-      isRunning: true,
-      projectId: projectId || activeTimer.projectId,
-      taskId: taskId || activeTimer.taskId,
-      description: description || activeTimer.description || 'General Work',
-      seconds: activeTimer.seconds,
-      startTime: Date.now(),
-    })
-  }
-
-  const pauseTimer = () => {
-    setActiveTimer((prev) => ({ ...prev, isRunning: false }))
-  }
-
-  const resumeTimer = () => {
-    setActiveTimer((prev) => ({ ...prev, isRunning: true, startTime: Date.now() }))
-  }
-
-  const stopAndSaveTimer = () => {
-    if (activeTimer.seconds >= 30 && activeTimer.projectId) {
-      const hours = Math.max(0.1, Number((activeTimer.seconds / 3600).toFixed(2)))
-      const proj = projects.find((p) => p.id === activeTimer.projectId)
-      addTimeEntry({
-        projectId: activeTimer.projectId,
-        taskId: activeTimer.taskId,
-        memberName: 'Koen De Vries',
-        date: new Date().toISOString().slice(0, 10),
-        hours,
-        description: activeTimer.description || 'Logged via live timer widget',
-        isBillable: true,
-        hourlyRate: proj?.hourlyRate || 110,
-      })
-    }
-    setActiveTimer({ isRunning: false, description: '', seconds: 0 })
-  }
-
-  const resetTimer = () => {
-    setActiveTimer({ isRunning: false, description: '', seconds: 0 })
-  }
-
-  const setTimerDescription = (desc: string) => {
-    setActiveTimer((prev) => ({ ...prev, description: desc }))
-  }
-
-  const setTimerProject = (projectId: string) => {
-    setActiveTimer((prev) => ({ ...prev, projectId }))
-  }
-
-  const setTimerTask = (taskId: string) => {
-    setActiveTimer((prev) => ({ ...prev, taskId }))
-  }
-
-  // Demo / System
   const resetToDemoData = () => {
+    setLegalEntities(initialLegalEntities)
+    setActiveLegalEntityId(initialLegalEntities[0].id)
+    setCompanyProfile(initialCompanyProfile)
     setCompanies(initialCompanies)
+    setIndividuals(initialIndividuals)
     setContacts(initialContacts)
+    setProducts(initialProducts)
+    setEvents(initialEvents)
+    setDocumentTemplates(initialDocumentTemplates)
+    setEmailTemplates(initialEmailTemplates)
+    setVatRates(initialVatRates)
     setDeals(initialDeals)
     setQuotations(initialQuotations)
     setProjects(initialProjects)
@@ -811,17 +859,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeEntries(initialTimeEntries)
     setInvoices(initialInvoices)
     setPayments(initialPayments)
-    setPeppolLogs(initialPeppolLogs)
-    setCompanyProfile(initialCompanyProfile)
-    setActiveTimer({ isRunning: false, description: '', seconds: 0 })
+    setPeppolLogs([])
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
-    const data = {
+    const backup = {
+      version: '2.0.0',
+      exportedAt: new Date().toISOString(),
+      legalEntities,
       companyProfile,
       companies,
+      individuals,
       contacts,
+      products,
+      events,
+      documentTemplates,
+      emailTemplates,
+      vatRates,
       deals,
       quotations,
       projects,
@@ -829,31 +884,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timeEntries,
       invoices,
       payments,
-      peppolLogs,
-      exportedAt: new Date().toISOString(),
     }
-    return JSON.stringify(data, null, 2)
+    return JSON.stringify(backup, null, 2)
   }
 
-  const importDataJson = (jsonStr: string): boolean => {
+  const importDataJson = (jsonString: string): boolean => {
     try {
-      const parsed = JSON.parse(jsonStr)
-      if (parsed.companies && parsed.invoices) {
-        if (parsed.companyProfile) setCompanyProfile(parsed.companyProfile)
-        if (parsed.companies) setCompanies(parsed.companies)
-        if (parsed.contacts) setContacts(parsed.contacts)
-        if (parsed.deals) setDeals(parsed.deals)
-        if (parsed.quotations) setQuotations(parsed.quotations)
-        if (parsed.projects) setProjects(parsed.projects)
-        if (parsed.tasks) setTasks(parsed.tasks)
-        if (parsed.timeEntries) setTimeEntries(parsed.timeEntries)
-        if (parsed.invoices) setInvoices(parsed.invoices)
-        if (parsed.payments) setPayments(parsed.payments)
-        if (parsed.peppolLogs) setPeppolLogs(parsed.peppolLogs)
-        return true
-      }
-      return false
-    } catch {
+      const data = JSON.parse(jsonString)
+      if (data.companies) setCompanies(data.companies)
+      if (data.individuals) setIndividuals(data.individuals)
+      if (data.legalEntities) setLegalEntities(data.legalEntities)
+      if (data.products) setProducts(data.products)
+      if (data.events) setEvents(data.events)
+      if (data.documentTemplates) setDocumentTemplates(data.documentTemplates)
+      if (data.emailTemplates) setEmailTemplates(data.emailTemplates)
+      if (data.vatRates) setVatRates(data.vatRates)
+      if (data.companyProfile) setCompanyProfile(data.companyProfile)
+      if (data.deals) setDeals(data.deals)
+      if (data.quotations) setQuotations(data.quotations)
+      if (data.projects) setProjects(data.projects)
+      if (data.tasks) setTasks(data.tasks)
+      if (data.timeEntries) setTimeEntries(data.timeEntries)
+      if (data.invoices) setInvoices(data.invoices)
+      if (data.payments) setPayments(data.payments)
+      return true
+    } catch (e) {
+      console.error('Import error:', e)
       return false
     }
   }
@@ -861,69 +917,96 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
-        theme,
-        toggleTheme,
         currentView,
         setCurrentView,
-        selectedProjectId,
-        setSelectedProjectId,
-        selectedCompanyId,
-        setSelectedCompanyId,
-        searchQuery,
-        setSearchQuery,
+        theme,
+        toggleTheme,
+        legalEntities,
+        activeLegalEntityId,
+        activeLegalEntity,
+        setActiveLegalEntityId,
+        addLegalEntity,
+        updateLegalEntity,
+        deleteLegalEntity,
         companyProfile,
-        updateCompanyProfile: setCompanyProfile,
+        updateCompanyProfile,
         companies,
         addCompany,
         updateCompany,
         deleteCompany,
+        individuals,
+        addIndividual,
+        updateIndividual,
+        deleteIndividual,
         contacts,
         addContact,
         updateContact,
         deleteContact,
+        products,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        adjustProductStock,
+        events,
+        addCalendarEvent,
+        updateCalendarEvent,
+        deleteCalendarEvent,
+        documentTemplates,
+        addDocumentTemplate,
+        updateDocumentTemplate,
+        deleteDocumentTemplate,
+        emailTemplates,
+        addEmailTemplate,
+        updateEmailTemplate,
+        deleteEmailTemplate,
+        emailMessages,
+        sendEmail,
+        vatRates,
+        addVatRate,
+        updateVatRate,
+        deleteVatRate,
+        getClientDisplayName,
         deals,
         addDeal,
         updateDeal,
-        moveDealStage,
         deleteDeal,
+        moveDealStage,
         quotations,
         addQuotation,
         updateQuotation,
+        deleteQuotation,
         signQuotation,
         convertQuoteToProject,
         convertQuoteToInvoice,
-        deleteQuotation,
         projects,
         addProject,
         updateProject,
         deleteProject,
+        activeProjectId,
+        setActiveProjectId,
+        selectedProjectId: activeProjectId,
+        setSelectedProjectId: setActiveProjectId,
         tasks,
         addTask,
         updateTask,
-        moveTaskStatus,
         deleteTask,
+        moveTaskStatus,
         timeEntries,
         addTimeEntry,
         updateTimeEntry,
         deleteTimeEntry,
-        invoiceProjectTimeEntries,
+        activeTimer,
+        startTimer,
+        stopTimer,
         invoices,
         addInvoice,
         updateInvoice,
         deleteInvoice,
-        sendInvoiceViaPeppol,
-        recordPayment,
         payments,
+        recordPayment,
+        invoiceProjectTimeEntries,
         peppolLogs,
-        activeTimer,
-        startTimer,
-        pauseTimer,
-        resumeTimer,
-        stopAndSaveTimer,
-        resetTimer,
-        setTimerDescription,
-        setTimerProject,
-        setTimerTask,
+        sendInvoiceViaPeppol,
         resetToDemoData,
         exportDataJson,
         importDataJson,
@@ -934,7 +1017,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   )
 }
 
-export const useApp = () => {
+export const useApp = (): AppContextType => {
   const context = useContext(AppContext)
   if (!context) {
     throw new Error('useApp must be used within an AppProvider')
