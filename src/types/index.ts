@@ -774,3 +774,262 @@ export interface IntegrationConfig {
   logs: IntegrationLog[]
 }
 
+// ==========================================
+// 8. AUTOMATED BELGIAN DUNNING & DEBT COLLECTION
+// ==========================================
+export type DunningStage = 'reminder_1' | 'formal_notice' | 'bailiff_notice'
+export type DunningStatus = 'pending' | 'sent' | 'paid' | 'disputed' | 'escalated_to_bailiff'
+
+export interface DunningNotice {
+  id: string
+  invoiceId: string
+  stage: DunningStage
+  stageNumber: number // 1, 2, 3
+  issuedDate: string
+  dueDate: string
+  daysOverdue: number
+  principalAmount: number
+  statutoryFee: number // Official €40 statutory recovery fee (Book XIX CEL / EU Directive 2011/7/EU)
+  interestAmount: number // Statutory late interest
+  totalClaimAmount: number
+  paymentLinkUrl: string
+  sentVia: 'email' | 'postal' | 'sms'
+  status: DunningStatus
+  notes?: string
+  bailiffDossierId?: string
+}
+
+export interface DunningCase {
+  invoiceId: string
+  invoiceNumber: string
+  clientName: string
+  clientEmail: string
+  clientPhone?: string
+  originalAmount: number
+  amountPaid: number
+  balanceDue: number
+  dueDate: string
+  daysOverdue: number
+  currentStage: DunningStage
+  totalStatutoryFees: number
+  totalInterest: number
+  totalClaim: number
+  status: DunningStatus
+  notices: DunningNotice[]
+  lastContactDate?: string
+}
+
+// ==========================================
+// 9. MOBILE DIGITAL WORK ORDERS (WERKBONNEN)
+// ==========================================
+export type WorkOrderStatus = 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'signed' | 'invoiced'
+
+export interface WorkOrderLaborItem {
+  id: string
+  technicianName: string
+  date: string
+  hours: number
+  hourlyRate: number
+  description: string
+}
+
+export interface WorkOrderMaterialItem {
+  id: string
+  productId?: string
+  description: string
+  quantity: number
+  unit: string
+  unitPrice: number
+}
+
+export interface WorkOrderPhoto {
+  id: string
+  url: string
+  caption: string
+  takenAt: string
+  type: 'before' | 'after' | 'site'
+}
+
+export interface WorkOrderSignature {
+  signedBy: string
+  signatureImage: string // Base64 PNG
+  signedAt: string
+  signerTitle: string
+  legalDisclaimer: string
+  gpsLocation?: string
+}
+
+export interface WorkOrder {
+  id: string
+  number: string // e.g. WB-2026-001
+  title: string
+  clientType: ClientType
+  companyId?: string
+  individualId?: string
+  contactId?: string
+  address: string
+  city: string
+  postalCode: string
+  scheduledDate: string
+  scheduledTime?: string
+  completedDate?: string
+  technicianName: string
+  technicianPhone?: string
+  status: WorkOrderStatus
+  description: string
+  laborItems: WorkOrderLaborItem[]
+  materialItems: WorkOrderMaterialItem[]
+  travelKilometers: number
+  travelRatePerKm: number
+  photos: WorkOrderPhoto[]
+  signature?: WorkOrderSignature
+  invoiceId?: string
+  internalNotes?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+// ==========================================
+// 10. BELGIAN KBO / BCE LIVE COMPANY SEARCH
+// ==========================================
+export interface KboActivity {
+  code: string
+  description: string
+}
+
+export interface KboCompanyResult {
+  enterpriseNumber: string // e.g. 0849.294.901
+  vatNumber: string // e.g. BE0849294901
+  legalName: string
+  commercialName?: string
+  legalForm: string // BV, NV, VOF, CommV, Eenmanszaak
+  legalStatus: 'active' | 'bankrupt' | 'ceased' | 'liquidated'
+  address: {
+    street: string
+    number: string
+    box?: string
+    postalCode: string
+    city: string
+    country: string
+  }
+  establishmentUnitsCount: number
+  naceCodes: KboActivity[]
+  registrationDate: string
+  source: string
+}
+
+// ==========================================
+// 11. AI FINANCIAL CO-PILOT & CASH FLOW FORECASTING
+// ==========================================
+export interface CashFlowDailyPoint {
+  date: string
+  confirmedCash: number
+  projectedIncome: number
+  projectedExpenses: number
+  netCashBalance: number
+  vatReserveObligation: number
+}
+
+export interface AiFinancialInsight {
+  id: string
+  type: 'warning' | 'opportunity' | 'tax' | 'anomaly'
+  title: string
+  description: string
+  impactEur: number
+  actionLabel?: string
+  metricName?: string
+}
+
+export interface FinancialHealthMetrics {
+  currentCashEur: number
+  projectedCash90DaysEur: number
+  dsoDays: number // Days Sales Outstanding
+  liquidityRatio: number // Current Ratio
+  estimatedVatReserveEur: number
+  estimatedCorporateTaxEur: number
+  insights: AiFinancialInsight[]
+}
+
+// ==========================================
+// 12. MULTI-LANGUAGE (NL / FR / EN / DE)
+// ==========================================
+export type LanguageCode = 'nl' | 'fr' | 'en' | 'de'
+
+export interface TranslationDictionary {
+  [key: string]: Record<LanguageCode, string>
+}
+
+// ==========================================
+// 13. VEHICLE MILEAGE & TRAVEL EXPENSES (KILOMETERS)
+// ==========================================
+export type VehicleType = 'private_car' | 'company_car' | 'bicycle' | 'ev_car' | 'motorcycle'
+
+export interface MileageTrip {
+  id: string
+  date: string
+  driverName: string
+  purpose: string
+  originAddress: string
+  destinationAddress: string
+  distanceKm: number
+  isRoundTrip: boolean
+  vehicleType: VehicleType
+  ratePerKm: number // €0.4415 for car, €0.35 for bicycle
+  totalAllowanceEur: number
+  companyId?: string
+  projectId?: string
+  reimbursed: boolean
+  createdAt: string
+}
+
+// ==========================================
+// 14. SUPPLIER PURCHASE ORDERS & 3-WAY MATCH (BESTELBONNEN)
+// ==========================================
+export type PurchaseOrderStatus =
+  | 'draft'
+  | 'issued'
+  | 'partially_received'
+  | 'received'
+  | 'matched'
+  | 'cancelled'
+
+export interface PurchaseOrderItem {
+  id: string
+  productId?: string
+  description: string
+  quantityOrdered: number
+  quantityReceived: number
+  unit: string
+  unitPrice: number
+  vatRate: number
+  lineTotal: number
+}
+
+export interface PurchaseOrder {
+  id: string
+  number: string // e.g. PO-2026-001
+  supplierId: string
+  supplierName: string
+  orderDate: string
+  expectedDeliveryDate: string
+  status: PurchaseOrderStatus
+  items: PurchaseOrderItem[]
+  subtotal: number
+  vatTotal: number
+  total: number
+  matchedExpenseId?: string
+  deliveryNotes?: string
+  createdAt: string
+}
+
+export interface ThreeWayMatchResult {
+  isMatched: boolean
+  poNumber: string
+  invoiceNumber: string
+  deliveryStatus: string
+  discrepancyEur: number
+  discrepancies: string[]
+  approvedForPayment: boolean
+}
+
+

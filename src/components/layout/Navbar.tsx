@@ -29,6 +29,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
     activeLegalEntityId,
     setActiveLegalEntityId,
     activeLegalEntity,
+    selectedCurrency,
+    setSelectedCurrency,
+    language,
+    setLanguage,
   } = useApp()
 
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
@@ -60,22 +64,39 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
         />
         <input
           type="text"
-          placeholder="Search companies, clients, quotes, projects..."
-          className="form-input-sandbox"
-          style={{
-            paddingLeft: '2.4rem',
-            backgroundColor: 'var(--sb-bg)',
-            borderColor: 'transparent',
-          }}
+          placeholder="Search clients, deals, projects, invoices..."
+          className="search-input-sandbox"
         />
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Language Selector (NL / FR / EN / DE) */}
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as any)}
+          style={{
+            padding: '0.4rem 0.6rem',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            border: '1px solid var(--sb-border)',
+            borderRadius: 'var(--sb-radius)',
+            backgroundColor: 'var(--sb-card-bg)',
+            color: 'var(--sb-heading)',
+            cursor: 'pointer',
+          }}
+          title="Interface Language"
+        >
+          <option value="nl">🇳🇱 NL</option>
+          <option value="fr">🇫🇷 FR</option>
+          <option value="en">🇬🇧 EN</option>
+          <option value="de">🇩🇪 DE</option>
+        </select>
+
         {/* Currency Switcher */}
         <select
-          value={useApp().selectedCurrency}
-          onChange={(e) => useApp().setSelectedCurrency(e.target.value as any)}
+          value={selectedCurrency}
+          onChange={(e) => setSelectedCurrency(e.target.value as any)}
           className="input-sandbox"
           style={{
             padding: '0.4rem 0.6rem',

@@ -294,7 +294,7 @@ async function capture() {
   await sleep(800)
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '24_settings_multi_entities.png') })
 
-  // 25. Integrations Hub Marketplace (NEW)
+  // 26. Integrations Hub
   console.log('📸 26_integrations_marketplace.png')
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
@@ -305,7 +305,62 @@ async function capture() {
   await sleep(800)
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '26_integrations_marketplace.png') })
 
-  // 26. Dashboard Dark Mode
+  // 27. Digital Work Orders (Werkbonnen)
+  console.log('📸 27_workorders_field_service.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Digitale Werkbonnen')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '27_workorders_field_service.png') })
+
+  // 28. Dunning & Debt Escalation (Aanmaningen)
+  console.log('📸 28_dunning_debt_escalation.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Aanmaningen & Incasso')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '28_dunning_debt_escalation.png') })
+
+  // 29. AI Cash Flow Forecast & Simulation
+  console.log('📸 29_cashflow_ai_forecast.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('AI Cashflow & Prognose')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '29_cashflow_ai_forecast.png') })
+
+  // 30. Mileage Trips Log (Kilometerregistratie)
+  console.log('📸 30_mileage_trips_log.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Kilometerregistratie')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '30_mileage_trips_log.png') })
+
+  // 31. Supplier Purchase Orders & 3-Way Match (Bestelbonnen)
+  console.log('📸 31_procurement_3way_match.png')
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
+      el.textContent.includes('Bestelbonnen (PO)')
+    )
+    if (btn) btn.click()
+  })
+  await sleep(800)
+  await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '31_procurement_3way_match.png') })
+
+  // 32. Dashboard Dark Mode
   console.log('📸 25_dashboard_dark_mode.png')
   await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('.sidebar-nav-item')).find((el) =>
@@ -322,7 +377,7 @@ async function capture() {
   await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '25_dashboard_dark_mode.png') })
 
   await browser.close()
-  console.log(`\n🎉 Successfully captured all 26 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
+  console.log(`\n🎉 Successfully captured all 31 high-resolution screenshots in ${SCREENSHOTS_DIR}`)
 }
 
 capture().catch((err) => {

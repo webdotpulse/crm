@@ -20,6 +20,11 @@ import { AccountantView } from './components/accountant/AccountantView'
 import { ClientPortalView } from './components/portal/ClientPortalView'
 import { DevelopersView } from './components/developers/DevelopersView'
 import { IntegrationsView } from './components/integrations/IntegrationsView'
+import { WorkOrdersView } from './components/workorders/WorkOrdersView'
+import { DunningView } from './components/dunning/DunningView'
+import { CashFlowForecastView } from './components/cashflow/CashFlowForecastView'
+import { MileageView } from './components/mileage/MileageView'
+import { ProcurementView } from './components/procurement/ProcurementView'
 
 import { DealModal } from './components/deals/DealModal'
 import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
@@ -98,11 +103,17 @@ export const App: React.FC = () => {
 
           {currentView === 'subscriptions' && <SubscriptionsView />}
 
+          {currentView === 'workorders' && <WorkOrdersView />}
+
           {currentView === 'projects' && (
             <ProjectsView onOpenQuickModal={handleOpenQuickModal} />
           )}
 
           {currentView === 'products' && <ProductsView />}
+
+          {currentView === 'procurement' && <ProcurementView />}
+
+          {currentView === 'mileage' && <MileageView />}
 
           {currentView === 'invoices' && (
             <InvoicesView
@@ -111,9 +122,13 @@ export const App: React.FC = () => {
             />
           )}
 
+          {currentView === 'dunning' && <DunningView />}
+
           {currentView === 'expenses' && <ExpensesView />}
 
           {currentView === 'banking' && <BankingReconciliationView />}
+
+          {currentView === 'cashflow' && <CashFlowForecastView />}
 
           {currentView === 'accountant' && <AccountantView />}
 

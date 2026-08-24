@@ -18,6 +18,11 @@ import {
   Calculator,
   PenTool,
   Plug,
+  Wrench,
+  ShieldAlert,
+  Car,
+  Truck,
+  Sparkles,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -51,6 +56,9 @@ export const Sidebar: React.FC = () => {
     products,
     events,
     integrations,
+    workOrders,
+    mileageTrips,
+    purchaseOrders,
   } = useApp()
 
   const navSections: NavSection[] = [
@@ -96,6 +104,13 @@ export const Sidebar: React.FC = () => {
           badgeType: 'primary',
         },
         {
+          id: 'workorders',
+          label: 'Digitale Werkbonnen',
+          icon: <Wrench size={17} />,
+          badge: workOrders.filter((w) => w.status !== 'invoiced').length,
+          badgeType: 'purple',
+        },
+        {
           id: 'contracts',
           label: 'Contracts & SLAs',
           icon: <PenTool size={17} />,
@@ -112,7 +127,7 @@ export const Sidebar: React.FC = () => {
       ],
     },
     {
-      title: 'DELIVERY & STOCK',
+      title: 'DELIVERY & OPERATIONS',
       items: [
         {
           id: 'projects',
@@ -128,6 +143,20 @@ export const Sidebar: React.FC = () => {
           badge: products.length,
           badgeType: 'primary',
         },
+        {
+          id: 'procurement',
+          label: 'Bestelbonnen (PO)',
+          icon: <Truck size={17} />,
+          badge: purchaseOrders.length,
+          badgeType: 'primary',
+        },
+        {
+          id: 'mileage',
+          label: 'Kilometerregistratie',
+          icon: <Car size={17} />,
+          badge: `${mileageTrips.reduce((sum, t) => sum + t.distanceKm, 0).toFixed(0)} km`,
+          badgeType: 'primary',
+        },
       ],
     },
     {
@@ -138,6 +167,13 @@ export const Sidebar: React.FC = () => {
           label: 'Invoices & Billing',
           icon: <Receipt size={17} />,
           badge: invoices.filter((i) => i.status === 'issued').length || undefined,
+          badgeType: 'danger',
+        },
+        {
+          id: 'dunning',
+          label: 'Aanmaningen & Incasso',
+          icon: <ShieldAlert size={17} />,
+          badge: invoices.filter((i) => i.status === 'issued' || i.status === 'overdue').length || undefined,
           badgeType: 'danger',
         },
         {
@@ -153,6 +189,13 @@ export const Sidebar: React.FC = () => {
           icon: <Landmark size={17} />,
           badge: bankTransactions.filter((t) => !t.reconciled).length || undefined,
           badgeType: 'warning',
+        },
+        {
+          id: 'cashflow',
+          label: 'AI Cashflow & Prognose',
+          icon: <Sparkles size={17} />,
+          badge: '90D',
+          badgeType: 'purple',
         },
         {
           id: 'accountant',

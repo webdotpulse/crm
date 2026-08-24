@@ -38,6 +38,13 @@ import {
   IntegrationConfig,
   IntegrationId,
   IntegrationLog,
+  WorkOrder,
+  WorkOrderSignature,
+  MileageTrip,
+  PurchaseOrder,
+  DunningNotice,
+  DunningStage,
+  LanguageCode,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -67,6 +74,9 @@ import {
   initialWebhookEndpoints,
   initialWebhookLogs,
   initialIntegrations,
+  initialWorkOrders,
+  initialMileageTrips,
+  initialPurchaseOrders,
 } from '../data/initialData'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
 import { parseCodaFile, parseCamt053File, parseCsvBankFile } from '../services/codaParser'
@@ -74,6 +84,8 @@ import { generateSepaDirectDebitXml, SepaCollectionItem } from '../services/sepa
 import { parseInboundPeppolXml } from '../services/inboundPeppolParser'
 import { defaultExchangeRates } from '../services/currencyService'
 import { executeIntegrationSync, SyncResult } from '../services/integrationsService'
+import { calculateDunningEscalation, BELGIAN_STATUTORY_RECOVERY_FEE, STATUTORY_LATE_INTEREST_RATE } from '../services/dunningService'
+import { translate } from '../services/i18nService'
 
 export type AppView =
   | 'dashboard'
@@ -83,11 +95,16 @@ export type AppView =
   | 'quotes'
   | 'contracts'
   | 'subscriptions'
+  | 'workorders'
   | 'projects'
   | 'products'
   | 'invoices'
+  | 'dunning'
   | 'expenses'
+  | 'procurement'
+  | 'mileage'
   | 'banking'
+  | 'cashflow'
   | 'accountant'
   | 'peppol'
   | 'portal'
@@ -96,11 +113,14 @@ export type AppView =
   | 'settings'
 
 interface AppContextType {
-  // Navigation & Theme
+  // Navigation & Theme & Language
   currentView: AppView
   setCurrentView: (view: AppView) => void
   theme: 'light' | 'dark'
   toggleTheme: () => void
+  language: LanguageCode
+  setLanguage: (lang: LanguageCode) => void
+  t: (key: string) => string
 
   // Multi-Entity
   legalEntities: LegalEntity[]
@@ -278,6 +298,30 @@ interface AppContextType {
   deleteWebhookEndpoint: (id: string) => void
   webhookLogs: WebhookEventLog[]
   dispatchWebhookEvent: (event: string, payload: any) => Promise<WebhookEventLog[]>
+
+  // Work Orders (Werkbonnen)
+  workOrders: WorkOrder[]
+  addWorkOrder: (wo: WorkOrder) => void
+  updateWorkOrder: (wo: WorkOrder) => void
+  deleteWorkOrder: (id: string) => void
+  signWorkOrder: (id: string, signature: WorkOrderSignature) => void
+  convertWorkOrderToInvoice: (id: string) => string
+
+  // Dunning & Debt Collection (Aanmaningen)
+  dunningNotices: DunningNotice[]
+  sendDunningNotice: (invoiceId: string, stage: DunningStage) => DunningNotice
+
+  // Vehicle Mileage & Travel Log
+  mileageTrips: MileageTrip[]
+  addMileageTrip: (trip: MileageTrip) => void
+  deleteMileageTrip: (id: string) => void
+
+  // Supplier Purchase Orders & Procurement (Bestelbonnen)
+  purchaseOrders: PurchaseOrder[]
+  addPurchaseOrder: (po: PurchaseOrder) => void
+  updatePurchaseOrder: (po: PurchaseOrder) => void
+  deletePurchaseOrder: (id: string) => void
+  receivePurchaseOrderItems: (id: string, itemReceipts: { itemId: string; quantityReceived: number }[]) => void
 
   // Integrations Hub (8 Connectors)
   integrations: IntegrationConfig[]
@@ -477,6 +521,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialIntegrations
   })
 
+  // Language & Localization (NL / FR / EN / DE)
+  const [language, setLanguageState] = useState<LanguageCode>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_lang`)
+    return (saved as LanguageCode) || 'nl'
+  })
+
+  const setLanguage = (lang: LanguageCode) => {
+    setLanguageState(lang)
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_lang`, lang)
+    } catch (e) {}
+  }
+
+  const t = (key: string) => translate(key, language)
+
+  // Work Orders (Werkbonnen)
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_workorders`)
+    return saved ? JSON.parse(saved) : initialWorkOrders
+  })
+
+  // Mileage & Travel Log (Kilometers)
+  const [mileageTrips, setMileageTrips] = useState<MileageTrip[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_mileage`)
+    return saved ? JSON.parse(saved) : initialMileageTrips
+  })
+
+  // Purchase Orders & Procurement (Bestelbonnen)
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_purchaseorders`)
+    return saved ? JSON.parse(saved) : initialPurchaseOrders
+  })
+
+  // Dunning Notices & Debt Collection
+  const [dunningNotices, setDunningNotices] = useState<DunningNotice[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_dunningnotices`)
+    return saved ? JSON.parse(saved) : []
+  })
+
   const activeLegalEntity =
     legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
 
@@ -509,6 +592,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY}_webhooks`, JSON.stringify(webhookEndpoints))
       localStorage.setItem(`${STORAGE_KEY}_webhooklogs`, JSON.stringify(webhookLogs))
       localStorage.setItem(`${STORAGE_KEY}_integrations`, JSON.stringify(integrations))
+      localStorage.setItem(`${STORAGE_KEY}_workorders`, JSON.stringify(workOrders))
+      localStorage.setItem(`${STORAGE_KEY}_mileage`, JSON.stringify(mileageTrips))
+      localStorage.setItem(`${STORAGE_KEY}_purchaseorders`, JSON.stringify(purchaseOrders))
+      localStorage.setItem(`${STORAGE_KEY}_dunningnotices`, JSON.stringify(dunningNotices))
     } catch (e) {
       console.warn('Storage sync error:', e)
     }
@@ -540,6 +627,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     webhookEndpoints,
     webhookLogs,
     integrations,
+    workOrders,
+    mileageTrips,
+    purchaseOrders,
+    dunningNotices,
   ])
 
   useEffect(() => {
@@ -1690,6 +1781,199 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }
 
+  // Work Orders (Werkbonnen)
+  const addWorkOrder = (wo: WorkOrder) => setWorkOrders((prev) => [wo, ...prev])
+  const updateWorkOrder = (wo: WorkOrder) =>
+    setWorkOrders((prev) => prev.map((w) => (w.id === wo.id ? wo : w)))
+  const deleteWorkOrder = (id: string) =>
+    setWorkOrders((prev) => prev.filter((w) => w.id !== id))
+  const signWorkOrder = (id: string, signature: WorkOrderSignature) => {
+    setWorkOrders((prev) =>
+      prev.map((w) =>
+        w.id === id
+          ? {
+              ...w,
+              status: 'signed',
+              signature,
+              completedDate: new Date().toISOString().slice(0, 10),
+            }
+          : w
+      )
+    )
+  }
+
+  const convertWorkOrderToInvoice = (id: string): string => {
+    const wo = workOrders.find((w) => w.id === id)
+    if (!wo) return ''
+
+    const today = new Date().toISOString().slice(0, 10)
+    const dueDate = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`
+
+    const items: any[] = []
+
+    // Labor items
+    wo.laborItems.forEach((labor) => {
+      items.push({
+        id: `item-${Date.now()}-${Math.random()}`,
+        description: `Labor: ${labor.description} (${labor.technicianName})`,
+        quantity: labor.hours,
+        unit: 'hour',
+        unitPrice: labor.hourlyRate,
+        discountPercent: 0,
+        vatRate: 21,
+        total: labor.hours * labor.hourlyRate * 1.21,
+      })
+    })
+
+    // Material items
+    wo.materialItems.forEach((mat) => {
+      items.push({
+        id: `item-${Date.now()}-${Math.random()}`,
+        description: mat.description,
+        quantity: mat.quantity,
+        unit: mat.unit,
+        unitPrice: mat.unitPrice,
+        discountPercent: 0,
+        vatRate: 21,
+        total: mat.quantity * mat.unitPrice * 1.21,
+      })
+    })
+
+    // Travel allowance
+    if (wo.travelKilometers > 0) {
+      items.push({
+        id: `item-${Date.now()}-travel`,
+        description: `On-site Service Travel (${wo.travelKilometers} km)`,
+        quantity: wo.travelKilometers,
+        unit: 'km',
+        unitPrice: wo.travelRatePerKm || 0.75,
+        discountPercent: 0,
+        vatRate: 21,
+        total: wo.travelKilometers * (wo.travelRatePerKm || 0.75) * 1.21,
+      })
+    }
+
+    const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0)
+    const vatTotal = subtotal * 0.21
+    const total = subtotal + vatTotal
+
+    const newInvoice: Invoice = {
+      id: `inv-${Date.now()}`,
+      legalEntityId: activeLegalEntityId,
+      number: invoiceNumber,
+      clientType: wo.clientType,
+      companyId: wo.companyId,
+      individualId: wo.individualId,
+      issueDate: today,
+      dueDate: dueDate,
+      status: 'issued',
+      peppolStatus: 'not_sent',
+      items: items.map((it) => ({ ...it, taxCategory: 'S' as const })),
+      subtotal: Math.round(subtotal * 100) / 100,
+      taxBreakdown: [
+        {
+          rate: 21,
+          taxCategory: 'S',
+          taxableAmount: Math.round(subtotal * 100) / 100,
+          taxAmount: Math.round(vatTotal * 100) / 100,
+        },
+      ],
+      taxTotal: Math.round(vatTotal * 100) / 100,
+      total: Math.round(total * 100) / 100,
+      amountPaid: 0,
+      notes: `Generated from approved Digital Work Order ${wo.number} (${wo.title}). Signed by ${wo.signature?.signedBy || 'Customer'}.`,
+      structuredReference: `+++090/${Math.floor(1000 + Math.random() * 9000)}/${Math.floor(10000 + Math.random() * 90000)}+++`,
+      currency: 'EUR',
+      createdAt: new Date().toISOString(),
+    }
+
+    addInvoice(newInvoice)
+
+    setWorkOrders((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, status: 'invoiced', invoiceId: newInvoice.id } : w))
+    )
+
+    return newInvoice.id
+  }
+
+  // Dunning & Debt Collection (Aanmaningen)
+  const sendDunningNotice = (invoiceId: string, stage: DunningStage): DunningNotice => {
+    const inv = invoices.find((i) => i.id === invoiceId)
+    const today = new Date().toISOString().slice(0, 10)
+    const daysOverdue = inv
+      ? Math.max(0, Math.floor((Date.now() - new Date(inv.dueDate).getTime()) / 86400000))
+      : 14
+
+    const balanceDue = inv ? inv.total - inv.amountPaid : 1000
+    const statutoryFee = stage === 'reminder_1' ? 0 : BELGIAN_STATUTORY_RECOVERY_FEE
+    const interestAmount =
+      stage === 'reminder_1'
+        ? 0
+        : Math.round((balanceDue * (STATUTORY_LATE_INTEREST_RATE / 365) * daysOverdue) * 100) / 100
+    const totalClaimAmount = balanceDue + statutoryFee + interestAmount
+
+    const newNotice: DunningNotice = {
+      id: `dun-${Date.now()}`,
+      invoiceId,
+      stage,
+      stageNumber: stage === 'reminder_1' ? 1 : stage === 'formal_notice' ? 2 : 3,
+      issuedDate: today,
+      dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+      daysOverdue,
+      principalAmount: balanceDue,
+      statutoryFee,
+      interestAmount,
+      totalClaimAmount,
+      paymentLinkUrl: `https://pay.pulsework.be/checkout/${invoiceId}?method=bancontact`,
+      sentVia: stage === 'bailiff_notice' ? 'postal' : 'email',
+      status: 'sent',
+      notes:
+        stage === 'reminder_1'
+          ? 'Friendly payment reminder sent with Bancontact 1-click link.'
+          : stage === 'formal_notice'
+          ? 'Formal Notice of Default (Ingebrekestelling) dispatched with statutory €40.00 fee.'
+          : 'Pre-Legal Notice dispatched for Bailiff recovery.',
+    }
+
+    setDunningNotices((prev) => [newNotice, ...prev])
+    return newNotice
+  }
+
+  // Mileage & Travel Log
+  const addMileageTrip = (trip: MileageTrip) => setMileageTrips((prev) => [trip, ...prev])
+  const deleteMileageTrip = (id: string) =>
+    setMileageTrips((prev) => prev.filter((t) => t.id !== id))
+
+  // Purchase Orders & Procurement
+  const addPurchaseOrder = (po: PurchaseOrder) => setPurchaseOrders((prev) => [po, ...prev])
+  const updatePurchaseOrder = (po: PurchaseOrder) =>
+    setPurchaseOrders((prev) => prev.map((p) => (p.id === po.id ? po : p)))
+  const deletePurchaseOrder = (id: string) =>
+    setPurchaseOrders((prev) => prev.filter((p) => p.id !== id))
+
+  const receivePurchaseOrderItems = (
+    id: string,
+    itemReceipts: { itemId: string; quantityReceived: number }[]
+  ) => {
+    setPurchaseOrders((prev) =>
+      prev.map((po) => {
+        if (po.id !== id) return po
+        const updatedItems = po.items.map((item) => {
+          const match = itemReceipts.find((r) => r.itemId === item.id)
+          if (match) {
+            return { ...item, quantityReceived: match.quantityReceived }
+          }
+          return item
+        })
+        const allReceived = updatedItems.every((i) => i.quantityReceived >= i.quantityOrdered)
+        const anyReceived = updatedItems.some((i) => i.quantityReceived > 0)
+        const nextStatus = allReceived ? 'received' : anyReceived ? 'partially_received' : po.status
+        return { ...po, items: updatedItems, status: nextStatus }
+      })
+    )
+  }
+
   const resetToDemoData = () => {
     setLegalEntities(initialLegalEntities)
     setActiveLegalEntityId(initialLegalEntities[0].id)
@@ -1719,13 +2003,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWebhookEndpoints(initialWebhookEndpoints)
     setWebhookLogs(initialWebhookLogs)
     setIntegrations(initialIntegrations)
+    setWorkOrders(initialWorkOrders)
+    setMileageTrips(initialMileageTrips)
+    setPurchaseOrders(initialPurchaseOrders)
+    setDunningNotices([])
     setPeppolLogs([])
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
     const backup = {
-      version: '2.6.0',
+      version: '2.7.0',
       exportedAt: new Date().toISOString(),
       legalEntities,
       companyProfile,
@@ -1754,6 +2042,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       webhookEndpoints,
       webhookLogs,
       integrations,
+      workOrders,
+      mileageTrips,
+      purchaseOrders,
+      dunningNotices,
     }
     return JSON.stringify(backup, null, 2)
   }
@@ -1787,6 +2079,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.webhookEndpoints) setWebhookEndpoints(data.webhookEndpoints)
       if (data.webhookLogs) setWebhookLogs(data.webhookLogs)
       if (data.integrations) setIntegrations(data.integrations)
+      if (data.workOrders) setWorkOrders(data.workOrders)
+      if (data.mileageTrips) setMileageTrips(data.mileageTrips)
+      if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders)
+      if (data.dunningNotices) setDunningNotices(data.dunningNotices)
       return true
     } catch (e) {
       console.error('Import error:', e)
@@ -1927,6 +2223,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteWebhookEndpoint,
         webhookLogs,
         dispatchWebhookEvent,
+        language,
+        setLanguage,
+        t,
+        workOrders,
+        addWorkOrder,
+        updateWorkOrder,
+        deleteWorkOrder,
+        signWorkOrder,
+        convertWorkOrderToInvoice,
+        dunningNotices,
+        sendDunningNotice,
+        mileageTrips,
+        addMileageTrip,
+        deleteMileageTrip,
+        purchaseOrders,
+        addPurchaseOrder,
+        updatePurchaseOrder,
+        deletePurchaseOrder,
+        receivePurchaseOrderItems,
         integrations,
         toggleIntegration,
         updateIntegrationCredentials,

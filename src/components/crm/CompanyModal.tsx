@@ -3,6 +3,7 @@ import { X, Building2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Company, PeppolScheme } from '../../types'
 import { useApp } from '../../context/AppContext'
 import { lookupPeppolParticipant } from '../../services/peppolDispatcher'
+import { searchKboRegistry } from '../../services/kboLookupService'
 
 interface CompanyModalProps {
   company?: Company | null
@@ -30,6 +31,33 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({ company, onClose }) 
   const [notes, setNotes] = useState(company?.notes || '')
   const [lookupLoading, setLookupLoading] = useState(false)
   const [lookupMessage, setLookupMessage] = useState<string | null>(null)
+  const [kboLoading, setKboLoading] = useState(false)
+
+  const handleKboLookup = async () => {
+    const query = vatNumber || name
+    if (!query) return
+    setKboLoading(true)
+    setLookupMessage(null)
+
+    const results = await searchKboRegistry(query)
+    setKboLoading(false)
+
+    if (results.length > 0) {
+      const match = results[0]
+      setName(match.commercialName || match.legalName)
+      setLegalName(`${match.legalName} (${match.legalForm})`)
+      setVatNumber(match.vatNumber)
+      setPeppolEndpoint(match.vatNumber.replace(/[^0-9]/g, ''))
+      setAddress(`${match.address.street} ${match.address.number}${match.address.box ? ', ' + match.address.box : ''}`)
+      setPostalCode(match.address.postalCode)
+      setCity(match.address.city)
+      setCountry(match.address.country)
+      setCountryCode('BE')
+      setLookupMessage(`✓ KBO / BCE Verified: ${match.legalName} (NACE: ${match.naceCodes[0]?.code || 'Active'})`)
+    } else {
+      setLookupMessage('⚠ No enterprise found in Belgian KBO / BCE registry.')
+    }
+  }
 
   const handleVatChange = (val: string) => {
     setVatNumber(val)
@@ -164,22 +192,33 @@ export const CompanyModal: React.FC<CompanyModalProps> = ({ company, onClose }) 
               marginBottom: '1rem',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <ShieldCheck size={16} color="var(--sb-primary)" />
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
-                  VAT & Peppol E-Invoicing Identifiers
+                  Belgian KBO / BCE & Peppol Identifiers
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleLookupPeppol}
-                disabled={lookupLoading}
-                className="btn-sandbox btn-sandbox-sm btn-sandbox-soft-primary"
-              >
-                <Sparkles size={13} />
-                <span>{lookupLoading ? 'Checking SMP...' : 'Verify Peppol'}</span>
-              </button>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={handleKboLookup}
+                  disabled={kboLoading}
+                  className="btn-sandbox btn-sandbox-sm btn-sandbox-primary"
+                  style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+                >
+                  <Sparkles size={13} />
+                  <span>{kboLoading ? 'Searching KBO...' : '⚡ Look up KBO / BCE'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLookupPeppol}
+                  disabled={lookupLoading}
+                  className="btn-sandbox btn-sandbox-sm btn-sandbox-soft-primary"
+                >
+                  <span>{lookupLoading ? 'Checking SMP...' : 'Verify Peppol'}</span>
+                </button>
+              </div>
             </div>
 
             {lookupMessage && (
