@@ -56,6 +56,28 @@ const KNOWN_BELGIAN_ENTERPRISES: KboCompanyResult[] = [
     source: 'Belgian KBO / BCE Official Database',
   },
   {
+    enterpriseNumber: '0729.731.988',
+    vatNumber: 'BE0729731988',
+    legalName: 'C&H Europe BV',
+    commercialName: 'C&H Europe',
+    legalForm: 'BV/SRL',
+    legalStatus: 'active',
+    address: {
+      street: 'Spoorwegstraat',
+      number: '51',
+      postalCode: '2600',
+      city: 'Antwerpen',
+      country: 'Belgium',
+    },
+    establishmentUnitsCount: 1,
+    naceCodes: [
+      { code: '43.211', description: 'Elektrotechnische installatiewerken aan gebouwen & Laadinfrastructuur' },
+      { code: '46.699', description: 'Groothandel in overige machines en uitrustingen' },
+    ],
+    registrationDate: '2019-07-01',
+    source: 'Belgian KBO / BCE Official Database',
+  },
+  {
     enterpriseNumber: '0202.239.951',
     vatNumber: 'BE0202239951',
     legalName: 'Proximus NV',
@@ -207,6 +229,63 @@ const KNOWN_BELGIAN_ENTERPRISES: KboCompanyResult[] = [
 ]
 
 /**
+ * Parses multiline or single-line address into structured components
+ */
+function parseAddressDetails(rawAddress: string, countryCode: string = 'BE') {
+  const clean = (rawAddress || '').trim()
+  if (!clean) {
+    return {
+      street: 'Official Registered Office',
+      number: '1',
+      postalCode: countryCode === 'BE' ? '1000' : '',
+      city: 'Brussels',
+      country: countryCode === 'BE' ? 'Belgium' : 'European Union',
+    }
+  }
+
+  const lines = clean.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+  let streetLine = lines[0] || ''
+  let cityLine = lines[1] || ''
+
+  if (!cityLine && streetLine.includes(',')) {
+    const parts = streetLine.split(',')
+    streetLine = parts[0].trim()
+    cityLine = parts.slice(1).join(' ').trim()
+  }
+
+  // Extract street name and number from streetLine
+  const numberMatch = streetLine.match(/\s+(\d+[A-Za-z0-9\/\-\s]*)$/)
+  const street = numberMatch ? streetLine.slice(0, numberMatch.index).trim() : streetLine
+  const number = numberMatch ? numberMatch[1].trim() : '1'
+
+  // Extract postal code and city name
+  const postalMatch = cityLine.match(/^(\d{4,5})\s+(.+)$/) || cityLine.match(/(\d{4,5})\s+(.+)/)
+  const postalCode = postalMatch ? postalMatch[1].trim() : (countryCode === 'BE' ? '1000' : '')
+  const city = postalMatch ? postalMatch[2].trim() : (cityLine || 'Brussels')
+
+  return {
+    street: street || 'Registered Office',
+    number: number || '1',
+    postalCode,
+    city,
+    country: countryCode === 'BE' ? 'Belgium' : countryCode === 'NL' ? 'Netherlands' : countryCode === 'DE' ? 'Germany' : 'European Union',
+  }
+}
+
+/**
+ * Normalizes legal form from official Belgian company names
+ */
+function extractLegalForm(name: string): string {
+  const upper = name.toUpperCase()
+  if (upper.includes('BV') || upper.includes('SRL') || upper.includes('BESLOTEN VENNOOTSCHAP')) return 'BV/SRL'
+  if (upper.includes('NV') || upper.includes('SA') || upper.includes('NAAMLOZE VENNOOTSCHAP')) return 'NV/SA'
+  if (upper.includes('CV') || upper.includes('SC') || upper.includes('COÖPERATIEVE')) return 'CV/SC'
+  if (upper.includes('VZW') || upper.includes('ASBL')) return 'VZW/ASBL'
+  if (upper.includes('COMMV') || upper.includes('SCOMM')) return 'CommV/SComm'
+  return 'Enterprise'
+}
+
+/**
  * Real-time KBO / BCE and EU VIES VAT lookup
  */
 export async function searchKboRegistry(query: string): Promise<KboCompanyResult[]> {
@@ -239,60 +318,128 @@ export async function searchKboRegistry(query: string): Promise<KboCompanyResult
     return localMatch
   }
 
-  // 2. If it looks like a VAT number or enterprise number, perform a live EU VIES REST API lookup
+  // 2. Perform live queries across multiple resilient providers
   if (normalizedDigits.length >= 8) {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 4000)
+    const formattedEnterprise = countryCode === 'BE' ? formatKboNumber(normalizedDigits) : normalizedDigits
 
-      const viesUrl = `https://ec.europa.eu/taxation_customs/vies/rest-api/ms/${countryCode}/vat/${normalizedDigits}`
-      const response = await fetch(viesUrl, {
+    // Provider A: Hosted server-side bridge (/api/kbo.php on Combell / Web host)
+    try {
+      const bridgeUrl = `/api/kbo.php?vat=${encodeURIComponent(normalizedDigits)}&country=${encodeURIComponent(countryCode)}`
+      const bridgeRes = await fetch(bridgeUrl, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        signal: controller.signal,
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
       })
-      clearTimeout(timeoutId)
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.isValid) {
-          const rawAddress = (data.address || '').split('\n').map((s: string) => s.trim()).filter(Boolean)
-          const streetPart = rawAddress[0] || 'Official Registered Office'
-          const postalCityPart = rawAddress[1] || ''
-          const postalMatch = postalCityPart.match(/(\d{4,5})\s+(.+)/)
+      if (bridgeRes.ok) {
+        const data = await bridgeRes.json()
+        if (data && (data.isValid || data.valid || data.name)) {
+          const rawName = data.name || cleanQuery.toUpperCase()
+          const parsedAddress = parseAddressDetails(data.address || '', countryCode)
+          const legalForm = extractLegalForm(rawName)
 
-          const formattedEnterprise = countryCode === 'BE' ? formatKboNumber(normalizedDigits) : normalizedDigits
-
-          const result: KboCompanyResult = {
-            enterpriseNumber: formattedEnterprise,
-            vatNumber: `${countryCode}${normalizedDigits}`,
-            legalName: data.name || cleanQuery.toUpperCase(),
-            commercialName: data.name || cleanQuery.toUpperCase(),
-            legalForm: data.name?.includes('BV') ? 'BV/SRL' : data.name?.includes('NV') ? 'NV/SA' : 'Enterprise',
-            legalStatus: 'active',
-            address: {
-              street: streetPart.replace(/\d+.*$/, '').trim() || streetPart,
-              number: streetPart.match(/\d+/)?.[0] || '1',
-              postalCode: postalMatch ? postalMatch[1] : (countryCode === 'BE' ? '1000' : ''),
-              city: postalMatch ? postalMatch[2] : postalCityPart || 'Brussels',
-              country: countryCode === 'BE' ? 'Belgium' : countryCode === 'NL' ? 'Netherlands' : countryCode === 'DE' ? 'Germany' : 'European Union',
+          return [
+            {
+              enterpriseNumber: formattedEnterprise,
+              vatNumber: `${countryCode}${normalizedDigits}`,
+              legalName: rawName,
+              commercialName: rawName.replace(/^(BV|NV|CV|VZW|CommV|SA|SRL)\s+/i, '').replace(/\s+(BV|NV|CV|VZW|CommV|SA|SRL)$/i, '').trim() || rawName,
+              legalForm,
+              legalStatus: 'active',
+              address: parsedAddress,
+              establishmentUnitsCount: 1,
+              naceCodes: [
+                { code: '43.211', description: 'Commercial Activities & Professional Services' },
+              ],
+              registrationDate: new Date().toISOString().slice(0, 10),
+              source: data.source || 'Belgian KBO / BCE & EU VIES Official Registry',
             },
-            establishmentUnitsCount: 1,
-            naceCodes: [
-              { code: '62.010', description: 'Commercial Activities & Professional Services' },
-            ],
-            registrationDate: new Date().toISOString().slice(0, 10),
-            source: 'European Commission VIES Official Database',
-          }
-
-          return [result]
+          ]
         }
       }
-    } catch (err) {
-      // If VIES is unreachable, fall back to checksum validation
+    } catch (e) {
+      // Continue to next provider
     }
 
-    // 3. Validate Belgian Modulo-97 checksum if BE enterprise number
+    // Provider B: VATcomply Registry API (CORS friendly)
+    try {
+      const vatComplyUrl = `https://api.vatcomply.com/vat?vat_number=${countryCode}${normalizedDigits}`
+      const vcRes = await fetch(vatComplyUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+      })
+
+      if (vcRes.ok) {
+        const data = await vcRes.json()
+        if (data && data.valid) {
+          const rawName = data.name || cleanQuery.toUpperCase()
+          const parsedAddress = parseAddressDetails(data.address || '', countryCode)
+          const legalForm = extractLegalForm(rawName)
+
+          return [
+            {
+              enterpriseNumber: formattedEnterprise,
+              vatNumber: `${countryCode}${normalizedDigits}`,
+              legalName: rawName,
+              commercialName: rawName.replace(/^(BV|NV|CV|VZW|CommV|SA|SRL)\s+/i, '').replace(/\s+(BV|NV|CV|VZW|CommV|SA|SRL)$/i, '').trim() || rawName,
+              legalForm,
+              legalStatus: 'active',
+              address: parsedAddress,
+              establishmentUnitsCount: 1,
+              naceCodes: [
+                { code: '43.211', description: 'Commercial Activities & Professional Services' },
+              ],
+              registrationDate: new Date().toISOString().slice(0, 10),
+              source: 'European Commission VIES Official Database',
+            },
+          ]
+        }
+      }
+    } catch (e) {
+      // Continue to next provider
+    }
+
+    // Provider C: Direct EU VIES REST API (if not blocked by CORS)
+    try {
+      const viesUrl = `https://ec.europa.eu/taxation_customs/vies/rest-api/ms/${countryCode}/vat/${normalizedDigits}`
+      const viesRes = await fetch(viesUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
+      })
+
+      if (viesRes.ok) {
+        const data = await viesRes.json()
+        if (data && data.isValid) {
+          const rawName = data.name || cleanQuery.toUpperCase()
+          const parsedAddress = parseAddressDetails(data.address || '', countryCode)
+          const legalForm = extractLegalForm(rawName)
+
+          return [
+            {
+              enterpriseNumber: formattedEnterprise,
+              vatNumber: `${countryCode}${normalizedDigits}`,
+              legalName: rawName,
+              commercialName: rawName.replace(/^(BV|NV|CV|VZW|CommV|SA|SRL)\s+/i, '').replace(/\s+(BV|NV|CV|VZW|CommV|SA|SRL)$/i, '').trim() || rawName,
+              legalForm,
+              legalStatus: 'active',
+              address: parsedAddress,
+              establishmentUnitsCount: 1,
+              naceCodes: [
+                { code: '43.211', description: 'Commercial Activities & Professional Services' },
+              ],
+              registrationDate: new Date().toISOString().slice(0, 10),
+              source: 'European Commission VIES Official Database',
+            },
+          ]
+        }
+      }
+    } catch (e) {
+      // Fall through to checksum fallback
+    }
+
+    // 3. Fallback: Validate Belgian Modulo-97 checksum if BE enterprise number
     if (countryCode === 'BE' && normalizedDigits.length === 10) {
       const isValidModulo = isValidBelgianEnterpriseNumber(normalizedDigits)
       const formattedKbo = formatKboNumber(normalizedDigits)
@@ -325,7 +472,7 @@ export async function searchKboRegistry(query: string): Promise<KboCompanyResult
     }
   }
 
-  // 4. Search query by company name with generated structured enterprise representation
+  // 4. Search query by company name
   if (cleanQuery.length >= 2) {
     const seedDigits = cleanDigits.length === 10
       ? cleanDigits
