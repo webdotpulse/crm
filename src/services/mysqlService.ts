@@ -185,10 +185,16 @@ export async function syncDataToMySql(data: any): Promise<{ success: boolean; me
       },
       body: JSON.stringify({ data }),
     })
-    const result = await response.json()
+    const result = await response.json().catch(() => null)
+    if (result && typeof result === 'object') {
+      return {
+        success: Boolean(result.success),
+        message: result.message || (result.success ? 'Data synchronized with database.' : 'Sync failed.'),
+      }
+    }
     return {
-      success: Boolean(result.success),
-      message: result.message || 'Data synchronized with database.',
+      success: response.ok,
+      message: response.ok ? 'Data synchronized with database.' : `Server returned HTTP ${response.status}`,
     }
   } catch (err: any) {
     return {

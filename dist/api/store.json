@@ -1,0 +1,24 @@
+{
+    "users": [
+        {
+            "id": "usr-1",
+            "name": "Admin",
+            "email": "admin@test.com",
+            "role": "admin"
+        }
+    ],
+    "legalEntities": [
+        {
+            "id": "ent-1",
+            "name": "Main Entity",
+            "vatNumber": "BE0123456789"
+        }
+    ],
+    "companies": [
+        {
+            "id": "comp-1",
+            "name": "Acme Corp",
+            "vatNumber": "BE0987654321"
+        }
+    ]
+}
