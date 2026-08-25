@@ -155,10 +155,10 @@ export function generatePeppolUblXml(
     <cbc:PaymentMeansCode name="SEPA Credit Transfer">58</cbc:PaymentMeansCode>
     <cbc:PaymentID>${sanitize(invoice.structuredReference || invoice.number)}</cbc:PaymentID>
     <cac:PayeeFinancialAccount>
-      <cbc:ID>${sanitize(seller.iban.replace(/\s+/g, ''))}</cbc:ID>
+      <cbc:ID>${sanitize((seller.iban || '').replace(/\s+/g, ''))}</cbc:ID>
       <cbc:Name>${sanitize(seller.legalName || seller.name)}</cbc:Name>
       <cac:FinancialInstitutionBranch>
-        <cbc:ID>${sanitize(seller.bic)}</cbc:ID>
+        <cbc:ID>${sanitize(seller.bic || '')}</cbc:ID>
       </cac:FinancialInstitutionBranch>
     </cac:PayeeFinancialAccount>
   </cac:PaymentMeans>

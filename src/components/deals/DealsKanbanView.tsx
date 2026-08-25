@@ -35,7 +35,7 @@ export const DealsKanbanView: React.FC<DealsKanbanViewProps> = ({
   onOpenQuickModal,
   onGenerateQuoteFromDeal,
 }) => {
-  const { deals, companies, moveDealStage, deleteDeal } = useApp()
+  const { deals, companies, individuals, moveDealStage, deleteDeal } = useApp()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null)
@@ -147,13 +147,15 @@ export const DealsKanbanView: React.FC<DealsKanbanViewProps> = ({
               <div className="kanban-col-body">
                 {colDeals.map((deal) => {
                   const comp = companies.find((c) => c.id === deal.companyId)
+                  const ind = individuals.find((i) => i.id === deal.individualId)
+                  const clientName = comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Direct Client'
                   return (
                     <div key={deal.id} className="kanban-card">
                       {/* Company & Deal Title */}
                       <div style={{ marginBottom: '0.4rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--sb-body-subtle)' }}>
                           <Building2 size={12} />
-                          <span>{comp?.name || 'Unknown Company'}</span>
+                          <span>{clientName}</span>
                         </div>
                         <h4 style={{ fontSize: '0.92rem', color: 'var(--sb-heading)', marginTop: '0.15rem' }}>
                           {deal.title}

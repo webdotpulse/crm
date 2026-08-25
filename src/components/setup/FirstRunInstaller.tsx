@@ -54,9 +54,17 @@ import {
   testMySqlConnection,
   ConnectionTestResult,
 } from '../../services/mysqlService'
+import { searchKboRegistry } from '../../services/kboLookupService'
+import { DEFAULT_COMPANY_LOGO } from '../../data/initialData'
 
 export const FirstRunInstaller: React.FC = () => {
   const { completeFirstRunInstall, securityPolicy } = useApp()
+
+  const [isKboLookingUp, setIsKboLookingUp] = useState(false)
+  const [kboLookupStatus, setKboLookupStatus] = useState<string | null>(null)
+
+  // Logo state
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string>(DEFAULT_COMPANY_LOGO)
 
   const [currentStep, setCurrentStep] = useState<number>(1)
   const totalSteps = 7
@@ -429,6 +437,7 @@ export const FirstRunInstaller: React.FC = () => {
           bic: companyBic.trim(),
           defaultCurrency: defaultCurrency,
           defaultVatRate: defaultVatRate,
+          logoUrl: companyLogoUrl,
         },
         databaseConfig: {
           mode: dbMode,
@@ -1391,6 +1400,127 @@ export const FirstRunInstaller: React.FC = () => {
                   />
                 </div>
 
+                {/* Company Brand Logo Upload & Preview */}
+                <div
+                  style={{
+                    gridColumn: '1 / -1',
+                    padding: '1.2rem',
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '0.75rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      color: '#cbd5e1',
+                      margin: 0,
+                    }}
+                  >
+                    🏢 Company Logo (Used on Quotes, Invoices & Client Portals)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        width: '180px',
+                        height: '64px',
+                        borderRadius: '0.5rem',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        padding: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      {companyLogoUrl ? (
+                        <img
+                          src={companyLogoUrl}
+                          alt="Company Logo Preview"
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>No Logo Selected</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.5rem 0.85rem',
+                            backgroundColor: 'rgba(63, 120, 224, 0.2)',
+                            border: '1px solid rgba(63, 120, 224, 0.4)',
+                            color: '#709ff5',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span>Upload Image File (PNG/SVG/JPG)</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  if (typeof reader.result === 'string') {
+                                    setCompanyLogoUrl(reader.result)
+                                  }
+                                }
+                                reader.readAsDataURL(file)
+                              }
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setCompanyLogoUrl(DEFAULT_COMPANY_LOGO)}
+                          style={{
+                            padding: '0.5rem 0.85rem',
+                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#e2e8f0',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Default PulseWork Logo
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Or paste direct logo URL (https://... or data:image/...)"
+                        value={companyLogoUrl}
+                        onChange={(e) => setCompanyLogoUrl(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.55rem 0.75rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.5rem',
+                          color: '#ffffff',
+                          fontSize: '0.8rem',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Country */}
                 <div>
                   <label
@@ -1426,24 +1556,75 @@ export const FirstRunInstaller: React.FC = () => {
                   </select>
                 </div>
 
-                {/* VAT / Enterprise Number */}
+                {/* VAT / Enterprise Number with 1-Click KBO Auto-Fill */}
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      color: '#cbd5e1',
-                      marginBottom: '0.4rem',
-                    }}
-                  >
-                    VAT / Enterprise Number (KBO/BCE) *
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#cbd5e1',
+                        margin: 0,
+                      }}
+                    >
+                      VAT / Enterprise Number (KBO/BCE) *
+                    </label>
+                    <button
+                      type="button"
+                      disabled={isKboLookingUp}
+                      onClick={async () => {
+                        const query = vatNumber || companyName
+                        if (!query) return
+                        setIsKboLookingUp(true)
+                        setKboLookupStatus(null)
+                        try {
+                          const results = await searchKboRegistry(query)
+                          if (results.length > 0) {
+                            const match = results[0]
+                            setCompanyName(match.commercialName || match.legalName)
+                            setLegalName(match.legalName || match.commercialName)
+                            setVatNumber(match.vatNumber)
+                            setPeppolEndpoint(match.vatNumber.replace(/[^0-9]/g, ''))
+                            if (match.address.street) {
+                              setCompanyAddress(`${match.address.street} ${match.address.number || ''}`.trim())
+                            }
+                            if (match.address.city) setCompanyCity(match.address.city)
+                            if (match.address.postalCode) setCompanyPostalCode(match.address.postalCode)
+                            if (match.address.country) setCountry(match.address.country)
+                            setKboLookupStatus(`✓ KBO / BCE Verified: ${match.legalName}`)
+                          } else {
+                            setKboLookupStatus('⚠ No enterprise found in KBO/BCE database.')
+                          }
+                        } catch (err) {
+                          setKboLookupStatus('⚠ Lookup timed out, please enter details manually.')
+                        } finally {
+                          setIsKboLookingUp(false)
+                        }
+                      }}
+                      style={{
+                        background: 'rgba(63, 120, 224, 0.2)',
+                        border: '1px solid rgba(63, 120, 224, 0.4)',
+                        color: '#709ff5',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '0.35rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>{isKboLookingUp ? 'Searching KBO...' : 'Lookup KBO / Auto-fill'}</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={vatNumber}
                     onChange={handleVatChange}
-                    placeholder="e.g. BE0849294901"
+                    placeholder="e.g. BE0849294901 or 0849.294.901"
                     style={{
                       width: '100%',
                       padding: '0.75rem 1rem',
@@ -1454,6 +1635,19 @@ export const FirstRunInstaller: React.FC = () => {
                       fontSize: '0.9rem',
                     }}
                   />
+                  {kboLookupStatus && (
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        color: kboLookupStatus.startsWith('✓') ? '#38b995' : '#fab758',
+                        marginTop: '0.25rem',
+                        display: 'block',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {kboLookupStatus}
+                    </span>
+                  )}
                 </div>
 
                 {/* Peppol Endpoint Scheme & ID */}

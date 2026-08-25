@@ -30,6 +30,7 @@ export const PeppolHubView: React.FC<PeppolHubViewProps> = ({ selectedInvoice })
   const {
     invoices,
     companies,
+    individuals,
     companyProfile,
     peppolLogs,
     sendInvoiceViaPeppol,
@@ -51,16 +52,53 @@ export const PeppolHubView: React.FC<PeppolHubViewProps> = ({ selectedInvoice })
 
   const currentInvoice = invoices.find((i) => i.id === currentInvoiceId) || invoices[0]
   const buyerCompany = currentInvoice ? companies.find((c) => c.id === currentInvoice.companyId) : null
+  const buyerIndividual = currentInvoice ? individuals.find((i) => i.id === currentInvoice.individualId) : null
+
+  const buyerParty: Company = buyerCompany || (buyerIndividual ? {
+    id: buyerIndividual.id,
+    name: `${buyerIndividual.firstName} ${buyerIndividual.lastName}`,
+    legalName: `${buyerIndividual.firstName} ${buyerIndividual.lastName}`,
+    vatNumber: buyerIndividual.nationalId || 'BE0842123456',
+    peppolScheme: '0208',
+    peppolEndpoint: (buyerIndividual.nationalId || '0842123456').replace(/\D/g, ''),
+    email: buyerIndividual.email,
+    phone: buyerIndividual.phone,
+    address: buyerIndividual.address,
+    city: buyerIndividual.city,
+    postalCode: buyerIndividual.postalCode,
+    country: buyerIndividual.country || 'Belgium',
+    countryCode: buyerIndividual.countryCode || 'BE',
+    status: 'customer',
+    tags: ['Individual Client'],
+    createdAt: buyerIndividual.createdAt,
+  } : {
+    id: 'default-client',
+    name: 'Direct Client',
+    legalName: 'Direct Client',
+    vatNumber: 'BE0842123456',
+    peppolScheme: '0208',
+    peppolEndpoint: '0842123456',
+    email: 'billing@client.com',
+    phone: '',
+    address: 'Business Street 1',
+    city: 'Brussels',
+    postalCode: '1000',
+    country: 'Belgium',
+    countryCode: 'BE',
+    status: 'customer',
+    tags: [],
+    createdAt: new Date().toISOString(),
+  })
 
   // Generate XML & Run Validation for current invoice
   const generatedXml =
-    currentInvoice && buyerCompany
-      ? generatePeppolUblXml(currentInvoice, companyProfile, buyerCompany)
+    currentInvoice
+      ? generatePeppolUblXml(currentInvoice, companyProfile, buyerParty)
       : '<!-- Please select an invoice to generate Peppol BIS 3.0 XML -->'
 
   const validationReport: PeppolValidationReport | null =
-    currentInvoice && buyerCompany
-      ? validatePeppolInvoice(currentInvoice, companyProfile, buyerCompany)
+    currentInvoice
+      ? validatePeppolInvoice(currentInvoice, companyProfile, buyerParty)
       : null
 
   const handleCopyXml = () => {

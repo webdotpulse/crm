@@ -27,6 +27,7 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
   const {
     quotations,
     companies,
+    individuals,
     deleteQuotation,
     convertQuoteToProject,
     convertQuoteToInvoice,
@@ -46,10 +47,13 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
     if (!localSearch.trim()) return true
     const s = localSearch.toLowerCase()
     const comp = companies.find((c) => c.id === q.companyId)
+    const ind = individuals.find((i) => i.id === q.individualId)
+    const indName = ind ? `${ind.firstName} ${ind.lastName}`.toLowerCase() : ''
     return (
       q.number.toLowerCase().includes(s) ||
       q.title.toLowerCase().includes(s) ||
-      (comp && comp.name.toLowerCase().includes(s))
+      (comp && comp.name.toLowerCase().includes(s)) ||
+      indName.includes(s)
     )
   })
 
@@ -173,6 +177,8 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
             ) : (
               filteredQuotes.map((quote) => {
                 const comp = companies.find((c) => c.id === quote.companyId)
+                const ind = individuals.find((i) => i.id === quote.individualId)
+                const clientName = comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Direct Client'
                 const isAccepted = quote.status === 'accepted'
 
                 return (
@@ -189,7 +195,7 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Building2 size={14} color="var(--sb-body-subtle)" />
-                        <span style={{ fontWeight: 600, color: 'var(--sb-heading)' }}>{comp?.name || 'Unknown'}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--sb-heading)' }}>{clientName}</span>
                       </div>
                     </td>
 

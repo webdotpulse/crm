@@ -25,6 +25,7 @@ export const DocumentTemplateDesignerView: React.FC = () => {
     setActiveWysiwygTemplateId,
     updateWysiwygTemplateStyle,
     activeLegalEntity,
+    companyProfile,
     selectedCurrency,
   } = useApp()
 
@@ -336,7 +337,16 @@ export const DocumentTemplateDesignerView: React.FC = () => {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: styleConfig.primaryColor, letterSpacing: '-0.02em' }}>
+                  {(activeLegalEntity.logoUrl || companyProfile.logoUrl) && (
+                    <div style={{ marginBottom: '0.6rem', maxHeight: '48px' }}>
+                      <img
+                        src={activeLegalEntity.logoUrl || companyProfile.logoUrl}
+                        alt="Logo"
+                        style={{ maxHeight: '48px', maxWidth: '200px', objectFit: 'contain' }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: styleConfig.primaryColor, letterSpacing: '-0.02em' }}>
                     {activeLegalEntity.name}
                   </div>
                   <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.25rem' }}>

@@ -32,6 +32,7 @@ import {
 import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate, FontFamilyOption, BorderRadiusOption, DensityOption } from '../../types'
 import { useApp } from '../../context/AppContext'
 import { themePresets } from '../../services/themeService'
+import { DEFAULT_COMPANY_LOGO } from '../../data/initialData'
 
 export const SettingsView: React.FC = () => {
   const {
@@ -368,10 +369,163 @@ export const SettingsView: React.FC = () => {
         </button>
       </div>
 
-      {/* TAB 1: Multiple Legal Entities */}
+      {/* TAB 1: Multiple Legal Entities & Company Profile */}
       {activeTab === 'entities' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+          {/* Main Organization Profile & Company Logo */}
+          <div className="card-sandbox" style={{ padding: '1.75rem', backgroundColor: 'var(--sb-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--sb-heading)' }}>
+                  🏢 Organization Profile & Global Brand Logo
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', margin: '0.2rem 0 0 0' }}>
+                  This logo and official identity appear on all quotations, offers, invoices, and client sign-off portals.
+                </p>
+              </div>
+              <span className="badge-sandbox badge-soft-success">Active Master Profile</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '1.75rem', alignItems: 'flex-start' }}>
+              {/* Logo Preview & Upload Box */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', width: '220px' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '90px',
+                    borderRadius: 'var(--sb-radius)',
+                    backgroundColor: '#ffffff',
+                    border: '2px solid var(--sb-border)',
+                    padding: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    boxShadow: 'var(--sb-shadow-sm)',
+                  }}
+                >
+                  {companyProfile.logoUrl ? (
+                    <img
+                      src={companyProfile.logoUrl}
+                      alt="Company Logo Preview"
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>No Logo</span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem', width: '100%' }}>
+                  <label
+                    className="btn-sandbox btn-sandbox-sm btn-sandbox-primary"
+                    style={{ flex: 1, justifyContent: 'center', cursor: 'pointer', fontSize: '0.75rem' }}
+                  >
+                    <span>Upload Logo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = () => {
+                            if (typeof reader.result === 'string') {
+                              updateCompanyProfile({ logoUrl: reader.result })
+                              showToast('✓ Company logo updated!')
+                            }
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateCompanyProfile({ logoUrl: DEFAULT_COMPANY_LOGO })
+                      showToast('✓ Default logo restored!')
+                    }}
+                    className="btn-sandbox btn-sandbox-sm btn-sandbox-secondary"
+                    style={{ fontSize: '0.75rem' }}
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Paste direct Image URL..."
+                  value={companyProfile.logoUrl || ''}
+                  onChange={(e) => updateCompanyProfile({ logoUrl: e.target.value })}
+                  className="form-input-sandbox"
+                  style={{ fontSize: '0.75rem', width: '100%' }}
+                />
+              </div>
+
+              {/* Organization Metadata Fields */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label className="form-label">Trading Name</label>
+                  <input
+                    type="text"
+                    value={companyProfile.name}
+                    onChange={(e) => updateCompanyProfile({ name: e.target.value })}
+                    className="form-input-sandbox"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Legal Name (For Invoices/Contracts)</label>
+                  <input
+                    type="text"
+                    value={companyProfile.legalName}
+                    onChange={(e) => updateCompanyProfile({ legalName: e.target.value })}
+                    className="form-input-sandbox"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">VAT / Enterprise Number</label>
+                  <input
+                    type="text"
+                    value={companyProfile.vatNumber}
+                    onChange={(e) => updateCompanyProfile({ vatNumber: e.target.value })}
+                    className="form-input-sandbox"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Billing Email</label>
+                  <input
+                    type="email"
+                    value={companyProfile.email}
+                    onChange={(e) => updateCompanyProfile({ email: e.target.value })}
+                    className="form-input-sandbox"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Main SEPA IBAN</label>
+                  <input
+                    type="text"
+                    value={companyProfile.iban}
+                    onChange={(e) => updateCompanyProfile({ iban: e.target.value })}
+                    className="form-input-sandbox"
+                    style={{ fontFamily: 'var(--sb-font-mono)' }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Peppol Scheme & Endpoint</label>
+                  <input
+                    type="text"
+                    value={`${companyProfile.peppolScheme}:${companyProfile.peppolEndpoint}`}
+                    readOnly
+                    className="form-input-sandbox"
+                    style={{ color: 'var(--sb-primary)', fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>Issuing Legal Entities</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--sb-body)' }}>
@@ -1233,28 +1387,33 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
-          {/* First-Run Setup & Provisioning Tools */}
+          {/* Permanent Provisioning Status */}
           <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <Sparkles size={16} color="var(--sb-primary)" />
-              <h4 style={{ fontSize: '0.95rem', margin: 0 }}>System Provisioning & First-Run Wizard</h4>
+              <ShieldCheck size={16} color="var(--sb-success)" />
+              <h4 style={{ fontSize: '0.95rem', margin: 0 }}>System Provisioning & Workspace Status</h4>
             </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--sb-body)', marginBottom: '0.85rem' }}>
-              System status: <strong style={{ color: isInstalled ? 'var(--sb-success)' : 'var(--sb-danger)' }}>{isInstalled ? '● Provisioned & Installed' : '○ Uninitialized'}</strong>.
-              You can re-launch the First-Run Setup Wizard to re-provision the workspace or configure a new administrator and MySQL connection.
+            <p style={{ fontSize: '0.82rem', color: 'var(--sb-body)', marginBottom: '0.85rem' }}>
+              System status: <strong style={{ color: 'var(--sb-success)' }}>● Permanently Provisioned & Initialized</strong>.
+              Your database configuration, administrator credentials, and security policies are active.
             </p>
-            <button
-              onClick={() => {
-                if (confirm('Re-running the setup wizard will reset administrator session and prompt the first-run installer on next page load. Proceed?')) {
-                  resetToInstaller()
-                  showToast('✓ Redirecting to First-Run Setup Wizard...')
-                }
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.45rem 0.85rem',
+                backgroundColor: 'var(--sb-success-soft)',
+                border: '1px solid rgba(56, 185, 149, 0.3)',
+                borderRadius: 'var(--sb-radius-sm)',
+                color: 'var(--sb-success-text)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
               }}
-              className="btn-sandbox btn-sandbox-secondary"
             >
-              <RotateCcw size={14} />
-              <span>Re-run First-Run Installer Wizard</span>
-            </button>
+              <CheckCircle2 size={15} />
+              <span>First-Run Installation Finalized & Locked</span>
+            </div>
           </div>
         </div>
       )}
@@ -1411,6 +1570,41 @@ export const SettingsView: React.FC = () => {
                       value={entityFormData.countryCode}
                       onChange={(e) => setEntityFormData({ ...entityFormData, countryCode: e.target.value })}
                       className="form-input-sandbox"
+                    />
+                  </div>
+                </div>
+
+                {/* Entity Custom Logo */}
+                <div>
+                  <label className="form-label">Entity Custom Logo (Optional Override)</label>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        width: '80px',
+                        height: '42px',
+                        borderRadius: '0.35rem',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid var(--sb-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        padding: '0.25rem',
+                      }}
+                    >
+                      {entityFormData.logoUrl ? (
+                        <img src={entityFormData.logoUrl} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>Inherit Master</span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Custom Logo URL (leave empty to use master logo)"
+                      value={entityFormData.logoUrl || ''}
+                      onChange={(e) => setEntityFormData({ ...entityFormData, logoUrl: e.target.value })}
+                      className="form-input-sandbox"
+                      style={{ flex: 1 }}
                     />
                   </div>
                 </div>

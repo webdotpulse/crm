@@ -33,6 +33,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
   const {
     invoices,
     companies,
+    individuals,
     deleteInvoice,
     sendInvoiceViaPeppol,
     setCurrentView,
@@ -72,10 +73,13 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     if (!localSearch.trim()) return true
     const s = localSearch.toLowerCase()
     const comp = companies.find((c) => c.id === inv.companyId)
+    const ind = individuals.find((i) => i.id === inv.individualId)
+    const indName = ind ? `${ind.firstName} ${ind.lastName}`.toLowerCase() : ''
     return (
       inv.number.toLowerCase().includes(s) ||
       inv.structuredReference.toLowerCase().includes(s) ||
-      (comp && comp.name.toLowerCase().includes(s))
+      (comp && comp.name.toLowerCase().includes(s)) ||
+      indName.includes(s)
     )
   })
 
@@ -260,6 +264,9 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
             ) : (
               filteredInvoices.map((inv) => {
                 const comp = companies.find((c) => c.id === inv.companyId)
+                const ind = individuals.find((i) => i.id === inv.individualId)
+                const clientName = comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Direct Client'
+                const clientSubtext = comp ? `VAT: ${comp.vatNumber}` : ind ? `Client (B2C)` : 'Direct Client'
                 const isPaid = inv.status === 'paid'
                 const isPeppolSent = inv.status === 'peppol_sent' || inv.peppolStatus === 'delivered'
                 const isSending = sendingPeppolId === inv.id
@@ -279,8 +286,8 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Building2 size={14} color="var(--sb-body-subtle)" />
                         <div>
-                          <div style={{ fontWeight: 600, color: 'var(--sb-heading)' }}>{comp?.name || 'Unknown'}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--sb-body-subtle)' }}>VAT: {comp?.vatNumber}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--sb-heading)' }}>{clientName}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--sb-body-subtle)' }}>{clientSubtext}</div>
                         </div>
                       </div>
                     </td>

@@ -25,10 +25,12 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   onSendPeppol,
   onOpenPeppolHub,
 }) => {
-  const { companies, contacts, companyProfile } = useApp()
+  const { companies, contacts, companyProfile, legalEntities, activeLegalEntity } = useApp()
 
   const client = companies.find((c) => c.id === invoice.companyId)
   const contact = contacts.find((c) => c.id === invoice.contactId)
+  const issuingEntity = (invoice.legalEntityId ? legalEntities.find((l) => l.id === invoice.legalEntityId) : null) || activeLegalEntity || companyProfile
+  const logoUrl = issuingEntity.logoUrl || companyProfile.logoUrl
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -106,7 +108,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               boxShadow: 'var(--sb-shadow)',
             }}
           >
-            {/* Header Identity Grid */}
+            {/* Header Identity Grid with Company Logo */}
             <div
               style={{
                 display: 'flex',
@@ -114,16 +116,28 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                 borderBottom: '2px solid #e9ecf2',
                 paddingBottom: '1.5rem',
                 marginBottom: '1.75rem',
+                gap: '1.5rem',
               }}
             >
               <div>
-                <h2 style={{ fontSize: '1.6rem', color: '#1e2229', fontWeight: 800 }}>{companyProfile.name}</h2>
-                <div style={{ fontSize: '0.85rem', color: '#60697b', marginTop: '0.25rem', lineHeight: 1.4 }}>
-                  {companyProfile.address}, {companyProfile.postalCode} {companyProfile.city} ({companyProfile.country})
+                {logoUrl && (
+                  <div style={{ marginBottom: '0.85rem', maxHeight: '54px' }}>
+                    <img
+                      src={logoUrl}
+                      alt={issuingEntity.name || companyProfile.name}
+                      style={{ maxHeight: '54px', maxWidth: '240px', objectFit: 'contain' }}
+                    />
+                  </div>
+                )}
+                <h2 style={{ fontSize: '1.4rem', color: '#1e2229', fontWeight: 800, margin: 0 }}>
+                  {issuingEntity.legalName || issuingEntity.name || companyProfile.name}
+                </h2>
+                <div style={{ fontSize: '0.84rem', color: '#60697b', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                  {issuingEntity.address || companyProfile.address}, {issuingEntity.postalCode || companyProfile.postalCode} {issuingEntity.city || companyProfile.city} ({issuingEntity.country || companyProfile.country})
                   <br />
-                  VAT ID: <strong>{companyProfile.vatNumber}</strong>
+                  VAT ID: <strong>{issuingEntity.vatNumber || companyProfile.vatNumber}</strong>
                   <br />
-                  Peppol Endpoint: <strong style={{ color: '#2f5fb8' }}>{companyProfile.peppolScheme}:{companyProfile.peppolEndpoint}</strong>
+                  Peppol Endpoint: <strong style={{ color: '#2f5fb8' }}>{issuingEntity.peppolScheme || companyProfile.peppolScheme}:{issuingEntity.peppolEndpoint || companyProfile.peppolEndpoint}</strong>
                 </div>
               </div>
 

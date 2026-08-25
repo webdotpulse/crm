@@ -214,7 +214,7 @@ interface AppContextType {
 
   // Company Profile & Settings
   companyProfile: CompanyProfile
-  updateCompanyProfile: (profile: CompanyProfile) => void
+  updateCompanyProfile: (profile: Partial<CompanyProfile>) => void
 
   // CRM: Companies (B2B)
   companies: Company[]
@@ -1108,7 +1108,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }
 
-  const updateCompanyProfile = (profile: CompanyProfile) => setCompanyProfile(profile)
+  const updateCompanyProfile = (profile: Partial<CompanyProfile>) => {
+    setCompanyProfile((prev) => {
+      const updated = { ...prev, ...profile }
+      localStorage.setItem(`${STORAGE_KEY}_profile`, JSON.stringify(updated))
+      return updated
+    })
+  }
 
   const addCompany = (c: any) => {
     const item: Company = {
@@ -1509,6 +1515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!inv) return { success: false, error: 'Invoice not found' }
 
     const company = companies.find((c) => c.id === inv.companyId)
+    const individual = individuals.find((ind) => ind.id === inv.individualId)
     const fallbackCompany: Company = {
       id: 'custom-comp',
       name: 'Client Entity',
@@ -1527,6 +1534,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     }
 
+    const buyerParty: Company = company || (individual ? {
+      id: individual.id,
+      name: `${individual.firstName} ${individual.lastName}`,
+      legalName: `${individual.firstName} ${individual.lastName}`,
+      vatNumber: individual.nationalId || 'BE0842123456',
+      peppolScheme: '0208',
+      peppolEndpoint: (individual.nationalId || '0842123456').replace(/\D/g, ''),
+      email: individual.email,
+      phone: individual.phone,
+      address: individual.address,
+      city: individual.city,
+      postalCode: individual.postalCode,
+      country: individual.country || 'Belgium',
+      countryCode: individual.countryCode || 'BE',
+      status: 'customer',
+      tags: ['Individual Client'],
+      createdAt: individual.createdAt,
+    } : fallbackCompany)
+
     const sellerProfile: CompanyProfile = {
       ...companyProfile,
       name: activeLegalEntity.name,
@@ -1538,7 +1564,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bic: activeLegalEntity.bic,
     }
 
-    const result = await dispatchPeppolInvoice(inv, sellerProfile, company || fallbackCompany)
+    const result = await dispatchPeppolInvoice(inv, sellerProfile, buyerParty)
 
     setPeppolLogs((prev) => [result.log, ...prev])
 
@@ -2913,8 +2939,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWysiwygTemplates(initialWysiwygTemplates)
     setActiveWysiwygTemplateId(initialWysiwygTemplates[0].id)
     setActiveInteractiveProposalQuote(null)
-    localStorage.clear()
-    setIsInstalled(false)
+    // Preserve permanent installation and primary admin
+    localStorage.setItem('pulsework_installed', 'true')
+    localStorage.setItem('pulsework_installation_finalized', 'true')
+    setIsInstalled(true)
   }
 
   const completeFirstRunInstall = async (payload: FirstRunInstallPayload) => {
@@ -2983,6 +3011,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       defaultCurrency: (payload.company.defaultCurrency as SupportedCurrency) || 'EUR',
       defaultVatRate: payload.company.defaultVatRate || 21,
       peppolSenderId: `iso6523-actorid-upis::${payload.company.peppolScheme || '0208'}:${(payload.company.peppolEndpoint || '').replace(/[^0-9A-Za-z]/g, '')}`,
+      logoUrl: payload.company.logoUrl || companyProfile.logoUrl,
     }
     setCompanyProfile(updatedProfile)
     localStorage.setItem(`${STORAGE_KEY}_profile`, JSON.stringify(updatedProfile))
@@ -3008,6 +3037,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       invoicePrefix: `${updatedProfile.countryCode || 'BE'}-INV-`,
       isDefault: true,
       accentColor: '#3f78e0',
+      logoUrl: updatedProfile.logoUrl,
     }
     setLegalEntities([updatedLegalEntity])
     setActiveLegalEntityId(updatedLegalEntity.id)
@@ -3078,18 +3108,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     localStorage.setItem('pulsework_installed', 'true')
+    localStorage.setItem('pulsework_installation_finalized', 'true')
     setIsInstalled(true)
   }
 
   const resetToInstaller = () => {
-    localStorage.removeItem('pulsework_installed')
-    localStorage.removeItem(`${STORAGE_KEY}_users`)
-    localStorage.removeItem(`${STORAGE_KEY}_current_user_id`)
-    localStorage.removeItem(`${STORAGE_KEY}_db_config`)
-    setDatabaseConfig(defaultDatabaseConfig)
-    setUsers([])
-    setCurrentUserId('')
-    setIsInstalled(false)
+    // Permanent installation lock: Once finalized, workspace remains installed
+    localStorage.setItem('pulsework_installed', 'true')
+    localStorage.setItem('pulsework_installation_finalized', 'true')
+    setIsInstalled(true)
   }
 
   const exportDataJson = (): string => {

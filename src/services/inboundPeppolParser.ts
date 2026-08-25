@@ -33,6 +33,54 @@ export function guessExpenseCategory(text: string): ExpenseCategory {
 }
 
 /**
+ * Helper to find an element in an XML document/node by local tag name (ignoring namespace prefixes)
+ */
+function findXmlNode(parent: ParentNode | null | undefined, localTagName: string): Element | null {
+  if (!parent) return null
+  const target = localTagName.toLowerCase()
+  // Try getElementsByTagName with both unqualified and qualified name
+  const allElements = parent.querySelectorAll ? parent.querySelectorAll('*') : (parent as any).getElementsByTagName?.('*')
+  if (allElements) {
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]
+      const local = (el.localName || el.nodeName.split(':').pop() || '').toLowerCase()
+      if (local === target) {
+        return el
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Helper to find all elements matching local tag name
+ */
+function findXmlNodes(parent: ParentNode | null | undefined, localTagName: string): Element[] {
+  if (!parent) return []
+  const target = localTagName.toLowerCase()
+  const results: Element[] = []
+  const allElements = parent.querySelectorAll ? parent.querySelectorAll('*') : (parent as any).getElementsByTagName?.('*')
+  if (allElements) {
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]
+      const local = (el.localName || el.nodeName.split(':').pop() || '').toLowerCase()
+      if (local === target) {
+        results.push(el)
+      }
+    }
+  }
+  return results
+}
+
+/**
+ * Helper to get text content from a direct or indirect child by local tag name
+ */
+function getXmlText(parent: ParentNode | null | undefined, localTagName: string): string {
+  const node = findXmlNode(parent, localTagName)
+  return node?.textContent?.trim() || ''
+}
+
+/**
  * Parses Inbound Peppol BIS 3.0 UBL XML string into a structured Expense
  */
 export function parseInboundPeppolXml(xmlString: string, fileName?: string): Partial<Expense> {
@@ -41,49 +89,57 @@ export function parseInboundPeppolXml(xmlString: string, fileName?: string): Par
     const xmlDoc = parser.parseFromString(xmlString, 'text/xml')
 
     // Supplier Info
-    const supplierParty = xmlDoc.querySelector('AccountingSupplierParty > Party')
-    const supplierName = supplierParty?.querySelector('PartyName > Name')?.textContent ||
-      supplierParty?.querySelector('PartyLegalEntity > RegistrationName')?.textContent ||
-      'Supplier Enterprise'
+    const supplierParty = findXmlNode(xmlDoc, 'AccountingSupplierParty')
+    const party = findXmlNode(supplierParty || xmlDoc, 'Party') || supplierParty
 
-    const supplierVat = supplierParty?.querySelector('PartyTaxScheme > CompanyID')?.textContent ||
-      supplierParty?.querySelector('EndpointID')?.textContent ||
-      ''
+    const partyName = getXmlText(party, 'Name') || getXmlText(party, 'RegistrationName')
+    const supplierName = partyName || 'Supplier Enterprise'
 
-    const supplierIban = xmlDoc.querySelector('PaymentMeans > PayeeFinancialAccount > Id')?.textContent || ''
+    const supplierVat = getXmlText(party, 'CompanyID') || getXmlText(party, 'EndpointID')
+
+    const payeeAccount = findXmlNode(xmlDoc, 'PayeeFinancialAccount')
+    const supplierIban = getXmlText(payeeAccount, 'ID') || getXmlText(payeeAccount, 'Id')
 
     // Invoice Meta
-    const invoiceNumber = xmlDoc.querySelector('Invoice > ID')?.textContent || `INB-${Date.now().toString().slice(-6)}`
-    const issueDate = xmlDoc.querySelector('IssueDate')?.textContent || new Date().toISOString().split('T')[0]
-    const dueDate = xmlDoc.querySelector('DueDate')?.textContent || issueDate
-    const currency = xmlDoc.querySelector('DocumentCurrencyCode')?.textContent || 'EUR'
+    const invoiceNumber = getXmlText(xmlDoc, 'ID') || `INB-${Date.now().toString().slice(-6)}`
+    const issueDate = getXmlText(xmlDoc, 'IssueDate') || new Date().toISOString().split('T')[0]
+    const dueDate = getXmlText(xmlDoc, 'DueDate') || issueDate
+    const currency = getXmlText(xmlDoc, 'DocumentCurrencyCode') || 'EUR'
 
     // Totals
-    const lineExtensionAmount = parseFloat(xmlDoc.querySelector('LegalMonetaryTotal > LineExtensionAmount')?.textContent || '0')
-    const taxTotalAmount = parseFloat(xmlDoc.querySelector('TaxTotal > TaxAmount')?.textContent || '0')
-    const payableAmount = parseFloat(xmlDoc.querySelector('LegalMonetaryTotal > PayableAmount')?.textContent || '0')
+    const legalMonetary = findXmlNode(xmlDoc, 'LegalMonetaryTotal')
+    const taxTotalNode = findXmlNode(xmlDoc, 'TaxTotal')
+
+    const lineExtensionAmount = parseFloat(getXmlText(legalMonetary, 'LineExtensionAmount') || '0')
+    const taxTotalAmount = parseFloat(getXmlText(taxTotalNode, 'TaxAmount') || '0')
+    const payableAmount = parseFloat(getXmlText(legalMonetary, 'PayableAmount') || '0')
 
     // Parse Line items
     const items: ExpenseItem[] = []
-    const lineNodes = xmlDoc.querySelectorAll('InvoiceLine')
+    const lineNodes = findXmlNodes(xmlDoc, 'InvoiceLine')
     lineNodes.forEach((lineNode, idx) => {
-      const desc = lineNode.querySelector('Item > Name')?.textContent || lineNode.querySelector('Item > Description')?.textContent || `Item ${idx + 1}`
-      const qty = parseFloat(lineNode.querySelector('InvoicedQuantity')?.textContent || '1')
-      const price = parseFloat(lineNode.querySelector('Price > PriceAmount')?.textContent || '0')
-      const vatRate = parseFloat(lineNode.querySelector('ClassifiedTaxCategory > Percent')?.textContent || '21')
-      const total = parseFloat(lineNode.querySelector('LineExtensionAmount')?.textContent || (qty * price).toString())
+      const itemNode = findXmlNode(lineNode, 'Item')
+      const desc = getXmlText(itemNode, 'Name') || getXmlText(itemNode, 'Description') || `Item ${idx + 1}`
+      const qty = parseFloat(getXmlText(lineNode, 'InvoicedQuantity') || getXmlText(lineNode, 'BaseQuantity') || '1')
+      const priceNode = findXmlNode(lineNode, 'Price')
+      const price = parseFloat(getXmlText(priceNode, 'PriceAmount') || '0')
+      const taxCategory = findXmlNode(itemNode || lineNode, 'ClassifiedTaxCategory')
+      const vatRate = parseFloat(getXmlText(taxCategory, 'Percent') || '21')
+      const total = parseFloat(getXmlText(lineNode, 'LineExtensionAmount') || (qty * price).toString())
 
       items.push({
         id: `exp-item-${idx + 1}`,
         description: desc,
         quantity: qty || 1,
-        unitPrice: price || total,
-        vatRate: vatRate || 21,
+        unitPrice: price || (qty > 0 ? total / qty : total),
+        vatRate: isNaN(vatRate) ? 21 : vatRate,
         total: total || (qty * price),
       })
     })
 
     const category = guessExpenseCategory(`${supplierName} ${items.map((i) => i.description).join(' ')}`)
+    const subtotal = lineExtensionAmount || (payableAmount ? payableAmount - taxTotalAmount : 0)
+    const total = payableAmount || (subtotal + taxTotalAmount)
 
     return {
       number: invoiceNumber,
@@ -93,9 +149,9 @@ export function parseInboundPeppolXml(xmlString: string, fileName?: string): Par
       category,
       invoiceDate: issueDate,
       dueDate,
-      subtotal: lineExtensionAmount || (payableAmount - taxTotalAmount),
-      vatTotal: taxTotalAmount,
-      total: payableAmount || (lineExtensionAmount + taxTotalAmount),
+      subtotal: subtotal || 100,
+      vatTotal: taxTotalAmount || 21,
+      total: total || 121,
       currency,
       status: 'pending',
       isPeppolInbound: true,

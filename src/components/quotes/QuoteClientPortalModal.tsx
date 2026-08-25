@@ -12,7 +12,7 @@ export const QuoteClientPortalModal: React.FC<QuoteClientPortalModalProps> = ({
   quote,
   onClose,
 }) => {
-  const { companies, contacts, companyProfile, signQuotation } = useApp()
+  const { companies, contacts, companyProfile, activeLegalEntity, signQuotation } = useApp()
 
   const [signerName, setSignerName] = useState('Marc Vandamme (COO)')
   const [signerNotes, setSignerNotes] = useState('Approved per milestone specifications.')
@@ -20,6 +20,8 @@ export const QuoteClientPortalModal: React.FC<QuoteClientPortalModalProps> = ({
 
   const client = companies.find((c) => c.id === quote.companyId)
   const contact = contacts.find((c) => c.id === quote.contactId)
+  const issuingEntity = activeLegalEntity || companyProfile
+  const logoUrl = issuingEntity.logoUrl || companyProfile.logoUrl
 
   const handleSign = (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,7 +96,7 @@ export const QuoteClientPortalModal: React.FC<QuoteClientPortalModalProps> = ({
               boxShadow: 'var(--sb-shadow)',
             }}
           >
-            {/* Top Identity Grid */}
+            {/* Top Identity Grid with Company Logo */}
             <div
               style={{
                 display: 'flex',
@@ -102,14 +104,26 @@ export const QuoteClientPortalModal: React.FC<QuoteClientPortalModalProps> = ({
                 borderBottom: '2px solid #e9ecf2',
                 paddingBottom: '1.5rem',
                 marginBottom: '1.75rem',
+                gap: '1.5rem',
               }}
             >
               <div>
-                <h2 style={{ fontSize: '1.6rem', color: '#1e2229', fontWeight: 800 }}>{companyProfile.name}</h2>
-                <div style={{ fontSize: '0.85rem', color: '#60697b', marginTop: '0.25rem' }}>
-                  {companyProfile.address}, {companyProfile.postalCode} {companyProfile.city}
+                {logoUrl && (
+                  <div style={{ marginBottom: '0.85rem', maxHeight: '54px' }}>
+                    <img
+                      src={logoUrl}
+                      alt={issuingEntity.name || companyProfile.name}
+                      style={{ maxHeight: '54px', maxWidth: '240px', objectFit: 'contain' }}
+                    />
+                  </div>
+                )}
+                <h2 style={{ fontSize: '1.4rem', color: '#1e2229', fontWeight: 800, margin: 0 }}>
+                  {issuingEntity.legalName || issuingEntity.name || companyProfile.name}
+                </h2>
+                <div style={{ fontSize: '0.84rem', color: '#60697b', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                  {issuingEntity.address || companyProfile.address}, {issuingEntity.postalCode || companyProfile.postalCode} {issuingEntity.city || companyProfile.city} ({issuingEntity.country || companyProfile.country})
                   <br />
-                  VAT: {companyProfile.vatNumber} • Peppol: {companyProfile.peppolEndpoint}
+                  VAT: <strong>{issuingEntity.vatNumber || companyProfile.vatNumber}</strong> • Peppol: <strong>{issuingEntity.peppolScheme || companyProfile.peppolScheme}:{issuingEntity.peppolEndpoint || companyProfile.peppolEndpoint}</strong>
                 </div>
               </div>
 

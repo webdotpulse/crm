@@ -453,6 +453,7 @@ export interface CompanyProfile {
   peppolAccessPointUrl: string
   peppolApiKey: string
   peppolSenderId: string
+  logoUrl?: string
 }
 
 // ==========================================
@@ -1623,6 +1624,7 @@ export interface FirstRunCompanyConfig {
   bic: string
   defaultCurrency: string
   defaultVatRate: number
+  logoUrl?: string
 }
 
 // ==========================================

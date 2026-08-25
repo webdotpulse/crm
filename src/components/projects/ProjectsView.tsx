@@ -28,6 +28,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenQuickModal }) 
     tasks,
     timeEntries,
     companies,
+    individuals,
     selectedProjectId,
     setSelectedProjectId,
     deleteProject,
@@ -54,7 +55,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenQuickModal }) 
     if (!localSearch.trim()) return true
     const s = localSearch.toLowerCase()
     const comp = companies.find((c) => c.id === p.companyId)
-    return p.title.toLowerCase().includes(s) || (comp && comp.name.toLowerCase().includes(s))
+    const ind = individuals.find((i) => i.id === p.individualId)
+    const indName = ind ? `${ind.firstName} ${ind.lastName}`.toLowerCase() : ''
+    return p.title.toLowerCase().includes(s) || (comp && comp.name.toLowerCase().includes(s)) || indName.includes(s)
   })
 
   return (
@@ -154,6 +157,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenQuickModal }) 
         ) : (
           filteredProjects.map((proj) => {
             const comp = companies.find((c) => c.id === proj.companyId)
+            const ind = individuals.find((i) => i.id === proj.individualId)
+            const clientName = comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Internal / Direct'
             const projTasks = tasks.filter((t) => t.projectId === proj.id)
             const projTimes = timeEntries.filter((t) => t.projectId === proj.id)
             const loggedHours = projTimes.reduce((sum, t) => sum + t.hours, 0)
@@ -170,7 +175,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onOpenQuickModal }) 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--sb-body)' }}>
                       <Building2 size={14} color="var(--sb-body-subtle)" />
-                      <span style={{ fontWeight: 600 }}>{comp?.name || 'Internal'}</span>
+                      <span style={{ fontWeight: 600 }}>{clientName}</span>
                     </div>
 
                     <span

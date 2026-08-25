@@ -42,6 +42,7 @@ export const InteractiveProposalViewerModal: React.FC<InteractiveProposalViewerM
     companies,
     individuals,
     activeLegalEntity,
+    companyProfile,
     selectedCurrency,
   } = useApp()
 
@@ -239,7 +240,7 @@ export const InteractiveProposalViewerModal: React.FC<InteractiveProposalViewerM
 
         {/* Scrollable Proposal Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem' }}>
-          {/* Proposal Header Banner */}
+          {/* Proposal Header Banner with Company Logo */}
           <div
             style={{
               padding: '1.75rem 2rem',
@@ -255,6 +256,15 @@ export const InteractiveProposalViewerModal: React.FC<InteractiveProposalViewerM
             }}
           >
             <div>
+              {(activeLegalEntity.logoUrl || companyProfile.logoUrl) && (
+                <div style={{ marginBottom: '0.75rem', maxHeight: '48px' }}>
+                  <img
+                    src={activeLegalEntity.logoUrl || companyProfile.logoUrl}
+                    alt={activeLegalEntity.name}
+                    style={{ maxHeight: '48px', maxWidth: '220px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--sb-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {activeLegalEntity.name}
               </div>

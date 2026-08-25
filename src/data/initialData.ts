@@ -52,6 +52,8 @@ import {
 // 1. COMPANY PROFILE & LEGAL ENTITIES
 // ============================================================================
 
+export const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233f78e0"/><stop offset="100%" stop-color="%23605dba"/></linearGradient></defs><rect x="4" y="8" width="44" height="44" rx="12" fill="url(%23grad)"/><path d="M18 30 L24 30 L27 21 L31 39 L34 27 L36 30 L40 30" fill="none" stroke="%23ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="34" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="20" font-weight="900" fill="%231e293b" letter-spacing="-0.5">Pulse<tspan fill="%233f78e0">Work</tspan></text><text x="59" y="47" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="9" font-weight="700" fill="%2364748b" letter-spacing="1.5">SOLUTIONS</text></svg>`
+
 export const initialCompanyProfile: CompanyProfile = {
   name: 'PulseWork Solutions BV',
   legalName: 'PulseWork Solutions BV',
@@ -74,6 +76,7 @@ export const initialCompanyProfile: CompanyProfile = {
   peppolAccessPointUrl: 'https://api.billit.be/v1/peppol/as4',
   peppolApiKey: '',
   peppolSenderId: 'iso6523-actorid-upis::0208:0849294901',
+  logoUrl: DEFAULT_COMPANY_LOGO,
 }
 
 export const initialLegalEntities: LegalEntity[] = [
@@ -98,6 +101,7 @@ export const initialLegalEntities: LegalEntity[] = [
     invoicePrefix: 'BE-INV-',
     isDefault: true,
     accentColor: '#3f78e0',
+    logoUrl: DEFAULT_COMPANY_LOGO,
   },
 ]
 

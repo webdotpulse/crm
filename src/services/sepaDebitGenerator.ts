@@ -24,15 +24,15 @@ export function generateSepaDirectDebitXml(options: {
   const totalAmount = items.reduce((sum, item) => sum + (item.invoice.total - item.invoice.amountPaid), 0)
   const numberOfTransactions = items.length
 
-  const cleanIban = creditor.iban.replace(/\s+/g, '')
-  const cleanBic = creditor.bic.replace(/\s+/g, '')
-  const creditorId = `BE99ZZZ${creditor.vatNumber.replace(/\D/g, '').padEnd(10, '0')}`
+  const cleanIban = (creditor.iban || '').replace(/\s+/g, '')
+  const cleanBic = (creditor.bic || '').replace(/\s+/g, '')
+  const creditorId = `BE99ZZZ${(creditor.vatNumber || '').replace(/\D/g, '').padEnd(10, '0')}`
 
   const txNodes = items
     .map((item, idx) => {
       const remainingAmt = (item.invoice.total - item.invoice.amountPaid).toFixed(2)
-      const debtorIban = item.debtorIban.replace(/\s+/g, '')
-      const debtorBic = item.debtorBic.replace(/\s+/g, '')
+      const debtorIban = (item.debtorIban || '').replace(/\s+/g, '')
+      const debtorBic = (item.debtorBic || '').replace(/\s+/g, '')
       const mandateId = item.mandateId || `MAND-${item.invoice.id}`
       const mandateDate = item.mandateDate || '2025-01-01'
       const endToEndId = `E2E-${item.invoice.number}`

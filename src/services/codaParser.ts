@@ -147,6 +147,48 @@ export function parseCodaFile(fileContent: string, fileName: string): { statemen
 }
 
 /**
+/**
+ * Helper to find an element in an XML document/node by local tag name (ignoring namespace prefixes)
+ */
+function findXmlNode(parent: ParentNode | null | undefined, localTagName: string): Element | null {
+  if (!parent) return null
+  const target = localTagName.toLowerCase()
+  const allElements = parent.querySelectorAll ? parent.querySelectorAll('*') : (parent as any).getElementsByTagName?.('*')
+  if (allElements) {
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]
+      const local = (el.localName || el.nodeName.split(':').pop() || '').toLowerCase()
+      if (local === target) {
+        return el
+      }
+    }
+  }
+  return null
+}
+
+function findXmlNodes(parent: ParentNode | null | undefined, localTagName: string): Element[] {
+  if (!parent) return []
+  const target = localTagName.toLowerCase()
+  const results: Element[] = []
+  const allElements = parent.querySelectorAll ? parent.querySelectorAll('*') : (parent as any).getElementsByTagName?.('*')
+  if (allElements) {
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i]
+      const local = (el.localName || el.nodeName.split(':').pop() || '').toLowerCase()
+      if (local === target) {
+        results.push(el)
+      }
+    }
+  }
+  return results
+}
+
+function getXmlText(parent: ParentNode | null | undefined, localTagName: string): string {
+  const node = findXmlNode(parent, localTagName)
+  return node?.textContent?.trim() || ''
+}
+
+/**
  * Parse CAMT.053 XML file (ISO 20022 Bank-to-Customer Statement)
  */
 export function parseCamt053File(xmlContent: string, fileName: string): { statement: BankStatement; transactions: BankTransaction[] } {
@@ -160,34 +202,52 @@ export function parseCamt053File(xmlContent: string, fileName: string): { statem
     const parser = new DOMParser()
     const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
 
-    const ibanNode = xmlDoc.querySelector('Acct > Id > IBAN')
-    if (ibanNode && ibanNode.textContent) accountIban = ibanNode.textContent
+    const ibanText = getXmlText(findXmlNode(xmlDoc, 'Acct'), 'IBAN') || getXmlText(xmlDoc, 'IBAN')
+    if (ibanText) accountIban = ibanText
 
-    const idNode = xmlDoc.querySelector('Stmt > Id')
-    if (idNode && idNode.textContent) statementNumber = idNode.textContent
+    const idText = getXmlText(findXmlNode(xmlDoc, 'Stmt'), 'Id') || getXmlText(xmlDoc, 'Id')
+    if (idText) statementNumber = idText
 
-    const opBalNode = xmlDoc.querySelector('Bal > Tp > CdOrPrtry > Cd:has(:text("OPBD")), Bal > CdtDbtInd')
-    const entryNodes = xmlDoc.querySelectorAll('Ntry')
+    // Balances
+    const balNodes = findXmlNodes(xmlDoc, 'Bal')
+    balNodes.forEach((bal) => {
+      const cd = getXmlText(bal, 'Cd')
+      const amt = parseFloat(getXmlText(bal, 'Amt') || '0')
+      const cdtDbt = getXmlText(bal, 'CdtDbtInd')
+      const signedAmt = cdtDbt === 'DBIT' ? -amt : amt
+      if (cd === 'OPBD' || cd === 'PRCD') {
+        openingBalance = signedAmt
+      } else if (cd === 'CLBD' || cd === 'FWAV') {
+        closingBalance = signedAmt
+      }
+    })
+
+    const entryNodes = findXmlNodes(xmlDoc, 'Ntry')
     entryNodes.forEach((entry, idx) => {
-      const amtNode = entry.querySelector('Amt')
-      const cdtDbtNode = entry.querySelector('CdtDbtInd')
-      const isCredit = cdtDbtNode?.textContent === 'CRDT'
-      const rawAmt = parseFloat(amtNode?.textContent || '0')
+      const amtNode = findXmlNode(entry, 'Amt')
+      const cdtDbtNode = findXmlNode(entry, 'CdtDbtInd')
+      const isCredit = cdtDbtNode?.textContent?.trim() === 'CRDT'
+      const rawAmt = parseFloat(amtNode?.textContent?.trim() || '0')
       const amount = isCredit ? rawAmt : -rawAmt
 
-      const dateNode = entry.querySelector('BookgDt > Dt') || entry.querySelector('ValDt > Dt')
-      const date = dateNode?.textContent || new Date().toISOString().split('T')[0]
+      const bookgDt = findXmlNode(entry, 'BookgDt')
+      const valDt = findXmlNode(entry, 'ValDt')
+      const date = getXmlText(bookgDt || valDt || entry, 'Dt') || new Date().toISOString().split('T')[0]
 
-      const partyNameNode = entry.querySelector('RltdPties > Dbtr > Nm') || entry.querySelector('RltdPties > Cdtr > Nm')
-      const counterpartyName = partyNameNode?.textContent || 'Counterparty'
+      const rltdPties = findXmlNode(entry, 'RltdPties')
+      const dbtr = findXmlNode(rltdPties || entry, 'Dbtr')
+      const cdtr = findXmlNode(rltdPties || entry, 'Cdtr')
+      const counterpartyName = getXmlText(dbtr || cdtr, 'Nm') || 'Counterparty'
 
-      const partyIbanNode = entry.querySelector('RltdPties > DbtrAcct > Id > IBAN') || entry.querySelector('RltdPties > CdtrAcct > Id > IBAN')
-      const counterpartyIban = partyIbanNode?.textContent || ''
+      const dbtrAcct = findXmlNode(rltdPties || entry, 'DbtrAcct')
+      const cdtrAcct = findXmlNode(rltdPties || entry, 'CdtrAcct')
+      const counterpartyIban = getXmlText(dbtrAcct || cdtrAcct, 'IBAN') || ''
 
-      const ustrdNode = entry.querySelector('RmtInf > Ustrd')
-      const strdNode = entry.querySelector('RmtInf > Strd > CdtrRefInf > Ref')
-      const description = ustrdNode?.textContent || strdNode?.textContent || 'Bank Transfer'
-      const structuredReference = strdNode?.textContent ? extractStructuredReference(strdNode.textContent) : extractStructuredReference(description)
+      const rmtInf = findXmlNode(entry, 'RmtInf')
+      const ustrd = getXmlText(rmtInf, 'Ustrd')
+      const strd = getXmlText(rmtInf, 'Ref')
+      const description = ustrd || strd || 'Bank Transfer'
+      const structuredReference = strd ? extractStructuredReference(strd) : extractStructuredReference(description)
 
       transactions.push({
         id: `tx-camt-${Date.now()}-${idx}`,
