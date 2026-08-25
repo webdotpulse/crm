@@ -352,10 +352,10 @@ export const Sidebar: React.FC = () => {
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.12rem', color: 'var(--sb-heading)', letterSpacing: '-0.02em' }}>
-              {customTheme.customBrandName || 'PulseWork'}
+              {customTheme.customBrandName || 'GridCRM'}
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Enterprise SMB Suite
+              Enterprise CRM Suite
             </div>
           </div>
         </div>

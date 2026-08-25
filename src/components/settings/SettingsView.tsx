@@ -976,9 +976,9 @@ export const SettingsView: React.FC = () => {
                   <input
                     type="text"
                     className="form-input-sandbox"
-                    value={customTheme.customBrandName || 'PulseWork'}
+                    value={customTheme.customBrandName || 'GridCRM'}
                     onChange={(e) => updateCustomTheme({ customBrandName: e.target.value })}
-                    placeholder="e.g. PulseWork or MyCompany Suite"
+                    placeholder="e.g. GridCRM or MyCompany Suite"
                   />
                 </div>
               </div>

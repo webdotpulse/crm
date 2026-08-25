@@ -107,7 +107,7 @@ export const ModuleStoreView: React.FC = () => {
                   letterSpacing: '0.05em',
                 }}
               >
-                <Sliders size={12} /> PulseWork Modular Architecture
+                <Sliders size={12} /> GridCRM Modular Architecture
               </span>
               <span className="badge-sandbox badge-soft-success" style={{ fontSize: '0.72rem', fontWeight: 700 }}>
                 {enabledCount} of {MODULE_REGISTRY.length} Modules Active

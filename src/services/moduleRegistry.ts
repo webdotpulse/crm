@@ -314,7 +314,7 @@ export const INDUSTRY_PRESETS: {
     id: 'all',
     name: 'All Modules (Full Enterprise ERP)',
     tagline: 'Complete 28-Module Suite',
-    description: 'Enables every single module in PulseWork for full end-to-end enterprise management.',
+    description: 'Enables every single module in GridCRM for full end-to-end enterprise management.',
     badge: 'Enterprise All-in-One',
     color: '#3f78e0',
     icon: 'Crown',

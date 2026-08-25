@@ -171,7 +171,7 @@ export const LoginView: React.FC = () => {
               letterSpacing: '-0.02em',
             }}
           >
-            {customTheme.customBrandName || companyProfile.name || 'PulseWork Enterprise'}
+            {customTheme.customBrandName || companyProfile.name || 'GridCRM Enterprise'}
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--sb-body)', margin: 0 }}>
             Secure Business Management & ERP Suite

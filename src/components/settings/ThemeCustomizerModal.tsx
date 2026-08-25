@@ -333,9 +333,9 @@ export const ThemeCustomizerModal: React.FC = () => {
                 <input
                   type="text"
                   className="form-input-sandbox"
-                  value={customTheme.customBrandName || 'PulseWork'}
+                  value={customTheme.customBrandName || 'GridCRM'}
                   onChange={(e) => updateCustomTheme({ customBrandName: e.target.value })}
-                  placeholder="e.g. PulseWork or Your Company CRM"
+                  placeholder="e.g. GridCRM or Your Company CRM"
                 />
               </div>
             </div>

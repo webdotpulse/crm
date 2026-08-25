@@ -26,7 +26,7 @@ export const defaultThemeConfig: CustomThemeConfig = {
   fontFamily: 'Urbanist',
   density: 'comfortable',
   customCss: '',
-  customBrandName: 'PulseWork',
+  customBrandName: 'GridCRM',
 }
 
 export const themePresets: ThemePreset[] = [

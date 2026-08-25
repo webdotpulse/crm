@@ -108,8 +108,49 @@ export async function initializeMySqlSchema(
   }
 }
 
+export interface BootstrapResult {
+  configured: boolean
+  installed: boolean
+  data?: any
+  dbConfig?: Partial<MySqlDatabaseConfig>
+  message?: string
+  error?: string
+}
+
+export async function checkServerBootstrap(): Promise<BootstrapResult> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+    const response = await fetch(`${API_BASE}?action=bootstrap`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      return { configured: false, installed: false }
+    }
+
+    const result = await response.json()
+    return {
+      configured: Boolean(result.configured),
+      installed: Boolean(result.installed),
+      data: result.data,
+      dbConfig: result.dbConfig,
+      message: result.message,
+    }
+  } catch (err: any) {
+    return {
+      configured: false,
+      installed: false,
+      error: err.message,
+    }
+  }
+}
+
 export async function checkMySqlStatus(): Promise<{
   configured: boolean
+  installed?: boolean
   host?: string
   database?: string
   tablesCount?: number
@@ -120,6 +161,7 @@ export async function checkMySqlStatus(): Promise<{
     const result = await response.json()
     return {
       configured: Boolean(result.configured),
+      installed: Boolean(result.installed),
       host: result.host,
       database: result.database,
       tablesCount: result.tables_count,
@@ -128,6 +170,7 @@ export async function checkMySqlStatus(): Promise<{
   } catch (err: any) {
     return {
       configured: false,
+      installed: false,
       message: err.message,
     }
   }

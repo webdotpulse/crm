@@ -52,10 +52,12 @@ import { Deal, Invoice, Quotation } from './types'
 import { FirstRunInstaller } from './components/setup/FirstRunInstaller'
 import { LoginView } from './components/auth/LoginView'
 import { UserManagementView } from './components/users/UserManagementView'
+import { ShieldCheck, RefreshCw } from 'lucide-react'
 
 export const App: React.FC = () => {
   const {
     isInstalled,
+    isBootstrapChecking,
     isAuthenticated,
     currentView,
     setCurrentView,
@@ -63,6 +65,49 @@ export const App: React.FC = () => {
     activeInteractiveProposalQuote,
     setActiveInteractiveProposalQuote,
   } = useApp()
+
+  // If server bootstrap check is in progress on a new computer
+  if (isBootstrapChecking) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: '#0b1120',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#f8fafc',
+          fontFamily: 'var(--sb-font-body)',
+        }}
+      >
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(63, 120, 224, 0.15)',
+            border: '1px solid rgba(63, 120, 224, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#3f78e0',
+            marginBottom: '1.25rem',
+            animation: 'pulse 1.5s infinite ease-in-out',
+          }}
+        >
+          <ShieldCheck size={28} />
+        </div>
+        <div style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', marginBottom: '0.35rem' }}>
+          GridCRM
+        </div>
+        <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+          Connecting to workspace & database...
+        </div>
+      </div>
+    )
+  }
 
   // If first run installation has not been executed, display the installer
   if (!isInstalled) {

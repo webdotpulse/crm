@@ -538,7 +538,7 @@ export const FirstRunInstaller: React.FC = () => {
                 color: '#ffffff',
               }}
             >
-              PulseWork
+              GridCRM
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
               Work Management, CRM & Combell MySQL Engine
@@ -733,7 +733,7 @@ export const FirstRunInstaller: React.FC = () => {
                     color: '#ffffff',
                   }}
                 >
-                  Welcome to PulseWork First-Run Installer
+                  Welcome to GridCRM First-Run Installer
                 </h2>
                 <p
                   style={{
@@ -1499,7 +1499,7 @@ export const FirstRunInstaller: React.FC = () => {
                             cursor: 'pointer',
                           }}
                         >
-                          Default PulseWork Logo
+                          Default GridCRM Logo
                         </button>
                       </div>
                       <input
@@ -2984,7 +2984,7 @@ export const FirstRunInstaller: React.FC = () => {
                     color: '#ffffff',
                   }}
                 >
-                  Ready to Provision PulseWork
+                  Ready to Provision GridCRM
                 </h2>
                 <p style={{ fontSize: '0.92rem', color: '#94a3b8' }}>
                   Review your initial setup parameters before launching the
@@ -3276,7 +3276,7 @@ export const FirstRunInstaller: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Sparkles size={18} /> Initialize & Launch PulseWork
+                  <Sparkles size={18} /> Initialize & Launch GridCRM
                 </>
               )}
             </button>

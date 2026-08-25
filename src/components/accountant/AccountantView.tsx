@@ -67,7 +67,7 @@ export const AccountantView: React.FC = () => {
       manifest: {
         exportedAt: new Date().toISOString(),
         legalEntity: activeLegalEntity,
-        software: 'PulseWork SMB Suite v2.5',
+        software: 'GridCRM Suite v2.5',
         year: selectedYear,
         quarter: selectedQuarter,
       },
@@ -81,7 +81,7 @@ export const AccountantView: React.FC = () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `PulseWork_Accountant_Export_${selectedYear}_Q${selectedQuarter}.json`
+    a.download = `GridCRM_Accountant_Export_${selectedYear}_Q${selectedQuarter}.json`
     a.click()
     URL.revokeObjectURL(url)
   }

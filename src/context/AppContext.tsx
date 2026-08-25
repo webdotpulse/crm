@@ -81,7 +81,7 @@ import {
   FirstRunInstallPayload,
   MySqlDatabaseConfig,
 } from '../types'
-import { initializeMySqlSchema } from '../services/mysqlService'
+import { initializeMySqlSchema, checkServerBootstrap } from '../services/mysqlService'
 import {
   initialCompanyProfile,
   initialLegalEntities,
@@ -540,6 +540,7 @@ interface AppContextType {
 
   // First-Run Installer & Provisioning
   isInstalled: boolean
+  isBootstrapChecking: boolean
   completeFirstRunInstall: (payload: FirstRunInstallPayload) => Promise<void>
   resetToInstaller: () => void
 }
@@ -555,7 +556,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Theme & Custom Styling Engine
   const [customTheme, setCustomTheme] = useState<CustomThemeConfig>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_custom_theme`)
-    return saved ? JSON.parse(saved) : defaultThemeConfig
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (parsed.customBrandName === 'PulseWork') {
+          parsed.customBrandName = 'GridCRM'
+        }
+        return parsed
+      } catch {
+        return defaultThemeConfig
+      }
+    }
+    return defaultThemeConfig
   })
   const [isThemeCustomizerOpen, setIsThemeCustomizerOpen] = useState(false)
   const [isSpotlightOpen, setIsSpotlightOpen] = useState(false)
@@ -795,7 +807,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })
   }
 
-  // First-Run Installer State
+  // First-Run Installer & Bootstrap State
   const [isInstalled, setIsInstalled] = useState<boolean>(() => {
     const installedFlag = localStorage.getItem('pulsework_installed')
     if (installedFlag === 'true') return true
@@ -808,6 +820,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return false
   })
+
+  const [isBootstrapChecking, setIsBootstrapChecking] = useState<boolean>(() => {
+    const installedFlag = localStorage.getItem('pulsework_installed')
+    const savedUsers = localStorage.getItem(`${STORAGE_KEY}_users`)
+    return installedFlag !== 'true' && !savedUsers
+  })
+
+  // Auto-detect server database installation on application boot
+  useEffect(() => {
+    let isMounted = true
+
+    const runBootstrapCheck = async () => {
+      try {
+        const res = await checkServerBootstrap()
+        if (!isMounted) return
+
+        if (res.installed && res.data) {
+          setIsInstalled(true)
+          localStorage.setItem('pulsework_installed', 'true')
+          localStorage.setItem('pulsework_installation_finalized', 'true')
+
+          // Hydrate users
+          if (res.data.users && Array.isArray(res.data.users) && res.data.users.length > 0) {
+            setUsers(res.data.users)
+            localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(res.data.users))
+            const currentSavedId = localStorage.getItem(`${STORAGE_KEY}_current_user_id`)
+            if (!currentSavedId || currentSavedId === 'usr-admin-1') {
+              setCurrentUserId(res.data.users[0].id)
+              localStorage.setItem(`${STORAGE_KEY}_current_user_id`, res.data.users[0].id)
+            }
+          }
+
+          // Hydrate Company Profile
+          if (res.data.companyProfile) {
+            setCompanyProfile(res.data.companyProfile)
+            localStorage.setItem(`${STORAGE_KEY}_profile`, JSON.stringify(res.data.companyProfile))
+          }
+
+          // Hydrate Legal Entities
+          if (res.data.legalEntities && Array.isArray(res.data.legalEntities) && res.data.legalEntities.length > 0) {
+            setLegalEntities(res.data.legalEntities)
+            localStorage.setItem(`${STORAGE_KEY}_entities`, JSON.stringify(res.data.legalEntities))
+            setActiveLegalEntityId(res.data.legalEntities[0].id)
+          }
+
+          // Hydrate Clients & CRM data
+          if (res.data.companies && Array.isArray(res.data.companies) && res.data.companies.length > 0) {
+            setCompanies(res.data.companies)
+            localStorage.setItem(`${STORAGE_KEY}_companies`, JSON.stringify(res.data.companies))
+          }
+          if (res.data.deals && Array.isArray(res.data.deals) && res.data.deals.length > 0) {
+            setDeals(res.data.deals)
+            localStorage.setItem(`${STORAGE_KEY}_deals`, JSON.stringify(res.data.deals))
+          }
+          if (res.data.quotes && Array.isArray(res.data.quotes) && res.data.quotes.length > 0) {
+            setQuotations(res.data.quotes)
+            localStorage.setItem(`${STORAGE_KEY}_quotes`, JSON.stringify(res.data.quotes))
+          }
+          if (res.data.invoices && Array.isArray(res.data.invoices) && res.data.invoices.length > 0) {
+            setInvoices(res.data.invoices)
+            localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(res.data.invoices))
+          }
+          if (res.data.projects && Array.isArray(res.data.projects) && res.data.projects.length > 0) {
+            setProjects(res.data.projects)
+            localStorage.setItem(`${STORAGE_KEY}_projects`, JSON.stringify(res.data.projects))
+          }
+          if (res.data.tasks && Array.isArray(res.data.tasks) && res.data.tasks.length > 0) {
+            setTasks(res.data.tasks)
+            localStorage.setItem(`${STORAGE_KEY}_tasks`, JSON.stringify(res.data.tasks))
+          }
+          if (res.data.expenses && Array.isArray(res.data.expenses) && res.data.expenses.length > 0) {
+            setExpenses(res.data.expenses)
+            localStorage.setItem(`${STORAGE_KEY}_expenses`, JSON.stringify(res.data.expenses))
+          }
+          if (res.data.auditLogs && Array.isArray(res.data.auditLogs) && res.data.auditLogs.length > 0) {
+            setSecurityAuditLogs(res.data.auditLogs)
+            localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify(res.data.auditLogs))
+          }
+
+          // Hydrate Settings
+          if (res.data.settings) {
+            if (res.data.settings.customTheme) {
+              setCustomTheme(res.data.settings.customTheme)
+              applyThemeConfig(res.data.settings.customTheme, theme === 'dark')
+              localStorage.setItem(`${STORAGE_KEY}_custom_theme`, JSON.stringify(res.data.settings.customTheme))
+            }
+            if (res.data.settings.securityPolicy) {
+              setSecurityPolicy(res.data.settings.securityPolicy)
+              localStorage.setItem(`${STORAGE_KEY}_secpolicy`, JSON.stringify(res.data.settings.securityPolicy))
+            }
+            if (res.data.settings.moduleSettings) {
+              setModuleSettings(res.data.settings.moduleSettings)
+              localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(res.data.settings.moduleSettings))
+            }
+          }
+
+          // Hydrate Database Config
+          if (res.dbConfig) {
+            setDatabaseConfig((prev) => {
+              const updated = { ...prev, ...res.dbConfig }
+              localStorage.setItem(`${STORAGE_KEY}_db_config`, JSON.stringify(updated))
+              return updated
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('Server boot check notice:', err)
+      } finally {
+        if (isMounted) {
+          setIsBootstrapChecking(false)
+        }
+      }
+    }
+
+    runBootstrapCheck()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Enterprise Security, Auth, RBAC & 2FA State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -3630,6 +3761,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         databaseConfig,
         updateDatabaseConfig,
         isInstalled,
+        isBootstrapChecking,
         completeFirstRunInstall,
         resetToInstaller,
       }}
