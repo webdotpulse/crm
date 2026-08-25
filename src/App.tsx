@@ -29,6 +29,16 @@ import { SecurityHubView } from './components/security/SecurityHubView'
 import { LockScreenOverlay } from './components/security/LockScreenOverlay'
 import { TwoFactorChallengeModal } from './components/security/TwoFactorChallengeModal'
 
+// New Enterprise Suite Components
+import { PulseAIHubView } from './components/ai/PulseAIHubView'
+import { HelpdeskView } from './components/helpdesk/HelpdeskView'
+import { PulseHRView } from './components/hr/PulseHRView'
+import { ExecutiveBIView } from './components/bi/ExecutiveBIView'
+import { MultiLocationInventoryView } from './components/inventory/MultiLocationInventoryView'
+import { DocumentTemplateDesignerView } from './components/templates/DocumentTemplateDesignerView'
+import { ModuleStoreView } from './components/modules/ModuleStoreView'
+import { InteractiveProposalViewerModal } from './components/quotes/InteractiveProposalViewerModal'
+
 import { DealModal } from './components/deals/DealModal'
 import { QuoteBuilderModal } from './components/quotes/QuoteBuilderModal'
 import { ProjectModal } from './components/projects/ProjectModal'
@@ -41,7 +51,13 @@ import { ThemeCustomizerModal } from './components/settings/ThemeCustomizerModal
 import { Deal, Invoice, Quotation } from './types'
 
 export const App: React.FC = () => {
-  const { currentView, setCurrentView, isPrivacyModeActive } = useApp()
+  const {
+    currentView,
+    setCurrentView,
+    isPrivacyModeActive,
+    activeInteractiveProposalQuote,
+    setActiveInteractiveProposalQuote,
+  } = useApp()
 
   // Quick Action Modal states
   const [quickModalType, setQuickModalType] = useState<
@@ -152,9 +168,31 @@ export const App: React.FC = () => {
 
           {currentView === 'security' && <SecurityHubView />}
 
+          {currentView === 'pulse_ai' && <PulseAIHubView />}
+
+          {currentView === 'helpdesk' && <HelpdeskView />}
+
+          {currentView === 'hr' && <PulseHRView />}
+
+          {currentView === 'bi' && <ExecutiveBIView />}
+
+          {currentView === 'inventory_multi' && <MultiLocationInventoryView />}
+
+          {currentView === 'template_designer' && <DocumentTemplateDesignerView />}
+
+          {currentView === 'module_store' && <ModuleStoreView />}
+
           {currentView === 'settings' && <SettingsView />}
         </main>
       </div>
+
+      {/* Interactive Web Proposal Viewer Modal */}
+      {activeInteractiveProposalQuote && (
+        <InteractiveProposalViewerModal
+          quote={activeInteractiveProposalQuote}
+          onClose={() => setActiveInteractiveProposalQuote(null)}
+        />
+      )}
 
       {/* Global Quick Action Modals */}
       {quickModalType === 'deal' && (

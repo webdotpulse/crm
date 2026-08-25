@@ -24,6 +24,12 @@ import {
   Truck,
   Sparkles,
   Palette,
+  Headphones,
+  Users,
+  BarChart3,
+  Boxes,
+  LayoutTemplate,
+  Sliders,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -62,6 +68,10 @@ export const Sidebar: React.FC = () => {
     workOrders,
     mileageTrips,
     purchaseOrders,
+    tickets,
+    staffCapacities,
+    warehouseLocations,
+    isModuleEnabled,
   } = useApp()
 
   const navSections: NavSection[] = [
@@ -147,6 +157,13 @@ export const Sidebar: React.FC = () => {
           badgeType: 'primary',
         },
         {
+          id: 'inventory_multi',
+          label: 'Multi-Depot & Vans',
+          icon: <Boxes size={17} />,
+          badge: warehouseLocations.length,
+          badgeType: 'primary',
+        },
+        {
           id: 'procurement',
           label: 'Bestelbonnen (PO)',
           icon: <Truck size={17} />,
@@ -163,7 +180,26 @@ export const Sidebar: React.FC = () => {
       ],
     },
     {
-      title: 'FINANCE & BANKING',
+      title: 'PEOPLE & SUPPORT',
+      items: [
+        {
+          id: 'helpdesk',
+          label: 'PulseDesk Support',
+          icon: <Headphones size={17} />,
+          badge: tickets.filter((t) => t.status === 'open').length || undefined,
+          badgeType: 'warning',
+        },
+        {
+          id: 'hr',
+          label: 'PulseHR & Capacity',
+          icon: <Users size={17} />,
+          badge: staffCapacities.length,
+          badgeType: 'purple',
+        },
+      ],
+    },
+    {
+      title: 'FINANCE & BI',
       items: [
         {
           id: 'invoices',
@@ -171,6 +207,13 @@ export const Sidebar: React.FC = () => {
           icon: <Receipt size={17} />,
           badge: invoices.filter((i) => i.status === 'issued').length || undefined,
           badgeType: 'danger',
+        },
+        {
+          id: 'bi',
+          label: 'Executive BI & KPIs',
+          icon: <BarChart3 size={17} />,
+          badge: 'KPIs',
+          badgeType: 'success',
         },
         {
           id: 'dunning',
@@ -202,16 +245,28 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'accountant',
-          label: 'Belgian VAT & Tax',
+          label: 'VAT & EU OSS Tax',
           icon: <Calculator size={17} />,
-          badge: 'Q3',
+          badge: 'OSS',
           badgeType: 'success',
         },
       ],
     },
     {
-      title: 'INTEGRATIONS & PORTAL',
+      title: 'ADVANCED & SYSTEM',
       items: [
+        {
+          id: 'pulse_ai',
+          label: 'PulseAI & OCR Studio',
+          icon: <Sparkles size={17} />,
+          badge: 'AI',
+          badgeType: 'purple',
+        },
+        {
+          id: 'template_designer',
+          label: 'Document Designer',
+          icon: <LayoutTemplate size={17} />,
+        },
         {
           id: 'integrations',
           label: 'Integrations Hub',
@@ -242,6 +297,13 @@ export const Sidebar: React.FC = () => {
           icon: <ShieldCheck size={17} />,
           badge: '2FA',
           badgeType: 'success',
+        },
+        {
+          id: 'module_store',
+          label: 'Module Hub & Presets',
+          icon: <Sliders size={17} />,
+          badge: 'Store',
+          badgeType: 'primary',
         },
         {
           id: 'settings',
@@ -293,47 +355,56 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation List */}
       <nav style={{ padding: '0.75rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '1.15rem', flex: 1 }}>
-        {navSections.map((section, sIdx) => (
-          <div key={sIdx}>
-            <div className="sidebar-nav-section-title">{section.title}</div>
+        {navSections.map((section, sIdx) => {
+          const visibleItems = section.items.filter((item) => {
+            if (item.id === 'dashboard') return true
+            return isModuleEnabled(item.id as any)
+          })
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              {section.items.map((item) => {
-                const isActive = currentView === item.id
+          if (visibleItems.length === 0) return null
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setCurrentView(item.id)}
-                    className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span
-                        className="sidebar-icon"
-                        style={{
-                          color: isActive ? 'var(--sb-primary)' : 'var(--sb-body)',
-                          display: 'flex',
-                        }}
-                      >
-                        {item.icon}
-                      </span>
-                      <span>{item.label}</span>
-                    </div>
+          return (
+            <div key={sIdx}>
+              <div className="sidebar-nav-section-title">{section.title}</div>
 
-                    {item.badge !== undefined && (
-                      <span
-                        className={`badge-sandbox badge-soft-${item.badgeType || 'primary'}`}
-                        style={{ fontSize: '0.65rem', padding: '0.12rem 0.4rem' }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                {visibleItems.map((item) => {
+                  const isActive = currentView === item.id
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setCurrentView(item.id)}
+                      className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <span
+                          className="sidebar-icon"
+                          style={{
+                            color: isActive ? 'var(--sb-primary)' : 'var(--sb-body)',
+                            display: 'flex',
+                          }}
+                        >
+                          {item.icon}
+                        </span>
+                        <span>{item.label}</span>
+                      </div>
+
+                      {item.badge !== undefined && (
+                        <span
+                          className={`badge-sandbox badge-soft-${item.badgeType || 'primary'}`}
+                          style={{ fontSize: '0.65rem', padding: '0.12rem 0.4rem' }}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Bottom Status & Theme Shortcut */}

@@ -56,6 +56,28 @@ import {
   SecurityCategory,
   SecuritySeverity,
   TwoFactorSetupData,
+  ModuleId,
+  ModulePresetId,
+  ModuleSettings,
+  SupportTicket,
+  SupportTicketMessage,
+  TicketPriority,
+  TicketStatus,
+  TicketCategory,
+  CannedResponse,
+  StaffMemberCapacity,
+  LeaveRequest,
+  LeaveStatus,
+  PublicHoliday,
+  ReimbursementBatch,
+  WarehouseLocation,
+  StockTransferOrder,
+  SerialBatchItem,
+  ScheduledDigestConfig,
+  CustomReportConfig,
+  OssVatCountryRate,
+  WysiwygDocumentTemplate,
+  TemplateStyleConfig,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -92,6 +114,19 @@ import {
   initialSecurityPolicy,
   initialActiveSessions,
   initialSecurityAuditLogs,
+  initialTickets,
+  initialCannedResponses,
+  initialStaffCapacities,
+  initialLeaveRequests,
+  initialPublicHolidays,
+  initialReimbursementBatches,
+  initialWarehouseLocations,
+  initialStockTransfers,
+  initialSerialBatchItems,
+  initialScheduledDigests,
+  initialCustomReports,
+  initialOssVatRates,
+  initialWysiwygTemplates,
 } from '../data/initialData'
 import { dispatchPeppolInvoice } from '../services/peppolDispatcher'
 import { parseCodaFile, parseCamt053File, parseCsvBankFile } from '../services/codaParser'
@@ -103,6 +138,7 @@ import { calculateDunningEscalation, BELGIAN_STATUTORY_RECOVERY_FEE, STATUTORY_L
 import { translate } from '../services/i18nService'
 import { defaultThemeConfig, themePresets, applyThemeConfig } from '../services/themeService'
 import { createTwoFactorSetup, verifyTotpCode, calculateTotpCode, syncComputeLogHash } from '../services/securityService'
+import { getDefaultModuleSettings, getPresetModuleSettings, MODULE_REGISTRY } from '../services/moduleRegistry'
 
 export type AppView =
   | 'dashboard'
@@ -129,6 +165,13 @@ export type AppView =
   | 'integrations'
   | 'settings'
   | 'security'
+  | 'helpdesk'
+  | 'hr'
+  | 'bi'
+  | 'pulse_ai'
+  | 'inventory_multi'
+  | 'template_designer'
+  | 'module_store'
 
 interface AppContextType {
   // Navigation & Theme & Language
@@ -399,6 +442,65 @@ interface AppContextType {
   } | null
   triggerStepUp2FA: (title: string, description: string, onConfirmed: () => void) => void
   closeStepUpChallenge: () => void
+
+  // Module Enablement Architecture & Feature Flags
+  moduleSettings: ModuleSettings
+  toggleModule: (id: ModuleId, enabled?: boolean) => void
+  applyModulePreset: (preset: ModulePresetId) => void
+  isModuleEnabled: (id: ModuleId) => boolean
+
+  // PulseDesk: Support Tickets & Omnichannel
+  tickets: SupportTicket[]
+  addTicket: (ticket: SupportTicket) => void
+  updateTicket: (ticket: SupportTicket) => void
+  deleteTicket: (id: string) => void
+  addTicketMessage: (ticketId: string, msg: Omit<SupportTicketMessage, 'id' | 'ticketId' | 'timestamp'>) => void
+  cannedResponses: CannedResponse[]
+  convertTicketToTask: (ticketId: string, projectId: string) => Task | null
+  convertTicketToInvoice: (ticketId: string, amount: number, description: string) => Invoice | null
+
+  // PulseHR: Capacity, Leave & Reimbursements
+  staffCapacities: StaffMemberCapacity[]
+  leaveRequests: LeaveRequest[]
+  addLeaveRequest: (lr: LeaveRequest) => void
+  updateLeaveRequestStatus: (id: string, status: LeaveStatus) => void
+  deleteLeaveRequest: (id: string) => void
+  publicHolidays: PublicHoliday[]
+  reimbursementBatches: ReimbursementBatch[]
+  generateReimbursementBatch: (expenseIds: string[], mileageTripIds: string[]) => ReimbursementBatch
+
+  // Multi-Location Inventory & Serial Tracking
+  warehouseLocations: WarehouseLocation[]
+  addWarehouseLocation: (loc: WarehouseLocation) => void
+  updateWarehouseLocation: (loc: WarehouseLocation) => void
+  stockTransfers: StockTransferOrder[]
+  createStockTransfer: (order: Omit<StockTransferOrder, 'id' | 'transferNumber' | 'status' | 'date'>) => StockTransferOrder
+  completeStockTransfer: (id: string) => void
+  serialBatchItems: SerialBatchItem[]
+  addSerialBatchItem: (item: SerialBatchItem) => void
+  updateSerialBatchItem: (item: SerialBatchItem) => void
+
+  // Executive BI & Analytics
+  scheduledDigests: ScheduledDigestConfig[]
+  updateScheduledDigest: (digest: ScheduledDigestConfig) => void
+  toggleScheduledDigest: (id: string, enabled?: boolean) => void
+  customReports: CustomReportConfig[]
+  addCustomReport: (rep: CustomReportConfig) => void
+  deleteCustomReport: (id: string) => void
+
+  // EU OSS VAT Rates
+  ossVatRates: OssVatCountryRate[]
+
+  // WYSIWYG Document Templates
+  wysiwygTemplates: WysiwygDocumentTemplate[]
+  activeWysiwygTemplateId: string
+  setActiveWysiwygTemplateId: (id: string) => void
+  updateWysiwygTemplateStyle: (id: string, style: Partial<TemplateStyleConfig>) => void
+  addWysiwygTemplate: (template: WysiwygDocumentTemplate) => void
+
+  // Interactive Web Proposals Viewer
+  activeInteractiveProposalQuote: Quotation | null
+  setActiveInteractiveProposalQuote: (quote: Quotation | null) => void
 
   // Client Helper
   getClientDisplayName: (clientType?: ClientType, id?: string) => string
@@ -672,6 +774,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     onConfirmed: () => void
   } | null>(null)
 
+  // Module Enablement Architecture & Feature Flags
+  const [moduleSettings, setModuleSettings] = useState<ModuleSettings>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_modules`)
+    return saved ? JSON.parse(saved) : getDefaultModuleSettings()
+  })
+
+  // PulseDesk: Support Tickets & Omnichannel
+  const [tickets, setTickets] = useState<SupportTicket[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_tickets`)
+    return saved ? JSON.parse(saved) : initialTickets
+  })
+  const [cannedResponses, setCannedResponses] = useState<CannedResponse[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_canned_resp`)
+    return saved ? JSON.parse(saved) : initialCannedResponses
+  })
+
+  // PulseHR: Capacity, Leave & Reimbursements
+  const [staffCapacities, setStaffCapacities] = useState<StaffMemberCapacity[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_staff_cap`)
+    return saved ? JSON.parse(saved) : initialStaffCapacities
+  })
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_leave_reqs`)
+    return saved ? JSON.parse(saved) : initialLeaveRequests
+  })
+  const [publicHolidays] = useState<PublicHoliday[]>(initialPublicHolidays)
+  const [reimbursementBatches, setReimbursementBatches] = useState<ReimbursementBatch[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_reimb_batches`)
+    return saved ? JSON.parse(saved) : initialReimbursementBatches
+  })
+
+  // Multi-Location Inventory & Serial Tracking
+  const [warehouseLocations, setWarehouseLocations] = useState<WarehouseLocation[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_locations`)
+    return saved ? JSON.parse(saved) : initialWarehouseLocations
+  })
+  const [stockTransfers, setStockTransfers] = useState<StockTransferOrder[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_transfers`)
+    return saved ? JSON.parse(saved) : initialStockTransfers
+  })
+  const [serialBatchItems, setSerialBatchItems] = useState<SerialBatchItem[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_serials`)
+    return saved ? JSON.parse(saved) : initialSerialBatchItems
+  })
+
+  // Executive BI & Scheduled Digests
+  const [scheduledDigests, setScheduledDigests] = useState<ScheduledDigestConfig[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_digests`)
+    return saved ? JSON.parse(saved) : initialScheduledDigests
+  })
+  const [customReports, setCustomReports] = useState<CustomReportConfig[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_custom_reports`)
+    return saved ? JSON.parse(saved) : initialCustomReports
+  })
+
+  // EU OSS VAT Rates
+  const [ossVatRates] = useState<OssVatCountryRate[]>(initialOssVatRates)
+
+  // WYSIWYG Document Templates
+  const [wysiwygTemplates, setWysiwygTemplates] = useState<WysiwygDocumentTemplate[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_wysiwyg_templates`)
+    return saved ? JSON.parse(saved) : initialWysiwygTemplates
+  })
+  const [activeWysiwygTemplateId, setActiveWysiwygTemplateId] = useState<string>(() => {
+    return initialWysiwygTemplates[0].id
+  })
+
+  // Interactive Web Proposals Viewer
+  const [activeInteractiveProposalQuote, setActiveInteractiveProposalQuote] = useState<Quotation | null>(null)
+
   const currentUser = users.find((u) => u.id === currentUserId) || users[0] || initialUsers[0]
 
   const activeLegalEntity =
@@ -716,6 +888,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify(securityAuditLogs))
       localStorage.setItem(`${STORAGE_KEY}_current_user_id`, currentUserId)
       localStorage.setItem(`${STORAGE_KEY}_privacy_mode`, JSON.stringify(isPrivacyModeActive))
+      localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(moduleSettings))
+      localStorage.setItem(`${STORAGE_KEY}_tickets`, JSON.stringify(tickets))
+      localStorage.setItem(`${STORAGE_KEY}_canned_resp`, JSON.stringify(cannedResponses))
+      localStorage.setItem(`${STORAGE_KEY}_staff_cap`, JSON.stringify(staffCapacities))
+      localStorage.setItem(`${STORAGE_KEY}_leave_reqs`, JSON.stringify(leaveRequests))
+      localStorage.setItem(`${STORAGE_KEY}_reimb_batches`, JSON.stringify(reimbursementBatches))
+      localStorage.setItem(`${STORAGE_KEY}_locations`, JSON.stringify(warehouseLocations))
+      localStorage.setItem(`${STORAGE_KEY}_transfers`, JSON.stringify(stockTransfers))
+      localStorage.setItem(`${STORAGE_KEY}_serials`, JSON.stringify(serialBatchItems))
+      localStorage.setItem(`${STORAGE_KEY}_digests`, JSON.stringify(scheduledDigests))
+      localStorage.setItem(`${STORAGE_KEY}_custom_reports`, JSON.stringify(customReports))
+      localStorage.setItem(`${STORAGE_KEY}_wysiwyg_templates`, JSON.stringify(wysiwygTemplates))
     } catch (e) {
       console.warn('Storage sync error:', e)
     }
@@ -757,6 +941,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     securityAuditLogs,
     currentUserId,
     isPrivacyModeActive,
+    moduleSettings,
+    tickets,
+    cannedResponses,
+    staffCapacities,
+    leaveRequests,
+    reimbursementBatches,
+    warehouseLocations,
+    stockTransfers,
+    serialBatchItems,
+    scheduledDigests,
+    customReports,
+    wysiwygTemplates,
   ])
 
   useEffect(() => {
@@ -2433,6 +2629,256 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStepUpChallenge(null)
   }
 
+  // Module Enablement Architecture & Feature Flags
+  const toggleModule = (id: ModuleId, enabled?: boolean) => {
+    setModuleSettings((prev) => {
+      const next = { ...prev, [id]: enabled !== undefined ? enabled : !prev[id] }
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(next))
+      } catch (e) {}
+      return next
+    })
+  }
+
+  const applyModulePreset = (preset: ModulePresetId) => {
+    const next = getPresetModuleSettings(preset)
+    setModuleSettings(next)
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(next))
+    } catch (e) {}
+  }
+
+  const isModuleEnabled = (id: ModuleId): boolean => {
+    if (id === 'settings' || id === 'crm' || id === 'invoices' || id === 'security') return true
+    return moduleSettings[id] !== false
+  }
+
+  // PulseDesk: Support Tickets
+  const addTicket = (ticket: SupportTicket) => {
+    setTickets((prev) => [ticket, ...prev])
+  }
+
+  const updateTicket = (ticket: SupportTicket) => {
+    setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...ticket, updatedAt: new Date().toISOString() } : t)))
+  }
+
+  const deleteTicket = (id: string) => {
+    setTickets((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const addTicketMessage = (ticketId: string, msg: Omit<SupportTicketMessage, 'id' | 'ticketId' | 'timestamp'>) => {
+    const newMsg: SupportTicketMessage = {
+      ...msg,
+      id: `msg-${Date.now()}`,
+      ticketId,
+      timestamp: new Date().toISOString(),
+    }
+    setTickets((prev) =>
+      prev.map((t) => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            updatedAt: new Date().toISOString(),
+            status: msg.senderType === 'agent' ? 'waiting_client' : 'in_progress',
+            messages: [...t.messages, newMsg],
+          }
+        }
+        return t
+      })
+    )
+  }
+
+  const convertTicketToTask = (ticketId: string, projectId: string): Task | null => {
+    const ticket = tickets.find((t) => t.id === ticketId)
+    if (!ticket) return null
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      projectId,
+      title: `[${ticket.ticketNumber}] ${ticket.subject}`,
+      description: ticket.messages[0]?.body || ticket.subject,
+      assignee: ticket.assignee,
+      priority: ticket.priority === 'urgent' ? 'urgent' : ticket.priority === 'high' ? 'high' : 'medium',
+      status: 'todo',
+      estimatedHours: 4,
+      loggedHours: 0,
+      dueDate: ticket.slaResolutionDue.split('T')[0] || new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    }
+    setTasks((prev) => [...prev, newTask])
+    setTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, convertedToTaskId: newTask.id, status: 'in_progress' } : t))
+    )
+    return newTask
+  }
+
+  const convertTicketToInvoice = (ticketId: string, amount: number, description: string): Invoice | null => {
+    const ticket = tickets.find((t) => t.id === ticketId)
+    if (!ticket) return null
+    const vatAmount = amount * 0.21
+    const totalAmount = amount + vatAmount
+    const invNumber = `${activeLegalEntity.invoicePrefix}${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`
+    const newInvoice: Invoice = {
+      id: `inv-${Date.now()}`,
+      number: invNumber,
+      legalEntityId: activeLegalEntityId,
+      clientType: ticket.clientType,
+      companyId: ticket.companyId,
+      individualId: ticket.individualId,
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      structuredReference: `+++${Math.floor(100 + Math.random() * 900)}/${Math.floor(1000 + Math.random() * 9000)}/${Math.floor(10000 + Math.random() * 90000)}+++`,
+      items: [
+        {
+          id: `item-${Date.now()}`,
+          description: description || `Support Ticket Resolution: ${ticket.subject}`,
+          quantity: 1,
+          unit: 'service',
+          unitPrice: amount,
+          discountPercent: 0,
+          vatRate: 21,
+          total: amount,
+          taxCategory: 'S',
+        },
+      ],
+      subtotal: amount,
+      taxBreakdown: [{ rate: 21, taxCategory: 'S', taxableAmount: amount, taxAmount: vatAmount }],
+      taxTotal: vatAmount,
+      total: totalAmount,
+      amountPaid: 0,
+      currency: activeLegalEntity.defaultCurrency || 'EUR',
+      status: 'issued',
+      peppolStatus: 'not_sent',
+      notes: `Generated from support ticket ${ticket.ticketNumber}`,
+      createdAt: new Date().toISOString(),
+    }
+    setInvoices((prev) => [newInvoice, ...prev])
+    setTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, convertedToInvoiceId: newInvoice.id, status: 'resolved' } : t))
+    )
+    return newInvoice
+  }
+
+  // PulseHR: Capacity, Leave & Reimbursements
+  const addLeaveRequest = (lr: LeaveRequest) => {
+    setLeaveRequests((prev) => [lr, ...prev])
+  }
+
+  const updateLeaveRequestStatus = (id: string, status: LeaveStatus) => {
+    setLeaveRequests((prev) =>
+      prev.map((lr) => {
+        if (lr.id === id) {
+          return {
+            ...lr,
+            status,
+            approvedBy: status === 'approved' ? currentUser.name : undefined,
+            approvedAt: status === 'approved' ? new Date().toISOString() : undefined,
+          }
+        }
+        return lr
+      })
+    )
+  }
+
+  const deleteLeaveRequest = (id: string) => {
+    setLeaveRequests((prev) => prev.filter((lr) => lr.id !== id))
+  }
+
+  const generateReimbursementBatch = (expenseIds: string[], mileageTripIds: string[]): ReimbursementBatch => {
+    const selectedExpenses = expenses.filter((e) => expenseIds.includes(e.id))
+    const selectedTrips = mileageTrips.filter((m) => mileageTripIds.includes(m.id))
+    const totalExp = selectedExpenses.reduce((sum, e) => sum + e.total, 0)
+    const totalMileage = selectedTrips.reduce((sum, m) => sum + m.totalAllowanceEur, 0)
+    const totalBatch = totalExp + totalMileage
+
+    const newBatch: ReimbursementBatch = {
+      id: `rb-${Date.now()}`,
+      batchNumber: `REIMB-${new Date().getFullYear()}-${String(reimbursementBatches.length + 1).padStart(2, '0')}`,
+      createdDate: new Date().toISOString().split('T')[0],
+      status: 'exported',
+      claimsCount: selectedExpenses.length + selectedTrips.length,
+      totalAmountEur: totalBatch,
+      staffBreakdown: [
+        {
+          staffId: staffCapacities[0]?.id || 'staff-1',
+          staffName: staffCapacities[0]?.name || 'Koen De Vries',
+          iban: 'BE12 3456 7890 1234',
+          amountEur: totalBatch,
+          expenseIds,
+          mileageTripIds,
+        },
+      ],
+      sepaXml: `<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"><CstmrCdtTrfInitn><GrpHdr><MsgId>REIMB-${Date.now()}</MsgId><CreDtTm>${new Date().toISOString()}</CreDtTm><NbOfTxs>${selectedExpenses.length + selectedTrips.length}</NbOfTxs><CtrlSum>${totalBatch.toFixed(2)}</CtrlSum><InitgPty><Nm>${activeLegalEntity.legalName}</Nm></InitgPty></GrpHdr></CstmrCdtTrfInitn></Document>`,
+    }
+
+    setReimbursementBatches((prev) => [newBatch, ...prev])
+    return newBatch
+  }
+
+  // Multi-Location Inventory & Serial Tracking
+  const addWarehouseLocation = (loc: WarehouseLocation) => {
+    setWarehouseLocations((prev) => [...prev, loc])
+  }
+
+  const updateWarehouseLocation = (loc: WarehouseLocation) => {
+    setWarehouseLocations((prev) => prev.map((l) => (l.id === loc.id ? loc : l)))
+  }
+
+  const createStockTransfer = (order: Omit<StockTransferOrder, 'id' | 'transferNumber' | 'status' | 'date'>): StockTransferOrder => {
+    const newTransfer: StockTransferOrder = {
+      ...order,
+      id: `tr-${Date.now()}`,
+      transferNumber: `TR-${new Date().getFullYear()}-${String(stockTransfers.length + 1).padStart(3, '0')}`,
+      status: 'in_transit',
+      date: new Date().toISOString().split('T')[0],
+    }
+    setStockTransfers((prev) => [newTransfer, ...prev])
+    return newTransfer
+  }
+
+  const completeStockTransfer = (id: string) => {
+    setStockTransfers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: 'completed', completedAt: new Date().toISOString() } : t))
+    )
+  }
+
+  const addSerialBatchItem = (item: SerialBatchItem) => {
+    setSerialBatchItems((prev) => [item, ...prev])
+  }
+
+  const updateSerialBatchItem = (item: SerialBatchItem) => {
+    setSerialBatchItems((prev) => prev.map((s) => (s.id === item.id ? item : s)))
+  }
+
+  // Executive BI & Scheduled Digests
+  const updateScheduledDigest = (digest: ScheduledDigestConfig) => {
+    setScheduledDigests((prev) => prev.map((d) => (d.id === digest.id ? digest : d)))
+  }
+
+  const toggleScheduledDigest = (id: string, enabled?: boolean) => {
+    setScheduledDigests((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, enabled: enabled !== undefined ? enabled : !d.enabled } : d))
+    )
+  }
+
+  const addCustomReport = (rep: CustomReportConfig) => {
+    setCustomReports((prev) => [...prev, rep])
+  }
+
+  const deleteCustomReport = (id: string) => {
+    setCustomReports((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  // WYSIWYG Templates
+  const updateWysiwygTemplateStyle = (id: string, style: Partial<TemplateStyleConfig>) => {
+    setWysiwygTemplates((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, styleConfig: { ...t.styleConfig, ...style } } : t))
+    )
+  }
+
+  const addWysiwygTemplate = (template: WysiwygDocumentTemplate) => {
+    setWysiwygTemplates((prev) => [...prev, template])
+  }
+
   // Inactivity auto-lock timer
   useEffect(() => {
     if (!securityPolicy.sessionTimeoutMinutes || securityPolicy.sessionTimeoutMinutes <= 0) return
@@ -2498,12 +2944,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSecurityAuditLogs(initialSecurityAuditLogs)
     setIsScreenLocked(false)
     setIsPrivacyModeActive(false)
+    setModuleSettings(getDefaultModuleSettings())
+    setTickets(initialTickets)
+    setCannedResponses(initialCannedResponses)
+    setStaffCapacities(initialStaffCapacities)
+    setLeaveRequests(initialLeaveRequests)
+    setReimbursementBatches(initialReimbursementBatches)
+    setWarehouseLocations(initialWarehouseLocations)
+    setStockTransfers(initialStockTransfers)
+    setSerialBatchItems(initialSerialBatchItems)
+    setScheduledDigests(initialScheduledDigests)
+    setCustomReports(initialCustomReports)
+    setWysiwygTemplates(initialWysiwygTemplates)
+    setActiveWysiwygTemplateId(initialWysiwygTemplates[0].id)
+    setActiveInteractiveProposalQuote(null)
     localStorage.clear()
   }
 
   const exportDataJson = (): string => {
     const backup = {
-      version: '2.8.0',
+      version: '3.0.0',
       exportedAt: new Date().toISOString(),
       legalEntities,
       companyProfile,
@@ -2540,6 +3000,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       securityPolicy,
       activeSessions,
       securityAuditLogs,
+      moduleSettings,
+      tickets,
+      cannedResponses,
+      staffCapacities,
+      leaveRequests,
+      reimbursementBatches,
+      warehouseLocations,
+      stockTransfers,
+      serialBatchItems,
+      scheduledDigests,
+      customReports,
+      wysiwygTemplates,
     }
     return JSON.stringify(backup, null, 2)
   }
@@ -2553,37 +3025,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.products) setProducts(data.products)
       if (data.events) setEvents(data.events)
       if (data.documentTemplates) setDocumentTemplates(data.documentTemplates)
-      if (data.emailTemplates) setEmailTemplates(data.emailTemplates)
-      if (data.vatRates) setVatRates(data.vatRates)
-      if (data.companyProfile) setCompanyProfile(data.companyProfile)
+      if (data.invoices) setInvoices(data.invoices)
       if (data.deals) setDeals(data.deals)
       if (data.quotations) setQuotations(data.quotations)
       if (data.projects) setProjects(data.projects)
       if (data.tasks) setTasks(data.tasks)
       if (data.timeEntries) setTimeEntries(data.timeEntries)
-      if (data.invoices) setInvoices(data.invoices)
-      if (data.payments) setPayments(data.payments)
       if (data.expenses) setExpenses(data.expenses)
       if (data.suppliers) setSuppliers(data.suppliers)
-      if (data.bankStatements) setBankStatements(data.bankStatements)
-      if (data.bankTransactions) setBankTransactions(data.bankTransactions)
-      if (data.subscriptions) setSubscriptions(data.subscriptions)
-      if (data.contracts) setContracts(data.contracts)
-      if (data.apiKeys) setApiKeys(data.apiKeys)
-      if (data.webhookEndpoints) setWebhookEndpoints(data.webhookEndpoints)
-      if (data.webhookLogs) setWebhookLogs(data.webhookLogs)
-      if (data.integrations) setIntegrations(data.integrations)
-      if (data.workOrders) setWorkOrders(data.workOrders)
-      if (data.mileageTrips) setMileageTrips(data.mileageTrips)
-      if (data.purchaseOrders) setPurchaseOrders(data.purchaseOrders)
-      if (data.dunningNotices) setDunningNotices(data.dunningNotices)
-      if (data.users) setUsers(data.users)
-      if (data.securityPolicy) setSecurityPolicy(data.securityPolicy)
-      if (data.activeSessions) setActiveSessions(data.activeSessions)
-      if (data.securityAuditLogs) setSecurityAuditLogs(data.securityAuditLogs)
+      if (data.moduleSettings) setModuleSettings(data.moduleSettings)
+      if (data.tickets) setTickets(data.tickets)
+      if (data.staffCapacities) setStaffCapacities(data.staffCapacities)
+      if (data.leaveRequests) setLeaveRequests(data.leaveRequests)
+      if (data.warehouseLocations) setWarehouseLocations(data.warehouseLocations)
+      if (data.stockTransfers) setStockTransfers(data.stockTransfers)
+      if (data.serialBatchItems) setSerialBatchItems(data.serialBatchItems)
       return true
     } catch (e) {
-      console.error('Import error:', e)
+      console.error('Import failed:', e)
       return false
     }
   }
@@ -2779,6 +3238,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stepUpChallenge,
         triggerStepUp2FA,
         closeStepUpChallenge,
+        // New Enterprise features
+        moduleSettings,
+        toggleModule,
+        applyModulePreset,
+        isModuleEnabled,
+        tickets,
+        addTicket,
+        updateTicket,
+        deleteTicket,
+        addTicketMessage,
+        cannedResponses,
+        convertTicketToTask,
+        convertTicketToInvoice,
+        staffCapacities,
+        leaveRequests,
+        addLeaveRequest,
+        updateLeaveRequestStatus,
+        deleteLeaveRequest,
+        publicHolidays,
+        reimbursementBatches,
+        generateReimbursementBatch,
+        warehouseLocations,
+        addWarehouseLocation,
+        updateWarehouseLocation,
+        stockTransfers,
+        createStockTransfer,
+        completeStockTransfer,
+        serialBatchItems,
+        addSerialBatchItem,
+        updateSerialBatchItem,
+        scheduledDigests,
+        updateScheduledDigest,
+        toggleScheduledDigest,
+        customReports,
+        addCustomReport,
+        deleteCustomReport,
+        ossVatRates,
+        wysiwygTemplates,
+        activeWysiwygTemplateId,
+        setActiveWysiwygTemplateId,
+        updateWysiwygTemplateStyle,
+        addWysiwygTemplate,
+        activeInteractiveProposalQuote,
+        setActiveInteractiveProposalQuote,
         resetToDemoData,
         exportDataJson,
         importDataJson,

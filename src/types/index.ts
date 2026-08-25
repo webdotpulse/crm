@@ -950,10 +950,7 @@ export interface FinancialHealthMetrics {
   insights: AiFinancialInsight[]
 }
 
-// ==========================================
-// 12. MULTI-LANGUAGE (NL / FR / EN / DE)
-// ==========================================
-export type LanguageCode = 'nl' | 'fr' | 'en' | 'de'
+export type LanguageCode = 'nl' | 'fr' | 'en' | 'de' | 'es'
 
 export interface TranslationDictionary {
   [key: string]: Record<LanguageCode, string>
@@ -1177,3 +1174,418 @@ export interface TwoFactorSetupData {
   qrCodeSvg: string
   backupCodes: string[]
 }
+
+// ==========================================
+// 16. CENTRALIZED MODULAR ARCHITECTURE & FEATURE FLAGS
+// ==========================================
+export type ModuleId =
+  | 'crm'
+  | 'calendar'
+  | 'deals'
+  | 'quotes'
+  | 'contracts'
+  | 'subscriptions'
+  | 'workorders'
+  | 'projects'
+  | 'products'
+  | 'procurement'
+  | 'mileage'
+  | 'invoices'
+  | 'dunning'
+  | 'expenses'
+  | 'banking'
+  | 'cashflow'
+  | 'accountant'
+  | 'peppol'
+  | 'portal'
+  | 'developers'
+  | 'integrations'
+  | 'security'
+  | 'settings'
+  | 'helpdesk'
+  | 'hr'
+  | 'bi'
+  | 'pulse_ai'
+  | 'inventory_multi'
+  | 'template_designer'
+  | 'module_store'
+
+export type ModulePresetId =
+  | 'all'
+  | 'digital_agency'
+  | 'field_service'
+  | 'freelancer'
+  | 'wholesale'
+
+export type ModuleCategory =
+  | 'core'
+  | 'sales_operations'
+  | 'finance_tax'
+  | 'logistics'
+  | 'people_support'
+  | 'ai_automation'
+
+export interface ModuleInfo {
+  id: ModuleId
+  name: string
+  tagline: string
+  description: string
+  category: ModuleCategory
+  icon: string
+  enabled: boolean
+  isCore?: boolean
+  recommendedFor?: string[]
+}
+
+export type ModuleSettings = Record<ModuleId, boolean>
+
+// ==========================================
+// 17. PULSE AI & SMART OCR PARSER
+// ==========================================
+export interface AIExtractedLineItem {
+  id: string
+  description: string
+  quantity: number
+  unitPrice: number
+  vatRate: number
+  total: number
+}
+
+export interface AIExtractionResult {
+  supplierName: string
+  supplierVat?: string
+  supplierIban?: string
+  invoiceNumber: string
+  invoiceDate: string
+  dueDate: string
+  subtotal: number
+  vatTotal: number
+  total: number
+  currency: string
+  category: ExpenseCategory
+  confidence: number // 0 to 100
+  lineItems: AIExtractedLineItem[]
+  detectedPaymentMethod?: string
+}
+
+export interface DealInsightScore {
+  dealId: string
+  dealTitle: string
+  healthScore: number // 0-100
+  winProbability: number // 0-100
+  riskFactors: string[]
+  positiveFactors: string[]
+  nextBestActions: string[]
+  suggestedDiscountPercent?: number
+  predictedCloseDate: string
+}
+
+export interface AIChatMessage {
+  id: string
+  sender: 'user' | 'ai'
+  message: string
+  timestamp: string
+  actionType?: 'filter_invoices' | 'create_quote' | 'view_deal' | 'summary' | 'email_draft' | 'navigate'
+  actionPayload?: any
+}
+
+// ==========================================
+// 18. INTERACTIVE CLIENT WEB PROPOSALS
+// ==========================================
+export interface InteractiveProposalItem extends QuoteItem {
+  isOptional?: boolean
+  isSelected?: boolean
+  minQuantity?: number
+  maxQuantity?: number
+  featureHighlights?: string[]
+}
+
+// ==========================================
+// 19. PULSEDESK: HELPDESK & OMNICHANNEL INBOX
+// ==========================================
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_client' | 'resolved' | 'closed'
+export type TicketCategory = 'billing' | 'technical' | 'sla_breach' | 'feature_request' | 'general'
+
+export interface SupportTicketMessage {
+  id: string
+  ticketId: string
+  senderType: 'client' | 'agent' | 'system'
+  senderName: string
+  senderEmail: string
+  body: string
+  timestamp: string
+  isInternalNote?: boolean
+  attachments?: string[]
+}
+
+export interface SupportTicket {
+  id: string
+  ticketNumber: string // e.g. TCK-2026-001
+  subject: string
+  clientType?: ClientType
+  companyId?: string
+  individualId?: string
+  contactName: string
+  contactEmail: string
+  contactPhone?: string
+  priority: TicketPriority
+  status: TicketStatus
+  category: TicketCategory
+  assignee: string
+  slaResponseDue: string
+  slaResolutionDue: string
+  slaBreached: boolean
+  messages: SupportTicketMessage[]
+  convertedToTaskId?: string
+  convertedToInvoiceId?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CannedResponse {
+  id: string
+  title: string
+  shortcut: string
+  category: string
+  content: string
+}
+
+// ==========================================
+// 20. PULSEHR: CAPACITY, LEAVE & REIMBURSEMENTS
+// ==========================================
+export type LeaveType = 'vacation' | 'sick' | 'parental' | 'training' | 'unpaid' | 'special'
+export type LeaveStatus = 'pending' | 'approved' | 'rejected'
+
+export interface WeeklyAllocation {
+  weekNumber: number
+  year: number
+  bookedHours: number
+  availableHours: number
+  projectBreakdown: {
+    projectId: string
+    projectTitle: string
+    hours: number
+  }[]
+}
+
+export interface StaffMemberCapacity {
+  id: string
+  name: string
+  email: string
+  role: string
+  department: string
+  weeklyContractHours: number
+  hourlyCostRate: number
+  hourlyBillRate: number
+  avatar?: string
+  totalStatutoryLeaveDays: number
+  usedLeaveDays: number
+  weeklyAllocations: WeeklyAllocation[]
+}
+
+export interface LeaveRequest {
+  id: string
+  staffId: string
+  staffName: string
+  leaveType: LeaveType
+  startDate: string
+  endDate: string
+  totalDays: number
+  status: LeaveStatus
+  reason?: string
+  approvedBy?: string
+  approvedAt?: string
+  createdAt: string
+}
+
+export interface PublicHoliday {
+  date: string
+  name: string
+  countryCode: string
+}
+
+export interface StaffReimbursementItem {
+  staffId: string
+  staffName: string
+  iban: string
+  bic?: string
+  amountEur: number
+  expenseIds: string[]
+  mileageTripIds?: string[]
+}
+
+export interface ReimbursementBatch {
+  id: string
+  batchNumber: string // e.g. REIMB-2026-08
+  createdDate: string
+  status: 'draft' | 'exported' | 'paid'
+  claimsCount: number
+  totalAmountEur: number
+  staffBreakdown: StaffReimbursementItem[]
+  sepaXml?: string
+}
+
+// ==========================================
+// 21. EXECUTIVE BI & SCHEDULED EMAIL DIGESTS
+// ==========================================
+export interface ExecutiveMetricSummary {
+  mrrEur: number
+  mrrGrowthRate: number // percentage
+  ltvEur: number
+  cacEur: number
+  dsoDays: number
+  grossMarginPercent: number
+  ytdRevenueEur: number
+  ytdExpensesEur: number
+  netEbitdaEur: number
+  runwayMonths: number
+  activeSubscriptionsCount: number
+  churnRatePercent: number
+}
+
+export interface CustomReportConfig {
+  id: string
+  name: string
+  dimension: 'client' | 'entity' | 'month' | 'category' | 'project'
+  metric: 'revenue' | 'profit_margin' | 'hours' | 'invoices_count'
+  dateRange: 'this_year' | 'last_year' | 'last_12_months' | 'q1' | 'q2' | 'q3' | 'q4'
+  chartType: 'bar' | 'line' | 'table'
+}
+
+export interface ScheduledDigestConfig {
+  id: string
+  title: string
+  cadence: 'daily' | 'weekly' | 'monthly'
+  recipients: string[]
+  includeKpis: boolean
+  includeOverdueAlerts: boolean
+  includePnlSummary: boolean
+  includeTopDeals: boolean
+  lastSentAt?: string
+  nextSendDate: string
+  enabled: boolean
+}
+
+// ==========================================
+// 22. MULTI-LOCATION INVENTORY & SERIAL/QR SCANNER
+// ==========================================
+export type WarehouseLocationType = 'warehouse' | 'van' | 'depot' | 'consignment'
+
+export interface WarehouseLocation {
+  id: string
+  code: string
+  name: string
+  type: WarehouseLocationType
+  address?: string
+  city?: string
+  managerName?: string
+  vehiclePlate?: string
+  capacityUnits?: number
+  isActive: boolean
+}
+
+export interface StockLocationQuantity {
+  locationId: string
+  locationName: string
+  quantity: number
+}
+
+export interface StockTransferOrder {
+  id: string
+  transferNumber: string // e.g. TR-2026-001
+  fromLocationId: string
+  fromLocationName: string
+  toLocationId: string
+  toLocationName: string
+  productId: string
+  productName: string
+  sku: string
+  quantity: number
+  status: 'draft' | 'in_transit' | 'completed' | 'cancelled'
+  requestedBy: string
+  date: string
+  completedAt?: string
+  notes?: string
+}
+
+export interface SerialBatchItem {
+  id: string
+  productId: string
+  productName: string
+  sku: string
+  serialNumber?: string
+  batchNumber?: string
+  locationId: string
+  locationName: string
+  manufacturingDate?: string
+  expiryDate?: string
+  warrantyExpiryDate?: string
+  status: 'in_stock' | 'allocated' | 'transferred' | 'defective' | 'sold'
+  notes?: string
+}
+
+// ==========================================
+// 23. EU OSS (ONE-STOP-SHOP) VAT ENGINE
+// ==========================================
+export interface OssVatCountryRate {
+  countryCode: string
+  countryName: string
+  standardVatRate: number
+  reducedVatRate?: number
+  flagEmoji: string
+}
+
+export interface OssVatEntry {
+  countryCode: string
+  countryName: string
+  flagEmoji: string
+  salesAmountExclusiveEur: number
+  appliedVatRate: number
+  vatAmountEur: number
+  invoicesCount: number
+}
+
+export interface OssReportPeriod {
+  year: number
+  quarter: 1 | 2 | 3 | 4 | 'all'
+  totalB2cSalesEur: number
+  totalOssVatEur: number
+  thresholdExceeded: boolean
+  thresholdLimitEur: number
+  entries: OssVatEntry[]
+}
+
+// ==========================================
+// 24. WYSIWYG DOCUMENT DESIGNER
+// ==========================================
+export interface TemplateStyleConfig {
+  primaryColor: string
+  secondaryColor: string
+  fontFamily: string
+  fontSize: 'compact' | 'standard' | 'large'
+  headerLayout: 'standard' | 'centered' | 'modern_minimal' | 'sidebar_accent'
+  showLogo: boolean
+  logoPosition: 'left' | 'right' | 'center'
+  logoSize: 'small' | 'medium' | 'large'
+  showEpcQrCode: boolean
+  qrPosition: 'bottom_right' | 'bottom_left' | 'invoice_details'
+  showFooterLegalText: boolean
+  customFooterText?: string
+  showItemDescriptions: boolean
+  showItemUnits: boolean
+  tableHeaderBg: string
+  borderRadius: number
+  pageMarginMm: number
+}
+
+export interface WysiwygDocumentTemplate {
+  id: string
+  name: string
+  documentType: 'invoice' | 'quote' | 'delivery_slip' | 'work_order'
+  styleConfig: TemplateStyleConfig
+  isDefault: boolean
+  createdAt: string
+}
+

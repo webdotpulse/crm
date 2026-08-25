@@ -9,6 +9,8 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  Globe,
+  Globe2,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 import {
@@ -19,11 +21,11 @@ import {
 import { formatCurrency } from '../../services/currencyService'
 
 export const AccountantView: React.FC = () => {
-  const { invoices, expenses, companies, activeLegalEntity, selectedCurrency } = useApp()
+  const { invoices, expenses, companies, ossVatRates, activeLegalEntity, selectedCurrency } = useApp()
 
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [selectedQuarter, setSelectedQuarter] = useState<1 | 2 | 3 | 4 | 'all'>(3)
-  const [activeTab, setActiveTab] = useState<'vat_grids' | 'klantenlisting' | 'export_packages'>('vat_grids')
+  const [activeTab, setActiveTab] = useState<'vat_grids' | 'klantenlisting' | 'export_packages' | 'oss_declaration'>('vat_grids')
 
   // Calculate VAT Grids
   const vatGrids = calculateBelgianVatGrids({
@@ -168,6 +170,15 @@ export const AccountantView: React.FC = () => {
         >
           <FileSpreadsheet size={15} style={{ marginRight: '0.4rem' }} />
           Accounting Software Integrations
+        </button>
+
+        <button
+          onClick={() => setActiveTab('oss_declaration')}
+          className={`btn-sandbox ${activeTab === 'oss_declaration' ? 'btn-sandbox-primary' : 'btn-sandbox-outline'}`}
+          style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
+        >
+          <Globe2 size={15} style={{ marginRight: '0.4rem' }} />
+          EU OSS VAT (One-Stop-Shop)
         </button>
       </div>
 
@@ -467,6 +478,89 @@ export const AccountantView: React.FC = () => {
             >
               Export Silverfin Sync File
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: EU ONE-STOP-SHOP (OSS) VAT DECLARATION */}
+      {activeTab === 'oss_declaration' && (
+        <div>
+          {/* Header Banner */}
+          <div
+            className="card-sandbox"
+            style={{
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem',
+              backgroundColor: 'rgba(63, 120, 224, 0.05)',
+              border: '1px solid rgba(63, 120, 224, 0.25)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--sb-primary)', textTransform: 'uppercase' }}>
+                Cross-Border EU E-Commerce & Services
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--sb-heading)', marginTop: '0.2rem' }}>
+                EU OSS (One-Stop-Shop) Quarterly VAT Return
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--sb-body)', marginTop: '0.2rem' }}>
+                Consolidated cross-border B2C sales declaration across European Member States with destination-based VAT rates.
+              </div>
+            </div>
+
+            <button
+              onClick={() => alert(`EU OSS XML Return for Q${selectedQuarter} ${selectedYear} exported.`)}
+              className="btn-sandbox btn-sandbox-primary"
+              style={{ padding: '0.6rem 1.25rem', fontWeight: 800, gap: '0.45rem' }}
+            >
+              <Download size={16} /> Export EU OSS XML Declaration
+            </button>
+          </div>
+
+          {/* Country Breakdown Table */}
+          <div className="card-sandbox" style={{ overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--sb-border)', backgroundColor: 'var(--sb-bg)' }}>
+                  <th style={{ padding: '0.85rem 1.25rem', fontWeight: 800, color: 'var(--sb-heading)' }}>MEMBER STATE</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800, color: 'var(--sb-heading)' }}>COUNTRY CODE</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800, color: 'var(--sb-heading)', textAlign: 'center' }}>STANDARD VAT %</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800, color: 'var(--sb-heading)', textAlign: 'right' }}>TAXABLE B2C SALES</th>
+                  <th style={{ padding: '0.85rem 1.25rem', fontWeight: 800, color: 'var(--sb-heading)', textAlign: 'right' }}>DECLARED VAT DUE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ossVatRates.map((c) => {
+                  const demoNet = c.countryCode === 'NL' ? 4850 : c.countryCode === 'FR' ? 6200 : c.countryCode === 'DE' ? 8400 : 1200
+                  const demoVat = (demoNet * c.standardVatRate) / 100
+
+                  return (
+                    <tr key={c.countryCode} style={{ borderBottom: '1px solid var(--sb-border)' }}>
+                      <td style={{ padding: '0.9rem 1.25rem', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                        <span style={{ marginRight: '0.5rem', fontSize: '1.1rem' }}>{c.flagEmoji}</span>
+                        {c.countryName}
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--sb-primary)' }}>
+                        {c.countryCode}
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                        {c.standardVatRate}%
+                      </td>
+                      <td style={{ padding: '0.9rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--sb-heading)' }}>
+                        {formatCurrency(demoNet, selectedCurrency)}
+                      </td>
+                      <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right', fontWeight: 800, color: 'var(--sb-primary)' }}>
+                        {formatCurrency(demoVat, selectedCurrency)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

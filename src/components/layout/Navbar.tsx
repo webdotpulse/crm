@@ -23,6 +23,7 @@ import {
   Shield,
   Smartphone,
   Check,
+  Sliders,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
@@ -120,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-        {/* Language Selector (NL / FR / EN / DE) */}
+        {/* Language Selector (NL / FR / EN / DE / ES) */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value as any)}
@@ -141,6 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           <option value="fr">🇫🇷 FR</option>
           <option value="en">🇬🇧 EN</option>
           <option value="de">🇩🇪 DE</option>
+          <option value="es">🇪🇸 ES</option>
         </select>
 
         {/* Multi-Entity Switcher Dropdown */}
@@ -395,6 +397,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
           title="Lock Screen (⌘L)"
         >
           <Lock size={17} />
+        </button>
+
+        {/* Module Store / Presets Hub Shortcut */}
+        <button
+          onClick={() => setCurrentView('module_store')}
+          className="btn-sandbox btn-sandbox-ghost"
+          style={{ padding: '0.45rem', borderRadius: '50%' }}
+          title="Module Hub & Industry Presets"
+        >
+          <Sliders size={17} />
         </button>
 
         {/* Dark/Light Mode Switcher */}

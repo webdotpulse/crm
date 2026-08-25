@@ -32,6 +32,7 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
     convertQuoteToInvoice,
     setCurrentView,
     setSelectedProjectId,
+    setActiveInteractiveProposalQuote,
   } = useApp()
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'sent' | 'accepted' | 'draft'>('all')
@@ -224,6 +225,17 @@ export const QuotesView: React.FC<QuotesViewProps> = ({ onOpenQuickModal }) => {
 
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                        {/* Interactive Web Proposal */}
+                        <button
+                          onClick={() => setActiveInteractiveProposalQuote(quote)}
+                          className="btn-sandbox btn-sandbox-sm btn-sandbox-primary"
+                          style={{ gap: '0.25rem' }}
+                          title="Open Dynamic Web Proposal Experience"
+                        >
+                          <Sparkles size={13} />
+                          <span>Proposal</span>
+                        </button>
+
                         {/* Client Portal Sign-off Preview */}
                         <button
                           onClick={() => setPreviewQuote(quote)}

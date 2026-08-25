@@ -47,6 +47,7 @@ export const SpotlightSearchModal: React.FC = () => {
     projects,
     products,
     workOrders,
+    isModuleEnabled,
   } = useApp()
 
   const [query, setQuery] = useState('')
@@ -114,6 +115,62 @@ export const SpotlightSearchModal: React.FC = () => {
       view: 'projects',
     },
     {
+      id: 'view-helpdesk',
+      title: 'PulseDesk Helpdesk Support',
+      subtitle: 'SLA countdown timers & ticket conversion',
+      category: 'Views',
+      icon: <Receipt size={16} />,
+      view: 'helpdesk',
+    },
+    {
+      id: 'view-hr',
+      title: 'PulseHR & Capacity Heatmap',
+      subtitle: 'Team allocation, leave & SEPA reimbursements',
+      category: 'Views',
+      icon: <Building2 size={16} />,
+      view: 'hr',
+    },
+    {
+      id: 'view-bi',
+      title: 'Executive BI & Scheduled Digests',
+      subtitle: 'MRR, LTV, CAC, DSO & automated email briefs',
+      category: 'Views',
+      icon: <TrendingUp size={16} />,
+      view: 'bi',
+    },
+    {
+      id: 'view-pulse-ai',
+      title: 'PulseAI & OCR Studio',
+      subtitle: 'Receipt OCR extractor & deal intelligence',
+      category: 'Views',
+      icon: <Sparkles size={16} />,
+      view: 'pulse_ai',
+    },
+    {
+      id: 'view-inventory-multi',
+      title: 'Multi-Location Inventory & Vans',
+      subtitle: 'Stock transfers, serials & QR barcode scanner',
+      category: 'Views',
+      icon: <Package size={16} />,
+      view: 'inventory_multi',
+    },
+    {
+      id: 'view-template-designer',
+      title: 'Document Template Designer',
+      subtitle: 'Visual WYSIWYG letterhead & EPC QR styling',
+      category: 'Views',
+      icon: <FileText size={16} />,
+      view: 'template_designer',
+    },
+    {
+      id: 'view-module-store',
+      title: 'Module Hub & Industry Presets',
+      subtitle: 'Configure enterprise modules & archetypes',
+      category: 'Views',
+      icon: <Settings size={16} />,
+      view: 'module_store',
+    },
+    {
       id: 'view-workorders',
       title: 'Digital Werkbonnen',
       subtitle: 'Field service tickets & sign-on-glass',
@@ -142,11 +199,16 @@ export const SpotlightSearchModal: React.FC = () => {
   // Filter dynamic CRM items
   const cleanQ = query.toLowerCase().trim()
 
+  const availableViews = viewsCatalog.filter((v) => {
+    if (v.view === 'dashboard') return true
+    return isModuleEnabled(v.view as any)
+  })
+
   const filteredViews = cleanQ
-    ? viewsCatalog.filter(
+    ? availableViews.filter(
         (v) => v.title.toLowerCase().includes(cleanQ) || v.subtitle.toLowerCase().includes(cleanQ)
       )
-    : viewsCatalog.slice(0, 5)
+    : availableViews.slice(0, 5)
 
   const filteredClients: SearchResultItem[] = companies
     .filter(
