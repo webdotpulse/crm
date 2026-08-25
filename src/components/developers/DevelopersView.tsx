@@ -40,8 +40,8 @@ export const DevelopersView: React.FC = () => {
 
   // New Webhook state
   const [isAddingWebhook, setIsAddingWebhook] = useState<boolean>(false)
-  const [newWebhookUrl, setNewWebhookUrl] = useState<string>('https://httpbin.org/post')
-  const [newWebhookDesc, setNewWebhookDesc] = useState<string>('Integration Webhook Endpoint')
+  const [newWebhookUrl, setNewWebhookUrl] = useState<string>('')
+  const [newWebhookDesc, setNewWebhookDesc] = useState<string>('')
   const [selectedEvents, setSelectedEvents] = useState<string[]>(['invoice.paid', 'quote.accepted'])
 
   // Sandbox state

@@ -32,6 +32,7 @@ export const MultiLocationInventoryView: React.FC = () => {
     serialBatchItems,
     addSerialBatchItem,
     selectedCurrency,
+    currentUser,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState<'locations' | 'transfers' | 'serials' | 'scanner'>('locations')
@@ -69,7 +70,7 @@ export const MultiLocationInventoryView: React.FC = () => {
       productName: prod.name,
       sku: prod.sku,
       quantity: transferQuantity,
-      requestedBy: 'Koen De Vries',
+      requestedBy: currentUser?.name || 'Inventory Manager',
       notes: transferNotes || undefined,
     })
 

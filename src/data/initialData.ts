@@ -55,50 +55,50 @@ import {
 export const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233f78e0"/><stop offset="100%" stop-color="%23605dba"/></linearGradient></defs><rect x="4" y="8" width="44" height="44" rx="12" fill="url(%23grad)"/><path d="M18 30 L24 30 L27 21 L31 39 L34 27 L36 30 L40 30" fill="none" stroke="%23ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="34" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="20" font-weight="900" fill="%231e293b" letter-spacing="-0.5">Pulse<tspan fill="%233f78e0">Work</tspan></text><text x="59" y="47" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="9" font-weight="700" fill="%2364748b" letter-spacing="1.5">SOLUTIONS</text></svg>`
 
 export const initialCompanyProfile: CompanyProfile = {
-  name: 'PulseWork Solutions BV',
-  legalName: 'PulseWork Solutions BV',
-  vatNumber: 'BE0849294901',
+  name: '',
+  legalName: '',
+  vatNumber: '',
   peppolScheme: '0208',
-  peppolEndpoint: '0849294901',
-  email: 'billing@pulsework.io',
-  phone: '+32 2 555 0199',
-  website: 'https://pulsework.io',
-  address: 'Keizerslaan 14, Bus 4B',
-  city: 'Brussels',
-  postalCode: '1000',
+  peppolEndpoint: '',
+  email: '',
+  phone: '',
+  website: '',
+  address: '',
+  city: '',
+  postalCode: '',
   country: 'Belgium',
   countryCode: 'BE',
-  iban: 'BE68 5390 0754 7034',
-  bic: 'GKCCBEBB',
+  iban: '',
+  bic: '',
   defaultVatRate: 21,
   defaultCurrency: 'EUR',
   peppolAccessPointName: 'Billit AS4 Access Point Gateway',
   peppolAccessPointUrl: 'https://api.billit.be/v1/peppol/as4',
   peppolApiKey: '',
-  peppolSenderId: 'iso6523-actorid-upis::0208:0849294901',
+  peppolSenderId: '',
   logoUrl: DEFAULT_COMPANY_LOGO,
 }
 
 export const initialLegalEntities: LegalEntity[] = [
   {
-    id: 'ent-be-1',
-    name: 'PulseWork Belgium HQ',
-    legalName: 'PulseWork Solutions BV',
-    vatNumber: 'BE0849294901',
+    id: 'ent-default',
+    name: 'Primary Legal Entity',
+    legalName: '',
+    vatNumber: '',
     peppolScheme: '0208',
-    peppolEndpoint: '0849294901',
-    email: 'billing@pulsework.io',
-    phone: '+32 2 555 0199',
-    website: 'https://pulsework.io',
-    address: 'Keizerslaan 14, Bus 4B',
-    city: 'Brussels',
-    postalCode: '1000',
+    peppolEndpoint: '',
+    email: '',
+    phone: '',
+    website: '',
+    address: '',
+    city: '',
+    postalCode: '',
     country: 'Belgium',
     countryCode: 'BE',
-    iban: 'BE68 5390 0754 7034',
-    bic: 'GKCCBEBB',
+    iban: '',
+    bic: '',
     defaultCurrency: 'EUR',
-    invoicePrefix: 'BE-INV-',
+    invoicePrefix: 'INV-',
     isDefault: true,
     accentColor: '#3f78e0',
     logoUrl: DEFAULT_COMPANY_LOGO,
@@ -143,56 +143,7 @@ export const initialSerialBatchItems: SerialBatchItem[] = []
 // 3. SYSTEM TEMPLATES & VAT CONFIGURATION
 // ============================================================================
 
-export const initialDocumentTemplates: DocumentTemplate[] = [
-  {
-    id: 'tmpl-1',
-    name: 'Standard Commercial Proposal',
-    type: 'quotation',
-    category: 'web_development',
-    title: 'Proposal for Professional Services',
-    description: 'Standard proposal including deliverables, timeline, milestones, and payment schedule.',
-    defaultTerms: '30% upfront deposit on contract signing, 40% on milestone delivery, 30% on completion. 30 days payment term.',
-    defaultNotes: 'All intellectual property rights transferred upon final settlement.',
-    defaultVatRate: 21,
-    items: [
-      {
-        id: 'ti-1',
-        description: 'Professional Consulting & Technical Implementation',
-        quantity: 10,
-        unit: 'hours',
-        unitPrice: 110.0,
-        discountPercent: 0,
-        vatRate: 21,
-        total: 1100.0,
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'tmpl-2',
-    name: 'Maintenance & SLA Support Agreement',
-    type: 'quotation',
-    category: 'retainer',
-    title: 'Software Maintenance & SLA Agreement',
-    description: 'Continuous monitoring, updates, automated backups, and dedicated support hours.',
-    defaultTerms: 'Billed monthly in advance via SEPA direct debit. 30 days cancellation notice.',
-    defaultNotes: 'Includes priority response time during business hours.',
-    defaultVatRate: 21,
-    items: [
-      {
-        id: 'ti-2',
-        description: 'Monthly Maintenance & Support SLA',
-        quantity: 1,
-        unit: 'month',
-        unitPrice: 450.0,
-        discountPercent: 0,
-        vatRate: 21,
-        total: 450.0,
-      },
-    ],
-    createdAt: new Date().toISOString(),
-  },
-]
+export const initialDocumentTemplates: DocumentTemplate[] = []
 
 export const initialEmailTemplates: EmailTemplate[] = [
   {
@@ -308,44 +259,11 @@ export const initialPublicHolidays: PublicHoliday[] = [
   { date: '2026-12-25', name: 'Christmas Day (Kerstmis)', countryCode: 'BE' },
 ]
 
-export const initialWarehouseLocations: WarehouseLocation[] = [
-  {
-    id: 'loc-main',
-    name: 'Main Central Warehouse',
-    code: 'WH-MAIN',
-    type: 'warehouse',
-    address: 'Central Logistics Center',
-    city: 'Brussels',
-    managerName: 'Operations Lead',
-    isActive: true,
-  },
-]
+export const initialWarehouseLocations: WarehouseLocation[] = []
 
-export const initialScheduledDigests: ScheduledDigestConfig[] = [
-  {
-    id: 'dig-weekly-exec',
-    title: 'Executive Financial & Pipeline Digest',
-    cadence: 'weekly',
-    recipients: ['admin@pulsework.local'],
-    includeKpis: true,
-    includeOverdueAlerts: true,
-    includePnlSummary: true,
-    includeTopDeals: true,
-    nextSendDate: '2026-09-01',
-    enabled: false,
-  },
-]
+export const initialScheduledDigests: ScheduledDigestConfig[] = []
 
-export const initialCustomReports: CustomReportConfig[] = [
-  {
-    id: 'rep-vat-quarterly',
-    name: 'Quarterly VAT & Financial Audit',
-    dimension: 'month',
-    metric: 'revenue',
-    dateRange: 'this_year',
-    chartType: 'bar',
-  },
-]
+export const initialCustomReports: CustomReportConfig[] = []
 
 export const initialOssVatRates: OssVatCountryRate[] = [
   { countryCode: 'NL', countryName: 'Netherlands', standardVatRate: 21, flagEmoji: '🇳🇱' },
@@ -377,7 +295,7 @@ export const initialWysiwygTemplates: WysiwygDocumentTemplate[] = [
       showEpcQrCode: true,
       qrPosition: 'bottom_right',
       showFooterLegalText: true,
-      customFooterText: 'PulseWork Solutions BV • KEIZERSLAAN 14, 1000 BRUSSELS • RPR BRUSSEL • BE 0849.294.901',
+      customFooterText: '',
       showItemDescriptions: true,
       showItemUnits: true,
       tableHeaderBg: '#f1f5f9',

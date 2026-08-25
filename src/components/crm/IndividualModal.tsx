@@ -23,7 +23,7 @@ export const IndividualModal: React.FC<IndividualModalProps> = ({ individual, on
     countryCode: individual?.countryCode || 'BE',
     nationalId: individual?.nationalId || '',
     status: individual?.status || 'customer',
-    tags: individual?.tags || ['Private Client'],
+    tags: individual?.tags || [],
     notes: individual?.notes || '',
   })
 

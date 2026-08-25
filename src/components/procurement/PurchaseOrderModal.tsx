@@ -35,13 +35,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     purchaseOrder?.items || [
       {
         id: `poi-${Date.now()}`,
-        description: 'Industrial Sensor Module / Hardware Component',
-        quantityOrdered: 5,
+        description: '',
+        quantityOrdered: 1,
         quantityReceived: 0,
         unit: 'piece',
-        unitPrice: 120.0,
+        unitPrice: 0,
         vatRate: 21,
-        lineTotal: 600.0,
+        lineTotal: 0,
       },
     ]
   )
@@ -51,13 +51,13 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
       ...prev,
       {
         id: `poi-${Date.now()}`,
-        description: 'New Procurement Item',
+        description: '',
         quantityOrdered: 1,
         quantityReceived: 0,
         unit: 'piece',
-        unitPrice: 50.0,
+        unitPrice: 0,
         vatRate: 21,
-        lineTotal: 50.0,
+        lineTotal: 0,
       },
     ])
   }
@@ -87,7 +87,7 @@ export const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({
     e.preventDefault()
 
     const supplier = suppliers.find((s) => s.id === supplierId)
-    const supplierName = supplier?.name || 'Rexel Belgium NV'
+    const supplierName = supplier?.name || 'Supplier'
 
     const newPo: PurchaseOrder = {
       id: purchaseOrder?.id || `po-${Date.now()}`,

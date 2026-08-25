@@ -37,6 +37,7 @@ export const HelpdeskView: React.FC = () => {
     individuals,
     projects,
     setCurrentView,
+    currentUser,
   } = useApp()
 
   const [selectedTicketId, setSelectedTicketId] = useState<string>(tickets[0]?.id || '')
@@ -56,7 +57,7 @@ export const HelpdeskView: React.FC = () => {
   const [newContactName, setNewContactName] = useState('')
   const [newContactEmail, setNewContactEmail] = useState('')
   const [newPriority, setNewPriority] = useState<TicketPriority>('medium')
-  const [newCategory, setNewCategory] = useState<TicketCategory>('general')
+  const [newCategory, setNewCategory] = useState<TicketCategory>('technical')
   const [newInitialMessage, setNewInitialMessage] = useState('')
 
   // Conversion feedback toasts
@@ -87,8 +88,8 @@ export const HelpdeskView: React.FC = () => {
 
     addTicketMessage(activeTicket.id, {
       senderType: isInternalNote ? 'agent' : 'agent',
-      senderName: 'Koen De Vries',
-      senderEmail: 'koen@pulsework.io',
+      senderName: currentUser?.name || 'Support Agent',
+      senderEmail: currentUser?.email || 'support@localhost',
       body: replyBody,
       isInternalNote,
     })
@@ -135,11 +136,11 @@ export const HelpdeskView: React.FC = () => {
       clientType: 'company',
       companyId: newCompanyId,
       contactName: newContactName || selectedCompany?.name || 'Client Contact',
-      contactEmail: newContactEmail || selectedCompany?.email || 'client@domain.be',
+      contactEmail: newContactEmail || selectedCompany?.email || 'client@localhost',
       priority: newPriority,
       status: 'open',
       category: newCategory,
-      assignee: 'Koen De Vries',
+      assignee: currentUser?.name || 'Support Agent',
       slaResponseDue: new Date(Date.now() + 4 * 3600000).toISOString(),
       slaResolutionDue: new Date(Date.now() + 24 * 3600000).toISOString(),
       slaBreached: false,

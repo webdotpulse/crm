@@ -46,7 +46,7 @@ export const PeppolHubView: React.FC<PeppolHubViewProps> = ({ selectedInvoice })
 
   // Directory Lookup State
   const [lookupScheme, setLookupScheme] = useState('0208')
-  const [lookupEndpoint, setLookupEndpoint] = useState('0842123456')
+  const [lookupEndpoint, setLookupEndpoint] = useState('')
   const [lookupLoading, setLookupLoading] = useState(false)
   const [lookupResult, setLookupResult] = useState<PeppolParticipantInfo | null>(null)
 
@@ -58,9 +58,9 @@ export const PeppolHubView: React.FC<PeppolHubViewProps> = ({ selectedInvoice })
     id: buyerIndividual.id,
     name: `${buyerIndividual.firstName} ${buyerIndividual.lastName}`,
     legalName: `${buyerIndividual.firstName} ${buyerIndividual.lastName}`,
-    vatNumber: buyerIndividual.nationalId || 'BE0842123456',
+    vatNumber: buyerIndividual.nationalId || '',
     peppolScheme: '0208',
-    peppolEndpoint: (buyerIndividual.nationalId || '0842123456').replace(/\D/g, ''),
+    peppolEndpoint: (buyerIndividual.nationalId || '').replace(/\D/g, ''),
     email: buyerIndividual.email,
     phone: buyerIndividual.phone,
     address: buyerIndividual.address,
@@ -75,14 +75,14 @@ export const PeppolHubView: React.FC<PeppolHubViewProps> = ({ selectedInvoice })
     id: 'default-client',
     name: 'Direct Client',
     legalName: 'Direct Client',
-    vatNumber: 'BE0842123456',
+    vatNumber: '',
     peppolScheme: '0208',
-    peppolEndpoint: '0842123456',
-    email: 'billing@client.com',
+    peppolEndpoint: '',
+    email: '',
     phone: '',
-    address: 'Business Street 1',
-    city: 'Brussels',
-    postalCode: '1000',
+    address: '',
+    city: '',
+    postalCode: '',
     country: 'Belgium',
     countryCode: 'BE',
     status: 'customer',

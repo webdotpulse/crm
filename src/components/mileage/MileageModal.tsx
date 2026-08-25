@@ -9,15 +9,15 @@ interface MileageModalProps {
 }
 
 export const MileageModal: React.FC<MileageModalProps> = ({ onClose }) => {
-  const { addMileageTrip, companies, projects } = useApp()
+  const { addMileageTrip, companies, projects, currentUser } = useApp()
 
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
-  const [driverName, setDriverName] = useState<string>('Sven De Smet')
+  const [driverName, setDriverName] = useState<string>(currentUser?.name || '')
   const [purpose, setPurpose] = useState<string>('')
-  const [originAddress, setOriginAddress] = useState<string>('Keizerslaan 14, 1000 Brussels')
-  const [destinationAddress, setDestinationAddress] = useState<string>('Technologielaan 15, 3001 Leuven')
-  const [distanceKm, setDistanceKm] = useState<number>(32.0)
-  const [isRoundTrip, setIsRoundTrip] = useState<boolean>(true)
+  const [originAddress, setOriginAddress] = useState<string>('')
+  const [destinationAddress, setDestinationAddress] = useState<string>('')
+  const [distanceKm, setDistanceKm] = useState<number>(0)
+  const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false)
   const [vehicleType, setVehicleType] = useState<VehicleType>('private_car')
   const [companyId, setCompanyId] = useState<string>(companies[0]?.id || '')
 

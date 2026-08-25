@@ -33,6 +33,7 @@ export const BankingReconciliationView: React.FC = () => {
     selectedCurrency,
     companies,
     individuals,
+    activeLegalEntity,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState<'transactions' | 'statements'>('transactions')
@@ -48,7 +49,7 @@ export const BankingReconciliationView: React.FC = () => {
   const reconciliationRate = totalTransactions > 0 ? Math.round((totalReconciled / totalTransactions) * 100) : 0
 
   const currentStatement = bankStatements[0]
-  const currentBalance = currentStatement ? currentStatement.closingBalance : 51834.09
+  const currentBalance = currentStatement ? currentStatement.closingBalance : 0
 
   // Filtered transactions
   const filteredTransactions = bankTransactions.filter((t) => {
@@ -89,18 +90,6 @@ export const BankingReconciliationView: React.FC = () => {
     reader.readAsText(file)
   }
 
-  // Load sample CODA statement
-  const handleLoadSampleCoda = () => {
-    const sampleCoda = `000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-100000BE68539007547034000000000000000000000042150800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-21000026082000000000000000000000000145200000000000009093375549300Factuur betaling +++090/9337/55493+++ AeroDynamics
-230000BE71091012345678000AeroDynamics Belgium BV
-21000026082100000000000000000000000021780000000000004588912234500Payment invoice +++045/8891/22345+++
-230000BE42001234567890000Vandenberghe Logistics NV
-8000000000000000000000000000000000000000005183409000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000`
-    importBankStatement(sampleCoda, 'coda', 'CODA_Sample_Belgian_KBC.cod')
-  }
-
   return (
     <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
@@ -115,11 +104,17 @@ export const BankingReconciliationView: React.FC = () => {
         }}
       >
         <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <span className="badge-sandbox badge-soft-primary" style={{ fontSize: '0.7rem' }}>
+              AUTOMATED BANKING
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--sb-body)' }}>CODA & CAMT.053 Parser</span>
+          </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--sb-heading)', margin: 0 }}>
-            Bank Reconciliation & SEPA Direct Debit
+            Bank Statements & 1-Click Reconciliation
           </h1>
           <p style={{ color: 'var(--sb-body)', margin: '0.25rem 0 0', fontSize: '0.88rem' }}>
-            Automated Belgian CODA, CAMT.053 & CSV bank statement matching with OGM structured reference support
+            Match incoming customer payments with Belgian structured communications (+++OGM+++)
           </p>
         </div>
 
@@ -211,7 +206,7 @@ export const BankingReconciliationView: React.FC = () => {
       >
         <div className="card-sandbox" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--sb-body)' }}>Account Balance (KBC)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--sb-body)' }}>Account Balance</span>
             <div
               style={{
                 width: '32px',
@@ -231,7 +226,7 @@ export const BankingReconciliationView: React.FC = () => {
             {formatCurrency(currentBalance, selectedCurrency)}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--sb-body)', marginTop: '0.35rem' }}>
-            BE68 5390 0754 7034 • KBC Corporate
+            {activeLegalEntity.iban ? `${activeLegalEntity.iban} • ${activeLegalEntity.legalName || activeLegalEntity.name}` : 'No bank account configured'}
           </div>
         </div>
 
@@ -300,20 +295,6 @@ export const BankingReconciliationView: React.FC = () => {
             <option value="reconciled">Reconciled</option>
           </select>
         </div>
-
-        <button
-          onClick={handleLoadSampleCoda}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--sb-primary)',
-            fontSize: '0.78rem',
-            cursor: 'pointer',
-            fontWeight: 700,
-          }}
-        >
-          ⚡ Load Sample Belgian CODA File
-        </button>
       </div>
 
       {/* Bank Transactions Ledger */}

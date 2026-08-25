@@ -33,29 +33,6 @@ export function formatKboNumber(tenDigits: string): string {
 // Pre-indexed verified Belgian enterprises from official Crossroads Bank for Enterprises (KBO / BCE)
 const KNOWN_BELGIAN_ENTERPRISES: KboCompanyResult[] = [
   {
-    enterpriseNumber: '0849.294.901',
-    vatNumber: 'BE0849294901',
-    legalName: 'PulseWork Solutions BV',
-    commercialName: 'PulseWork Solutions',
-    legalForm: 'BV/SRL',
-    legalStatus: 'active',
-    address: {
-      street: 'Keizerslaan',
-      number: '14',
-      box: '4B',
-      postalCode: '1000',
-      city: 'Brussels',
-      country: 'Belgium',
-    },
-    establishmentUnitsCount: 2,
-    naceCodes: [
-      { code: '62.010', description: 'Computer programming activities & Enterprise SaaS' },
-      { code: '62.020', description: 'Computer consultancy activities' },
-    ],
-    registrationDate: '2020-04-15',
-    source: 'Belgian KBO / BCE Official Database',
-  },
-  {
     enterpriseNumber: '0729.731.988',
     vatNumber: 'BE0729731988',
     legalName: 'C&H Europe BV',
@@ -113,11 +90,11 @@ const KNOWN_BELGIAN_ENTERPRISES: KboCompanyResult[] = [
       city: 'Halle',
       country: 'Belgium',
     },
-    establishmentUnitsCount: 540,
+    establishmentUnitsCount: 450,
     naceCodes: [
-      { code: '47.111', description: 'Retail sale in non-specialised stores with food' },
+      { code: '47.111', description: 'Supermarkets and retail distribution' },
     ],
-    registrationDate: '1970-01-01',
+    registrationDate: '1970-11-20',
     source: 'Belgian KBO / BCE Official Database',
   },
   {
@@ -182,48 +159,6 @@ const KNOWN_BELGIAN_ENTERPRISES: KboCompanyResult[] = [
       { code: '60.200', description: 'Television programming and broadcasting activities' },
     ],
     registrationDate: '1990-03-01',
-    source: 'Belgian KBO / BCE Official Database',
-  },
-  {
-    enterpriseNumber: '0842.123.456',
-    vatNumber: 'BE0842123456',
-    legalName: 'AeroDynamics Belgium BV',
-    commercialName: 'AeroDynamics Belgium',
-    legalForm: 'BV/SRL',
-    legalStatus: 'active',
-    address: {
-      street: 'Luchthavenlaan',
-      number: '18',
-      postalCode: '1930',
-      city: 'Zaventem',
-      country: 'Belgium',
-    },
-    establishmentUnitsCount: 1,
-    naceCodes: [
-      { code: '30.300', description: 'Manufacture of air and spacecraft and related machinery' },
-    ],
-    registrationDate: '2019-11-12',
-    source: 'Belgian KBO / BCE Official Database',
-  },
-  {
-    enterpriseNumber: '0425.493.735',
-    vatNumber: 'BE0425493735',
-    legalName: 'Vandenberghe Logistics NV',
-    commercialName: 'Vandenberghe Logistics',
-    legalForm: 'NV/SA',
-    legalStatus: 'active',
-    address: {
-      street: 'Havenkaai',
-      number: '42',
-      postalCode: '9000',
-      city: 'Ghent',
-      country: 'Belgium',
-    },
-    establishmentUnitsCount: 4,
-    naceCodes: [
-      { code: '52.291', description: 'Freight forwarding activities' },
-    ],
-    registrationDate: '1984-05-18',
     source: 'Belgian KBO / BCE Official Database',
   },
 ]

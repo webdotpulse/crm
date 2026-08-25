@@ -12,24 +12,24 @@ const contractTemplates: Record<ContractType, { title: string; body: string }> =
   nda: {
     title: 'Mutual Non-Disclosure Agreement (NDA)',
     body: `<p><strong>MUTUAL NON-DISCLOSURE AGREEMENT (NDA)</strong></p>
-<p>This Mutual Non-Disclosure Agreement is entered into by and between <strong>PulseWork Solutions BVBA</strong> ("Disclosing Party") and the Client identified herein ("Recipient").</p>
-<p>1. <strong>Confidential Information:</strong> Includes software architectures, API endpoints, client data, and Peppol transaction records.</p>
+<p>This Mutual Non-Disclosure Agreement is entered into by and between the Disclosing Party and the Client identified herein ("Recipient").</p>
+<p>1. <strong>Confidential Information:</strong> Includes proprietary architectures, commercial terms, client data, and electronic transaction records.</p>
 <p>2. <strong>Non-Disclosure:</strong> Recipient agrees not to disclose or publish any proprietary information for a period of 24 months.</p>
-<p>3. <strong>Jurisdiction:</strong> Governed by the laws of Belgium (Enterprise Court of Brussels).</p>`,
+<p>3. <strong>Jurisdiction:</strong> Governed by the applicable statutory enterprise courts.</p>`,
   },
   sla: {
     title: 'Service Level Agreement (SLA) — 99.9% Uptime Guarantee',
     body: `<p><strong>SERVICE LEVEL AGREEMENT (SLA)</strong></p>
-<p>1. <strong>Uptime Commitment:</strong> PulseWork guarantees 99.9% availability of all hosted production microservices and Peppol AS4 gateways.</p>
+<p>1. <strong>Uptime Commitment:</strong> The Service Provider guarantees 99.9% availability of all agreed production services and electronic invoicing gateways.</p>
 <p>2. <strong>Incident Response:</strong> Severity 1 (Critical Outage) response time is within 15 minutes; Severity 2 (Degraded) within 2 hours.</p>
 <p>3. <strong>Service Credits:</strong> 10% monthly rebate per 0.5% downtime violation.</p>`,
   },
   msa: {
     title: 'Master Services Agreement (MSA)',
     body: `<p><strong>MASTER SERVICES AGREEMENT</strong></p>
-<p>1. <strong>Scope:</strong> Governs all statements of work, custom engineering sprints, and technical consulting deliverables.</p>
+<p>1. <strong>Scope:</strong> Governs all statements of work, engineering deliverables, and technical consulting services.</p>
 <p>2. <strong>Intellectual Property:</strong> Deliverables transfer to Client upon full payment settlement.</p>
-<p>3. <strong>Invoicing Terms:</strong> 30 days net payable via SEPA or Peppol e-invoicing.</p>`,
+<p>3. <strong>Invoicing Terms:</strong> 30 days net payable via standard bank transfer or electronic invoicing.</p>`,
   },
   handover: {
     title: 'Project Final Acceptance & Handover Sign-off',
@@ -40,7 +40,7 @@ const contractTemplates: Record<ContractType, { title: string; body: string }> =
   custom: {
     title: 'Custom Commercial Agreement',
     body: `<p><strong>COMMERCIAL SERVICES AGREEMENT</strong></p>
-<p>Terms and scope as agreed between PulseWork Solutions and the Client.</p>`,
+<p>Terms and scope as agreed between the Service Provider and the Client.</p>`,
   },
 }
 

@@ -14,20 +14,20 @@ export const ContractSignModal: React.FC<ContractSignModalProps> = ({
   signerType,
   onClose,
 }) => {
-  const { signContract, companies, individuals, activeLegalEntity } = useApp()
+  const { signContract, companies, individuals, activeLegalEntity, currentUser } = useApp()
 
   const comp = companies.find((c) => c.id === contract.companyId)
   const ind = individuals.find((i) => i.id === contract.individualId)
   const clientName = comp ? comp.name : ind ? `${ind.firstName} ${ind.lastName}` : 'Client Representative'
 
   const [signerName, setSignerName] = useState(
-    signerType === 'issuer' ? 'Koen V. (PulseWork Managing Director)' : clientName
+    signerType === 'issuer' ? (currentUser?.name || activeLegalEntity.legalName || activeLegalEntity.name || 'Authorized Representative') : clientName
   )
   const [signerEmail, setSignerEmail] = useState(
-    signerType === 'issuer' ? 'koen@pulsework.io' : comp?.email || 'signer@client.com'
+    signerType === 'issuer' ? (currentUser?.email || activeLegalEntity.email || '') : comp?.email || ind?.email || ''
   )
   const [signerRole, setSignerRole] = useState(
-    signerType === 'issuer' ? 'Managing Director' : 'Authorized Representative'
+    signerType === 'issuer' ? (currentUser?.roleLabel || 'Authorized Representative') : 'Authorized Representative'
   )
   const [hasDrawn, setHasDrawn] = useState<boolean>(true)
 

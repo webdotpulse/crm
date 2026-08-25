@@ -13,7 +13,7 @@ export function generate90DayCashFlowForecast(
   expenses: Expense[],
   subscriptions: SubscriptionContract[],
   bankTransactions: BankTransaction[] = [],
-  startingCash: number = 42580.0
+  startingCash: number = 0
 ): { dailyPoints: CashFlowDailyPoint[]; metrics: FinancialHealthMetrics } {
   const dailyPoints: CashFlowDailyPoint[] = []
   const today = new Date()
@@ -32,7 +32,22 @@ export function generate90DayCashFlowForecast(
   // Calculate average daily recurring expenses
   const monthlyRecurringExpenses = expenses
     .filter((e) => e.status === 'approved' || e.status === 'paid')
-    .reduce((sum, e) => sum + e.total, 0) / 2 // approximate monthly run-rate
+    .reduce((sum, e) => sum + e.total, 0) / (expenses.length > 0 ? 2 : 1)
+
+  // Calculate real VAT liability
+  const totalSalesVat = invoices
+    .filter((i) => i.status !== 'draft')
+    .reduce((sum, i) => sum + (i.taxTotal || 0), 0)
+  const totalPurchasesVat = expenses
+    .filter((e) => e.status !== 'rejected')
+    .reduce((sum, e) => sum + (e.vatTotal || 0), 0)
+  const estimatedVatReserveEur = Math.max(0, Math.round((totalSalesVat - totalPurchasesVat) * 100) / 100)
+
+  // Calculate net profit estimate for corporate tax
+  const totalRevenue = invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0)
+  const totalExp = expenses.filter((e) => e.status !== 'rejected').reduce((sum, e) => sum + e.total, 0)
+  const netProfit = Math.max(0, totalRevenue - totalExp)
+  const estimatedCorporateTaxEur = Math.round(netProfit * 0.25 * 100) / 100
 
   let totalProjectedIncome90 = 0
   let totalProjectedExpenses90 = 0
@@ -45,7 +60,7 @@ export function generate90DayCashFlowForecast(
     let dailyIncome = 0
     let dailyExpense = 0
 
-    // Check specific scheduled invoice collections due on this date (with realistic 3-day grace)
+    // Check specific scheduled invoice collections due on this date
     const invoicesDue = invoices.filter((inv) => {
       if (inv.status !== 'issued' && inv.status !== 'overdue') return false
       const invDue = new Date(inv.dueDate)
@@ -54,7 +69,7 @@ export function generate90DayCashFlowForecast(
     })
 
     invoicesDue.forEach((inv) => {
-      dailyIncome += inv.total - inv.amountPaid
+      dailyIncome += inv.total - (inv.amountPaid || 0)
     })
 
     // Subscriptions bill on the 1st and 15th of the month
@@ -62,26 +77,26 @@ export function generate90DayCashFlowForecast(
       dailyIncome += activeMrr / 2
     }
 
-    // Regular payroll & supplier billing runs (e.g. 25th of month)
-    if (dayOfMonth === 25) {
-      dailyExpense += monthlyRecurringExpenses * 0.6 // Payroll & fixed overheads
-    } else if (dayOfMonth === 5) {
-      dailyExpense += monthlyRecurringExpenses * 0.4 // Cloud hosting, suppliers
+    // Regular expenses scheduled throughout month
+    if (monthlyRecurringExpenses > 0) {
+      if (dayOfMonth === 25) {
+        dailyExpense += monthlyRecurringExpenses * 0.6
+      } else if (dayOfMonth === 5) {
+        dailyExpense += monthlyRecurringExpenses * 0.4
+      }
     }
 
     // Quarterly Belgian VAT payment on 20th of month (April, July, Oct, Jan)
-    let vatReserve = 0
     const month = currentDate.getMonth() + 1
-    if ((month === 1 || month === 4 || month === 7 || month === 10) && dayOfMonth === 20) {
-      dailyExpense += 4250.0 // VAT payment to FOD Financiën
+    if ((month === 1 || month === 4 || month === 7 || month === 10) && dayOfMonth === 20 && estimatedVatReserveEur > 0) {
+      dailyExpense += estimatedVatReserveEur
     }
 
     runningCash += dailyIncome - dailyExpense
     totalProjectedIncome90 += dailyIncome
     totalProjectedExpenses90 += dailyExpense
 
-    // Estimated VAT reserve obligation (21% on projected sales minus 21% on purchases)
-    vatReserve = Math.max(0, runningCash * 0.18)
+    const vatReserve = Math.max(0, runningCash * 0.18)
 
     dailyPoints.push({
       date: dateStr,
@@ -93,55 +108,64 @@ export function generate90DayCashFlowForecast(
     })
   }
 
-  // Calculate DSO (Days Sales Outstanding) = (Total Accounts Receivable / Total Credit Sales) * 90
+  // Calculate DSO (Days Sales Outstanding)
   const totalReceivables = invoices
     .filter((i) => i.status === 'issued' || i.status === 'overdue')
-    .reduce((sum, i) => sum + (i.total - i.amountPaid), 0)
+    .reduce((sum, i) => sum + (i.total - (i.amountPaid || 0)), 0)
 
-  const totalSales = invoices.reduce((sum, i) => sum + i.total, 0) || 1
-  const dsoDays = Math.round((totalReceivables / totalSales) * 60) + 18 // Average Belgian B2B payment delay
+  const totalSales = invoices.reduce((sum, i) => sum + i.total, 0)
+  const dsoDays = totalSales > 0 ? Math.round((totalReceivables / totalSales) * 60) + 14 : 0
 
-  const liquidityRatio = Math.round((startingCash + totalReceivables) / (monthlyRecurringExpenses * 2 || 1) * 10) / 10
+  const totalOutflows = (monthlyRecurringExpenses * 2) || (totalReceivables > 0 ? 1000 : 0)
+  const liquidityRatio = totalOutflows > 0 ? Math.round(((startingCash + totalReceivables) / totalOutflows) * 10) / 10 : (startingCash > 0 ? 10 : 0)
 
-  const insights: AiFinancialInsight[] = [
-    {
-      id: 'ins-1',
+  const insights: AiFinancialInsight[] = []
+
+  if (activeMrr > 0) {
+    insights.push({
+      id: 'ins-mrr',
       type: 'opportunity',
       title: 'Accelerate Cash Collection with Direct Debit',
-      description: 'You have €18,450.00 in active monthly retainer subscriptions. Enrolling clients in SEPA Direct Debit will shorten DSO from 34 to 4 days.',
-      impactEur: 18450.0,
+      description: `You have €${activeMrr.toFixed(2)} in active monthly retainer subscriptions. Enrolling clients in SEPA Direct Debit will shorten payment cycles.`,
+      impactEur: activeMrr,
       actionLabel: 'Generate SEPA XML Batch',
       metricName: 'DSO Optimization',
-    },
-    {
-      id: 'ins-2',
+    })
+  }
+
+  if (totalReceivables > 0) {
+    insights.push({
+      id: 'ins-receivables',
       type: 'tax',
-      title: 'Quarterly Belgian VAT Reserve Ready',
-      description: 'Estimated Q3 VAT obligation to FOD Financiën is €4,250.00 due on October 20th. Liquidity reserves comfortably cover this amount.',
-      impactEur: -4250.0,
+      title: 'Outstanding Accounts Receivable',
+      description: `You have €${totalReceivables.toFixed(2)} in pending or overdue receivables. Send reminders to ensure healthy working capital.`,
+      impactEur: totalReceivables,
+      actionLabel: 'Inspect Invoices',
+      metricName: 'Accounts Receivable',
+    })
+  }
+
+  if (estimatedVatReserveEur > 0) {
+    insights.push({
+      id: 'ins-vat',
+      type: 'tax',
+      title: 'Quarterly VAT Reserve Obligation',
+      description: `Estimated net VAT obligation is €${estimatedVatReserveEur.toFixed(2)}. Ensure sufficient liquidity before the statutory deadline.`,
+      impactEur: -estimatedVatReserveEur,
       actionLabel: 'Inspect VAT Grids',
       metricName: 'Intervat Tax Reserve',
-    },
-    {
-      id: 'ins-3',
-      type: 'anomaly',
-      title: 'Cost Optimization: Cloud Hosting & SaaS',
-      description: 'Supplier expenses for Combell & AWS increased by 14% this quarter compared to Q1. Consider annual commitment for 20% discount.',
-      impactEur: 1240.0,
-      actionLabel: 'Review Supplier Bills',
-      metricName: 'Expense Control',
-    },
-  ]
+    })
+  }
 
   return {
     dailyPoints,
     metrics: {
       currentCashEur: startingCash,
       projectedCash90DaysEur: Math.round(runningCash * 100) / 100,
-      dsoDays: Math.min(60, dsoDays),
-      liquidityRatio: Math.max(1.8, liquidityRatio),
-      estimatedVatReserveEur: 4250.0,
-      estimatedCorporateTaxEur: 8900.0,
+      dsoDays,
+      liquidityRatio,
+      estimatedVatReserveEur,
+      estimatedCorporateTaxEur,
       insights,
     },
   }

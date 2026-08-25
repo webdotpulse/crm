@@ -9,15 +9,15 @@ interface TaskModalProps {
   onClose: () => void
 }
 
-export const TaskModal: React.FC<TaskModalProps> = ({ task, projectId, onClose }) => {
-  const { addTask, updateTask } = useApp()
+export const TaskModal: React.FC<TaskModalProps> = ({ projectId, task, onClose }) => {
+  const { addTask, updateTask, users, currentUser } = useApp()
 
   const [title, setTitle] = useState(task?.title || '')
   const [description, setDescription] = useState(task?.description || '')
-  const [assignee, setAssignee] = useState(task?.assignee || 'Koen De Vries')
+  const [assignee, setAssignee] = useState(task?.assignee || currentUser?.name || 'Unassigned')
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || 'medium')
   const [status, setStatus] = useState<TaskStatus>(task?.status || 'todo')
-  const [estimatedHours, setEstimatedHours] = useState(task?.estimatedHours || 8)
+  const [estimatedHours, setEstimatedHours] = useState(task?.estimatedHours || 0)
   const [startDate, setStartDate] = useState(task?.startDate || new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState(
     task?.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -90,7 +90,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, projectId, onClose }
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Implement UBL XML export & schema validation"
+              placeholder="e.g. Milestone task name"
               className="form-input-sandbox"
             />
           </div>
@@ -103,9 +103,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({ task, projectId, onClose }
                 onChange={(e) => setAssignee(e.target.value)}
                 className="form-select-sandbox"
               >
-                <option value="Koen De Vries">Koen De Vries</option>
-                <option value="Lucas Dubois">Lucas Dubois</option>
-                <option value="Elena Rostova">Elena Rostova</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name}
+                  </option>
+                ))}
+                {!users.some((u) => u.name === currentUser?.name) && currentUser?.name && (
+                  <option value={currentUser.name}>{currentUser.name}</option>
+                )}
                 <option value="Unassigned">Unassigned</option>
               </select>
             </div>

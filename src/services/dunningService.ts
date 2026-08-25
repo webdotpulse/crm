@@ -123,7 +123,7 @@ export function generateBailiffClaimExportJson(dunningCase: DunningCase, credito
     creditor: {
       name: creditorCompany.name,
       vatNumber: creditorCompany.vatNumber,
-      iban: 'BE68 5390 0754 7034',
+      iban: (creditorCompany as any).iban || '',
       email: creditorCompany.email,
       address: `${creditorCompany.address}, ${creditorCompany.postalCode} ${creditorCompany.city}`,
     },

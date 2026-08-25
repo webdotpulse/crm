@@ -39,43 +39,25 @@ export const WorkOrderModal: React.FC<WorkOrderModalProps> = ({ workOrder, onClo
   const [clientType, setClientType] = useState<ClientType>(workOrder?.clientType || 'company')
   const [companyId, setCompanyId] = useState<string>(workOrder?.companyId || (companies[0]?.id || ''))
   const [individualId, setIndividualId] = useState<string>(workOrder?.individualId || (individuals[0]?.id || ''))
-  const [address, setAddress] = useState<string>(workOrder?.address || 'Technologielaan 15')
-  const [city, setCity] = useState<string>(workOrder?.city || 'Leuven')
-  const [postalCode, setPostalCode] = useState<string>(workOrder?.postalCode || '3001')
+  const [address, setAddress] = useState<string>(workOrder?.address || '')
+  const [city, setCity] = useState<string>(workOrder?.city || '')
+  const [postalCode, setPostalCode] = useState<string>(workOrder?.postalCode || '')
   const [scheduledDate, setScheduledDate] = useState<string>(workOrder?.scheduledDate || new Date().toISOString().slice(0, 10))
   const [scheduledTime, setScheduledTime] = useState<string>(workOrder?.scheduledTime || '09:00 - 12:00')
-  const [technicianName, setTechnicianName] = useState<string>(workOrder?.technicianName || 'Sven De Smet')
-  const [technicianPhone, setTechnicianPhone] = useState<string>(workOrder?.technicianPhone || '+32 470 12 34 56')
+  const [technicianName, setTechnicianName] = useState<string>(workOrder?.technicianName || '')
+  const [technicianPhone, setTechnicianPhone] = useState<string>(workOrder?.technicianPhone || '')
   const [status, setStatus] = useState<WorkOrderStatus>(workOrder?.status || 'scheduled')
   const [description, setDescription] = useState<string>(workOrder?.description || '')
-  const [travelKilometers, setTravelKilometers] = useState<number>(workOrder?.travelKilometers || 25)
+  const [travelKilometers, setTravelKilometers] = useState<number>(workOrder?.travelKilometers || 0)
   const [travelRatePerKm, setTravelRatePerKm] = useState<number>(workOrder?.travelRatePerKm || 0.75)
   const [internalNotes, setInternalNotes] = useState<string>(workOrder?.internalNotes || '')
 
   const [laborItems, setLaborItems] = useState<WorkOrderLaborItem[]>(
-    workOrder?.laborItems || [
-      {
-        id: `woli-${Date.now()}`,
-        technicianName: 'Sven De Smet',
-        date: new Date().toISOString().slice(0, 10),
-        hours: 2.5,
-        hourlyRate: 95.0,
-        description: 'Standard on-site technical inspection & assembly',
-      },
-    ]
+    workOrder?.laborItems || []
   )
 
   const [materialItems, setMaterialItems] = useState<WorkOrderMaterialItem[]>(
-    workOrder?.materialItems || [
-      {
-        id: `womi-${Date.now()}`,
-        productId: products[0]?.id,
-        description: products[0]?.name || 'Standard Spare Part',
-        quantity: 1,
-        unit: 'piece',
-        unitPrice: products[0]?.sellPrice || 45.0,
-      },
-    ]
+    workOrder?.materialItems || []
   )
 
   const handleAddLabor = () => {
@@ -83,11 +65,11 @@ export const WorkOrderModal: React.FC<WorkOrderModalProps> = ({ workOrder, onClo
       ...prev,
       {
         id: `woli-${Date.now()}`,
-        technicianName: technicianName || 'Technician',
+        technicianName: technicianName || '',
         date: scheduledDate,
         hours: 1.0,
-        hourlyRate: 95.0,
-        description: 'Additional on-site work',
+        hourlyRate: 0,
+        description: '',
       },
     ])
   }
@@ -103,10 +85,10 @@ export const WorkOrderModal: React.FC<WorkOrderModalProps> = ({ workOrder, onClo
       {
         id: `womi-${Date.now()}`,
         productId: prod?.id,
-        description: prod?.name || 'Material Item',
+        description: prod?.name || '',
         quantity: 1,
         unit: 'piece',
-        unitPrice: prod?.sellPrice || 25.0,
+        unitPrice: prod?.sellPrice || 0,
       },
     ])
   }

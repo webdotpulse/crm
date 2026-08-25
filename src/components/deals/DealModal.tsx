@@ -15,10 +15,10 @@ export const DealModal: React.FC<DealModalProps> = ({ deal, defaultCompanyId, on
   const [title, setTitle] = useState(deal?.title || '')
   const [companyId, setCompanyId] = useState(deal?.companyId || defaultCompanyId || companies[0]?.id || '')
   const [contactId, setContactId] = useState(deal?.contactId || '')
-  const [value, setValue] = useState(deal?.value || 10000)
+  const [value, setValue] = useState(deal?.value || 0)
   const [currency, setCurrency] = useState(deal?.currency || 'EUR')
   const [stage, setStage] = useState<DealStage>(deal?.stage || 'qualified')
-  const [probability, setProbability] = useState(deal?.probability || 50)
+  const [probability, setProbability] = useState(deal?.probability ?? 50)
   const [expectedCloseDate, setExpectedCloseDate] = useState(
     deal?.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   )

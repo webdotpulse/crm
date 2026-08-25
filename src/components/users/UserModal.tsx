@@ -55,14 +55,14 @@ export const UserModal: React.FC<UserModalProps> = ({ userToEdit, onClose }) => 
   const [name, setName] = useState(userToEdit?.name || '')
   const [email, setEmail] = useState(userToEdit?.email || '')
   const [role, setRole] = useState<UserRole>(userToEdit?.role || 'sales')
-  const [department, setDepartment] = useState(userToEdit?.department || 'Commercial')
+  const [department, setDepartment] = useState(userToEdit?.department || '')
   const [jobTitle, setJobTitle] = useState(userToEdit?.jobTitle || '')
   const [phone, setPhone] = useState(userToEdit?.phone || '')
   const [status, setStatus] = useState<'active' | 'suspended' | 'invited'>(
     userToEdit?.status || 'active'
   )
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(userToEdit?.twoFactorEnabled || false)
-  const [pinCode, setPinCode] = useState(userToEdit?.pinCode || '1234')
+  const [pinCode, setPinCode] = useState(userToEdit?.pinCode || '')
 
   // New User Password Fields
   const [password, setPassword] = useState('')

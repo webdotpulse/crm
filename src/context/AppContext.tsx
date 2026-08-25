@@ -565,7 +565,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialLegalEntities
   })
   const [activeLegalEntityId, setActiveLegalEntityId] = useState<string>(() => {
-    return initialLegalEntities[0].id
+    return initialLegalEntities[0]?.id || 'ent-default'
   })
 
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => {
@@ -913,7 +913,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialWysiwygTemplates
   })
   const [activeWysiwygTemplateId, setActiveWysiwygTemplateId] = useState<string>(() => {
-    return initialWysiwygTemplates[0].id
+    return initialWysiwygTemplates[0]?.id || 'wysiwyg-be-default'
   })
 
   // Interactive Web Proposals Viewer
@@ -922,7 +922,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const defaultFallbackAdmin: UserAccount = {
     id: 'usr-admin-initial',
     name: 'Administrator',
-    email: 'admin@pulsework.local',
+    email: 'admin@localhost',
     role: 'admin',
     roleLabel: 'System Administrator',
     twoFactorEnabled: false,
@@ -1316,7 +1316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `time-${Date.now()}`,
       projectId: activeTimer.projectId,
       taskId: activeTimer.taskId,
-      memberName: 'Koen De Vries',
+      memberName: currentUser.name || 'Team Member',
       date: new Date().toISOString().slice(0, 10),
       hours: Math.max(0.1, hours),
       description: activeTimer.description || 'Tracked live session',
@@ -1403,7 +1403,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         projectId: newProject.id,
         title: item.description,
         description: `Deliverable milestone from quote item #${index + 1}`,
-        assignee: 'Koen De Vries',
+        assignee: currentUser.name || 'Unassigned',
         priority: 'high',
         status: 'todo',
         estimatedHours: item.quantity,
@@ -1536,17 +1536,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const company = companies.find((c) => c.id === inv.companyId)
     const individual = individuals.find((ind) => ind.id === inv.individualId)
+    const clientDisplayName = company?.name || (individual ? `${individual.firstName} ${individual.lastName}` : 'Client Entity')
+
     const fallbackCompany: Company = {
       id: 'custom-comp',
-      name: 'Client Entity',
-      vatNumber: 'BE0842123456',
+      name: clientDisplayName,
+      vatNumber: '',
       peppolScheme: '0208',
-      peppolEndpoint: '0842123456',
-      email: 'billing@client.com',
-      phone: '+32 2 000 0000',
-      address: 'Business Street 1',
-      city: 'Brussels',
-      postalCode: '1000',
+      peppolEndpoint: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      postalCode: '',
       country: 'Belgium',
       countryCode: 'BE',
       status: 'customer',
@@ -1558,9 +1560,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: individual.id,
       name: `${individual.firstName} ${individual.lastName}`,
       legalName: `${individual.firstName} ${individual.lastName}`,
-      vatNumber: individual.nationalId || 'BE0842123456',
+      vatNumber: individual.nationalId || '',
       peppolScheme: '0208',
-      peppolEndpoint: (individual.nationalId || '0842123456').replace(/\D/g, ''),
+      peppolEndpoint: (individual.nationalId || '').replace(/\D/g, ''),
       email: individual.email,
       phone: individual.phone,
       address: individual.address,
@@ -1569,7 +1571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       country: individual.country || 'Belgium',
       countryCode: individual.countryCode || 'BE',
       status: 'customer',
-      tags: ['Individual Client'],
+      tags: [],
       createdAt: individual.createdAt,
     } : fallbackCompany)
 
@@ -2956,8 +2958,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       staffBreakdown: [
         {
           staffId: staffCapacities[0]?.id || 'staff-1',
-          staffName: staffCapacities[0]?.name || 'Koen De Vries',
-          iban: 'BE12 3456 7890 1234',
+          staffName: staffCapacities[0]?.name || currentUser.name || 'Staff Member',
+          iban: (staffCapacities[0] as any)?.iban || '',
           amountEur: totalBatch,
           expenseIds,
           mileageTripIds,
@@ -3061,7 +3063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetToDemoData = () => {
     setLegalEntities(initialLegalEntities)
-    setActiveLegalEntityId(initialLegalEntities[0].id)
+    setActiveLegalEntityId(initialLegalEntities[0]?.id || 'ent-default')
     setCompanyProfile(initialCompanyProfile)
     setCompanies(initialCompanies)
     setIndividuals(initialIndividuals)
@@ -3094,7 +3096,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDunningNotices([])
     setPeppolLogs([])
     setUsers(initialUsers)
-    setCurrentUserId(initialUsers[0].id)
+    setCurrentUserId(initialUsers[0]?.id || '')
     setSecurityPolicy(initialSecurityPolicy)
     setActiveSessions(initialActiveSessions)
     setSecurityAuditLogs(initialSecurityAuditLogs)
@@ -3112,7 +3114,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setScheduledDigests(initialScheduledDigests)
     setCustomReports(initialCustomReports)
     setWysiwygTemplates(initialWysiwygTemplates)
-    setActiveWysiwygTemplateId(initialWysiwygTemplates[0].id)
+    setActiveWysiwygTemplateId(initialWysiwygTemplates[0]?.id || 'wysiwyg-be-default')
     setActiveInteractiveProposalQuote(null)
     // Preserve permanent installation and primary admin
     localStorage.setItem('pulsework_installed', 'true')
@@ -3136,7 +3138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       twoFactorSecret: payload.admin.twoFactorSecret,
       backupCodes: payload.admin.backupCodes,
       passwordHash: passHash,
-      pinCode: payload.admin.pinCode || '1234',
+      pinCode: payload.admin.pinCode || '',
       status: 'active',
       lastLogin: new Date().toISOString(),
       department: payload.admin.department || 'Management',
@@ -3168,8 +3170,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedProfile: CompanyProfile = {
       ...companyProfile,
-      name: payload.company.name || 'PulseWork Solutions',
-      legalName: payload.company.legalName || payload.company.name || 'PulseWork Solutions BV',
+      name: payload.company.name || '',
+      legalName: payload.company.legalName || payload.company.name || '',
       vatNumber: payload.company.vatNumber,
       peppolScheme: payload.company.peppolScheme || '0208',
       peppolEndpoint: payload.company.peppolEndpoint,

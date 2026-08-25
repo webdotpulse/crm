@@ -14,7 +14,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ userTo
   const [name, setName] = useState(userToEdit?.name || '')
   const [email, setEmail] = useState(userToEdit?.email || '')
   const [role, setRole] = useState<UserRole>(userToEdit?.role || 'sales')
-  const [department, setDepartment] = useState(userToEdit?.department || 'Commercial')
+  const [department, setDepartment] = useState(userToEdit?.department || '')
   const [phone, setPhone] = useState(userToEdit?.phone || '')
   const [status, setStatus] = useState<'active' | 'suspended' | 'invited'>(
     userToEdit?.status || 'active'

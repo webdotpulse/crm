@@ -9,15 +9,15 @@ interface TimeEntryModalProps {
 }
 
 export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ projectId, onClose }) => {
-  const { projects, tasks, addTimeEntry } = useApp()
+  const { addTimeEntry, projects, tasks, users, currentUser } = useApp()
 
   const project = projects.find((p) => p.id === projectId)
   const projectTasks = tasks.filter((t) => t.projectId === projectId)
 
   const [taskId, setTaskId] = useState<string>(projectTasks[0]?.id || '')
-  const [memberName, setMemberName] = useState('Koen De Vries')
+  const [memberName, setMemberName] = useState(currentUser?.name || 'Team Member')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [hours, setHours] = useState(2.5)
+  const [hours, setHours] = useState(1.0)
   const [description, setDescription] = useState('')
   const [isBillable, setIsBillable] = useState(true)
 
@@ -103,9 +103,14 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ projectId, onClo
                 onChange={(e) => setMemberName(e.target.value)}
                 className="form-select-sandbox"
               >
-                <option value="Koen De Vries">Koen De Vries</option>
-                <option value="Lucas Dubois">Lucas Dubois</option>
-                <option value="Elena Rostova">Elena Rostova</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name}
+                  </option>
+                ))}
+                {!users.some((u) => u.name === currentUser?.name) && currentUser?.name && (
+                  <option value={currentUser.name}>{currentUser.name}</option>
+                )}
               </select>
             </div>
             <div>

@@ -47,13 +47,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     subscriptionToEdit?.items || [
       {
         id: `si-1`,
-        description: 'Monthly Cloud Infrastructure & SLA Retainer',
+        description: '',
         quantity: 1,
         unit: 'month',
-        unitPrice: 1500,
+        unitPrice: 0,
         discountPercent: 0,
         vatRate: 21,
-        total: 1500,
+        total: 0,
       },
     ]
   )
@@ -63,13 +63,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       ...prev,
       {
         id: `si-${Date.now()}`,
-        description: 'Recurring Service / License',
+        description: '',
         quantity: 1,
         unit: 'month',
-        unitPrice: 500,
+        unitPrice: 0,
         discountPercent: 0,
         vatRate: 21,
-        total: 500,
+        total: 0,
       },
     ])
   }

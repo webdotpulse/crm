@@ -59,20 +59,20 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
   const [validDays, setValidDays] = useState(30)
   const [terms, setTerms] = useState(
     activeQuote?.terms ||
-      'Payment terms: 30% upfront on order, 40% on milestone beta release, 30% on handover. 3 months warranty included.'
+      'Payment terms: 30 days net from invoice date.'
   )
 
   const [items, setItems] = useState<QuoteItem[]>(
     activeQuote?.items || [
       {
         id: `qi-1`,
-        description: fromDeal ? fromDeal.title : 'Full-Stack Software Architecture & Implementation',
-        quantity: 40,
-        unit: 'hours',
-        unitPrice: 110.0,
+        description: fromDeal ? fromDeal.title : '',
+        quantity: 1,
+        unit: 'item',
+        unitPrice: 0,
         discountPercent: 0,
         vatRate: 21,
-        total: 4400.0,
+        total: 0,
       },
     ]
   )
@@ -129,13 +129,13 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
   const addItem = () => {
     const newItem: QuoteItem = {
       id: `qi-${Date.now()}`,
-      description: 'Senior Engineering & Consultation',
-      quantity: 10,
-      unit: 'hours',
-      unitPrice: 110.0,
+      description: '',
+      quantity: 1,
+      unit: 'item',
+      unitPrice: 0,
       discountPercent: 0,
       vatRate: 21,
-      total: 1100.0,
+      total: 0,
     }
     setItems([...items, newItem])
   }

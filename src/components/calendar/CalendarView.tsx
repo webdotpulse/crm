@@ -30,6 +30,8 @@ export const CalendarView: React.FC = () => {
     individuals,
     projects,
     deals,
+    users,
+    currentUser,
   } = useApp()
 
   const [currentDate, setCurrentDate] = useState(new Date('2026-08-25T00:00:00'))
@@ -48,7 +50,7 @@ export const CalendarView: React.FC = () => {
     allDay: false,
     clientType: 'company',
     clientId: '',
-    assignee: 'Koen De Vries',
+    assignee: currentUser?.name || 'Administrator',
     location: '',
     videoMeetingUrl: '',
     status: 'scheduled',
@@ -69,7 +71,7 @@ export const CalendarView: React.FC = () => {
       allDay: false,
       clientType: 'company',
       clientId: companies[0]?.id || '',
-      assignee: 'Koen De Vries',
+      assignee: currentUser?.name || 'Administrator',
       location: '',
       videoMeetingUrl: '',
       status: 'scheduled',
@@ -117,7 +119,7 @@ export const CalendarView: React.FC = () => {
         clientName,
         projectId: modalFormData.projectId,
         dealId: modalFormData.dealId,
-        assignee: modalFormData.assignee || 'Koen De Vries',
+        assignee: modalFormData.assignee || currentUser?.name || 'Administrator',
         location: modalFormData.location,
         videoMeetingUrl: modalFormData.videoMeetingUrl,
         status: modalFormData.status || 'scheduled',
@@ -641,9 +643,15 @@ export const CalendarView: React.FC = () => {
                       onChange={(e) => setModalFormData({ ...modalFormData, assignee: e.target.value })}
                       className="form-select-sandbox"
                     >
-                      <option value="Koen De Vries">Koen De Vries (Lead)</option>
-                      <option value="Elena Rostova">Elena Rostova (UX/Frontend)</option>
-                      <option value="Lucas Dubois">Lucas Dubois (Backend)</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.name}>
+                          {u.name} ({u.roleLabel || u.role})
+                        </option>
+                      ))}
+                      {!users.some((u) => u.name === currentUser?.name) && currentUser?.name && (
+                        <option value={currentUser.name}>{currentUser.name}</option>
+                      )}
+                      <option value="Unassigned">Unassigned</option>
                     </select>
                   </div>
                 </div>

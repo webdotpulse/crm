@@ -63,13 +63,13 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
     invoice?.items || [
       {
         id: `ii-1`,
-        description: 'Software Architecture & Milestone Delivery',
+        description: '',
         quantity: 1,
         unit: 'service',
-        unitPrice: 5000.0,
+        unitPrice: 0,
         discountPercent: 0,
         vatRate: 21,
-        total: 5000.0,
+        total: 0,
         taxCategory: 'S',
       },
     ]
@@ -150,13 +150,13 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
   const addItem = () => {
     const newItem: InvoiceItem = {
       id: `ii-${Date.now()}`,
-      description: 'Professional Services & Consultation',
+      description: '',
       quantity: 1,
       unit: 'service',
-      unitPrice: 1000.0,
+      unitPrice: 0,
       discountPercent: 0,
       vatRate: 21,
-      total: 1000.0,
+      total: 0,
       taxCategory: 'S',
     }
     setItems([...items, newItem])

@@ -9,90 +9,10 @@ interface InboundPeppolModalProps {
   onSuccess: () => void
 }
 
-const sampleSupplierXml = `<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0</cbc:CustomizationID>
-  <cbc:ProfileID>urn:fdc:peppol.eu:2017:poacc:billing:01:1.0</cbc:ProfileID>
-  <cbc:ID>AWS-PEPPOL-2026-90412</cbc:ID>
-  <cbc:IssueDate>2026-08-22</cbc:IssueDate>
-  <cbc:DueDate>2026-09-21</cbc:DueDate>
-  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
-  <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
-  <cac:AccountingSupplierParty>
-    <cac:Party>
-      <cbc:EndpointID schemeID="9938">LU26375245</cbc:EndpointID>
-      <cac:PartyName>
-        <cbc:Name>Amazon Web Services EMEA SARL</cbc:Name>
-      </cac:PartyName>
-      <cac:PostalAddress>
-        <cbc:StreetName>38 Avenue John F. Kennedy</cbc:StreetName>
-        <cbc:CityName>Luxembourg</cbc:CityName>
-        <cbc:PostalZone>L-1855</cbc:PostalZone>
-        <cac:Country><cbc:IdentificationCode>LU</cbc:IdentificationCode></cac:Country>
-      </cac:PostalAddress>
-      <cac:PartyTaxScheme>
-        <cbc:CompanyID>LU26375245</cbc:CompanyID>
-        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
-      </cac:PartyTaxScheme>
-    </cac:Party>
-  </cac:AccountingSupplierParty>
-  <cac:PaymentMeans>
-    <cbc:PaymentMeansCode>31</cbc:PaymentMeansCode>
-    <cac:PayeeFinancialAccount>
-      <cbc:Id>LU45 0019 4006 4475 0000</cbc:Id>
-    </cac:PayeeFinancialAccount>
-  </cac:PaymentMeans>
-  <cac:TaxTotal>
-    <cbc:TaxAmount currencyID="EUR">0.00</cbc:TaxAmount>
-  </cac:TaxTotal>
-  <cac:LegalMonetaryTotal>
-    <cbc:LineExtensionAmount currencyID="EUR">1250.00</cbc:LineExtensionAmount>
-    <cbc:TaxExclusiveAmount currencyID="EUR">1250.00</cbc:TaxExclusiveAmount>
-    <cbc:TaxInclusiveAmount currencyID="EUR">1250.00</cbc:TaxInclusiveAmount>
-    <cbc:PayableAmount currencyID="EUR">1250.00</cbc:PayableAmount>
-  </cac:LegalMonetaryTotal>
-  <cac:InvoiceLine>
-    <cbc:ID>1</cbc:ID>
-    <cbc:InvoicedQuantity unitCode="C62">1</cbc:InvoicedQuantity>
-    <cbc:LineExtensionAmount currencyID="EUR">850.00</cbc:LineExtensionAmount>
-    <cac:Item>
-      <cbc:Description>Amazon Elastic Kubernetes Service (EKS) Cluster Hosting</cbc:Description>
-      <cbc:Name>AWS EKS Cluster</cbc:Name>
-      <cac:ClassifiedTaxCategory>
-        <cbc:ID>AE</cbc:ID>
-        <cbc:Percent>0.00</cbc:Percent>
-        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
-      </cac:ClassifiedTaxCategory>
-    </cac:Item>
-    <cac:Price>
-      <cbc:PriceAmount currencyID="EUR">850.00</cbc:PriceAmount>
-    </cac:Price>
-  </cac:InvoiceLine>
-  <cac:InvoiceLine>
-    <cbc:ID>2</cbc:ID>
-    <cbc:InvoicedQuantity unitCode="C62">1</cbc:InvoicedQuantity>
-    <cbc:LineExtensionAmount currencyID="EUR">400.00</cbc:LineExtensionAmount>
-    <cac:Item>
-      <cbc:Description>Amazon Aurora PostgreSQL Serverless Database</cbc:Description>
-      <cbc:Name>AWS Aurora DB</cbc:Name>
-      <cac:ClassifiedTaxCategory>
-        <cbc:ID>AE</cbc:ID>
-        <cbc:Percent>0.00</cbc:Percent>
-        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
-      </cac:ClassifiedTaxCategory>
-    </cac:Item>
-    <cac:Price>
-      <cbc:PriceAmount currencyID="EUR">400.00</cbc:PriceAmount>
-    </cac:Price>
-  </cac:InvoiceLine>
-</Invoice>`
-
 export const InboundPeppolModal: React.FC<InboundPeppolModalProps> = ({ onClose, onSuccess }) => {
   const { importInboundPeppolXml, selectedCurrency } = useApp()
-  const [xmlContent, setXmlContent] = useState<string>(sampleSupplierXml)
-  const [parsedPreview, setParsedPreview] = useState<any>(() => parseInboundPeppolXml(sampleSupplierXml))
+  const [xmlContent, setXmlContent] = useState<string>('')
+  const [parsedPreview, setParsedPreview] = useState<any>(null)
   const [dragActive, setDragActive] = useState(false)
 
   const handleXmlChange = (val: string) => {
@@ -308,23 +228,10 @@ export const InboundPeppolModal: React.FC<InboundPeppolModalProps> = ({ onClose,
             <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--sb-heading)' }}>
               Raw UBL / XML Document
             </label>
-            <button
-              type="button"
-              onClick={() => handleXmlChange(sampleSupplierXml)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--sb-primary)',
-                fontSize: '0.72rem',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              ⚡ Reset to Sample AWS Invoice
-            </button>
           </div>
           <textarea
             value={xmlContent}
+            placeholder="Paste your Peppol UBL 2.1 / BIS Billing 3.0 XML here..."
             onChange={(e) => handleXmlChange(e.target.value)}
             className="input-sandbox"
             rows={7}

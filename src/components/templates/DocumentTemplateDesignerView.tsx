@@ -379,10 +379,10 @@ export const DocumentTemplateDesignerView: React.FC = () => {
                     Billed To / Client:
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1e293b', marginTop: '0.25rem' }}>
-                    TechFlow Logistics NV
+                    Client Company Name
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#475569' }}>Havenlaan 88, 2000 Antwerp, Belgium</div>
-                  <div style={{ fontSize: '0.82rem', color: '#475569' }}>VAT: BE0842123456 • Peppol: 0208:0842123456</div>
+                  <div style={{ fontSize: '0.82rem', color: '#475569' }}>Business Avenue 12, 1000 Brussels, Belgium</div>
+                  <div style={{ fontSize: '0.82rem', color: '#475569' }}>VAT: BE0123456789 • Peppol: 0208:0123456789</div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
@@ -410,26 +410,26 @@ export const DocumentTemplateDesignerView: React.FC = () => {
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', fontWeight: 600 }}>
-                      Custom Cloud Architecture & Peppol BIS Gateway
+                      Professional Services & Technical Implementation
                       {styleConfig.showItemDescriptions && (
                         <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.2rem' }}>
-                          Deployment of secure microservices and AS4 message handling pipeline.
+                          Deployment of secure services and automated transaction pipelines.
                         </div>
                       )}
                     </td>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>€3,500.00</td>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>€1,500.00</td>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>21%</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700 }}>€3,500.00</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700 }}>€1,500.00</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '1rem', fontWeight: 600 }}>
-                      IoT Fleet Telematics Gateway Hardware (v3)
+                      Standard Hardware Component / Spare Part
                     </td>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>2</td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>€367.50</td>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>€150.00</td>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>21%</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700 }}>€735.00</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700 }}>€300.00</td>
                   </tr>
                 </tbody>
               </table>

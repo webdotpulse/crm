@@ -87,10 +87,10 @@ export const FirstRunInstaller: React.FC = () => {
 
   // Step 2: Database Configuration state
   const [dbMode, setDbMode] = useState<DatabaseStorageMode>('mysql')
-  const [mysqlHost, setMysqlHost] = useState('mysql123.combell-hosting.com')
+  const [mysqlHost, setMysqlHost] = useState('')
   const [mysqlPort, setMysqlPort] = useState(3306)
-  const [mysqlDatabase, setMysqlDatabase] = useState('ID123456_pulsework')
-  const [mysqlUsername, setMysqlUsername] = useState('ID123456_user')
+  const [mysqlDatabase, setMysqlDatabase] = useState('')
+  const [mysqlUsername, setMysqlUsername] = useState('')
   const [mysqlPassword, setMysqlPassword] = useState('')
   const [showMysqlPassword, setShowMysqlPassword] = useState(false)
   const [mysqlTablePrefix, setMysqlTablePrefix] = useState('pw_')
@@ -98,21 +98,21 @@ export const FirstRunInstaller: React.FC = () => {
   const [connectionTestResult, setConnectionTestResult] = useState<ConnectionTestResult | null>(null)
 
   // Step 3: Company Profile state
-  const [companyName, setCompanyName] = useState('PulseWork Solutions BV')
-  const [legalName, setLegalName] = useState('PulseWork Solutions BV')
-  const [vatNumber, setVatNumber] = useState('BE0849294901')
+  const [companyName, setCompanyName] = useState('')
+  const [legalName, setLegalName] = useState('')
+  const [vatNumber, setVatNumber] = useState('')
   const [country, setCountry] = useState('Belgium')
   const [countryCode, setCountryCode] = useState('BE')
   const [peppolScheme, setPeppolScheme] = useState('0208')
-  const [peppolEndpoint, setPeppolEndpoint] = useState('0849294901')
-  const [companyEmail, setCompanyEmail] = useState('billing@pulsework.local')
-  const [companyPhone, setCompanyPhone] = useState('+32 2 555 0199')
-  const [companyWebsite, setCompanyWebsite] = useState('https://pulsework.local')
-  const [companyAddress, setCompanyAddress] = useState('Keizerslaan 14, Bus 4B')
-  const [companyCity, setCompanyCity] = useState('Brussels')
-  const [companyPostalCode, setCompanyPostalCode] = useState('1000')
-  const [companyIban, setCompanyIban] = useState('BE68 5390 0754 7034')
-  const [companyBic, setCompanyBic] = useState('GKCCBEBB')
+  const [peppolEndpoint, setPeppolEndpoint] = useState('')
+  const [companyEmail, setCompanyEmail] = useState('')
+  const [companyPhone, setCompanyPhone] = useState('')
+  const [companyWebsite, setCompanyWebsite] = useState('')
+  const [companyAddress, setCompanyAddress] = useState('')
+  const [companyCity, setCompanyCity] = useState('')
+  const [companyPostalCode, setCompanyPostalCode] = useState('')
+  const [companyIban, setCompanyIban] = useState('')
+  const [companyBic, setCompanyBic] = useState('')
   const [defaultCurrency, setDefaultCurrency] = useState<SupportedCurrency>('EUR')
   const [defaultVatRate, setDefaultVatRate] = useState<number>(21)
 
@@ -122,8 +122,8 @@ export const FirstRunInstaller: React.FC = () => {
   const [adminPassword, setAdminPassword] = useState('')
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [adminPinCode, setAdminPinCode] = useState('1234')
-  const [adminDepartment, setAdminDepartment] = useState('Executive Management')
+  const [adminPinCode, setAdminPinCode] = useState('')
+  const [adminDepartment, setAdminDepartment] = useState('')
   const [adminPhone, setAdminPhone] = useState('')
 
   // Step 5: Security & 2FA state
@@ -194,7 +194,7 @@ export const FirstRunInstaller: React.FC = () => {
   // Auto-generate 2FA keys when enabled
   useEffect(() => {
     if (enable2FaNow && !totpSetupData) {
-      const email = adminEmail.trim() || 'admin@pulsework.local'
+      const email = adminEmail.trim() || 'admin@localhost'
       const setup = generate2FASetup(email)
       setTotpSetupData(setup)
     }
