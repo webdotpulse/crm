@@ -1143,7 +1143,7 @@ export const SettingsView: React.FC = () => {
         <div className="card-sandbox" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <Database size={20} color="var(--sb-purple)" />
-            <h3 style={{ fontSize: '1.15rem' }}>Data Backup & Demo Reset</h3>
+            <h3 style={{ fontSize: '1.15rem' }}>Data Backup & Factory Reset</h3>
           </div>
 
           <p style={{ fontSize: '0.85rem', color: 'var(--sb-body)', marginBottom: '1.25rem' }}>
@@ -1158,15 +1158,15 @@ export const SettingsView: React.FC = () => {
 
             <button
               onClick={() => {
-                if (confirm('Are you sure you want to reset all data to default demo state?')) {
+                if (confirm('Are you sure you want to perform a factory reset? All CRM records will be cleared to a clean state.')) {
                   resetToDemoData()
-                  showToast('✓ Reset to demo dataset complete!')
+                  showToast('✓ Clean factory reset complete.')
                 }
               }}
               className="btn-sandbox btn-sandbox-danger"
             >
               <RotateCcw size={15} />
-              <span>Reset to Demo Data</span>
+              <span>Clear All Data (Factory Reset)</span>
             </button>
           </div>
 

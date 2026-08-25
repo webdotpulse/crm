@@ -68,7 +68,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       due_date: document?.dueDate || document?.validUntilDate || '30 days',
       issue_date: document?.issueDate || new Date().toISOString().slice(0, 10),
       payment_reference: document?.structuredReference || '+++000/0000/00000+++',
-      signature_link: `https://portal.pulsework.io/sign/${document?.id || 'demo'}`,
+      signature_link: `https://portal.pulsework.io/sign/${document?.id || 'doc'}`,
     }
 
     for (const [key, val] of Object.entries(vars)) {

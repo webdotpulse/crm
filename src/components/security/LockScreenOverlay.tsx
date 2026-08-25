@@ -17,19 +17,6 @@ export const LockScreenOverlay: React.FC = () => {
     return () => clearInterval(timer)
   }, [])
 
-  // Live TOTP code helper for testing
-  const [demoCode, setDemoCode] = useState(() =>
-    currentUser?.twoFactorSecret ? calculateTotpCode(currentUser.twoFactorSecret) : '1234'
-  )
-
-  useEffect(() => {
-    if (!currentUser?.twoFactorSecret) return
-    const interval = setInterval(() => {
-      setDemoCode(calculateTotpCode(currentUser.twoFactorSecret!))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [currentUser?.twoFactorSecret])
-
   if (!isScreenLocked) return null
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -37,7 +24,7 @@ export const LockScreenOverlay: React.FC = () => {
     setError(null)
     const success = unlockScreen(pinOrCode)
     if (!success) {
-      setError('Invalid PIN or 2FA authentication code. (Try "1234" or your 6-digit TOTP code)')
+      setError('Invalid PIN or 2FA authentication code. Please check and try again.')
     } else {
       setPinOrCode('')
     }
@@ -209,7 +196,7 @@ export const LockScreenOverlay: React.FC = () => {
             <input
               type="password"
               autoFocus
-              placeholder={currentUser.twoFactorEnabled ? 'Enter PIN or 2FA code...' : 'Enter PIN / Password (1234)...'}
+              placeholder="Enter your PIN or authentication code..."
               value={pinOrCode}
               onChange={(e) => {
                 setPinOrCode(e.target.value)
@@ -260,31 +247,6 @@ export const LockScreenOverlay: React.FC = () => {
               <span>{error}</span>
             </div>
           )}
-
-          {/* Demo Quick Unlock Helper */}
-          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
-              Quick Unlock Demo PIN: <code style={{ color: '#60a5fa', fontWeight: 700 }}>1234</code>
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setPinOrCode('1234')
-                unlockScreen('1234')
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#60a5fa',
-                fontSize: '0.74rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-              }}
-            >
-              Unlock Now
-            </button>
-          </div>
         </form>
 
         {/* Switch User Toggle */}

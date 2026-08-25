@@ -17,21 +17,26 @@ import { useApp } from '../../context/AppContext'
 import { generate90DayCashFlowForecast } from '../../services/cashflowForecastService'
 
 export const CashFlowForecastView: React.FC = () => {
-  const { invoices, expenses, subscriptions, bankTransactions, setCurrentView } = useApp()
+  const { invoices, expenses, subscriptions, bankStatements, bankTransactions, setCurrentView } = useApp()
   const [activeTab, setActiveTab] = useState<'forecast' | 'insights'>('forecast')
+
+  const currentStartingCash =
+    bankStatements.reduce((sum, s) => sum + (s.closingBalance || 0), 0) ||
+    bankTransactions.reduce((sum, t) => sum + t.amount, 0) ||
+    0
 
   const { dailyPoints, metrics } = generate90DayCashFlowForecast(
     invoices,
     expenses,
     subscriptions,
     bankTransactions,
-    42580.0
+    currentStartingCash
   )
 
   // Find min and max for chart scaling
   const balances = dailyPoints.map((d) => d.netCashBalance)
-  const minBalance = Math.min(...balances, 20000)
-  const maxBalance = Math.max(...balances, 100000)
+  const minBalance = Math.min(...balances, 0)
+  const maxBalance = Math.max(...balances, 1000)
 
   // Generate SVG path for 90-day curve
   const chartWidth = 900

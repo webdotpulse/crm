@@ -53,16 +53,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenQuickModal }
   const peppolSuccessCount = peppolLogs.filter((p) => p.status === 'success').length
   const peppolSuccessRate = peppolLogs.length > 0 ? Math.round((peppolSuccessCount / peppolLogs.length) * 100) : 100
 
-  // Revenue chart mock points
-  const monthlyData = [
-    { month: 'Mar', invoiced: 18500, collected: 18500 },
-    { month: 'Apr', invoiced: 22400, collected: 21000 },
-    { month: 'May', invoiced: 27900, collected: 26500 },
-    { month: 'Jun', invoiced: 24695, collected: 24695 },
-    { month: 'Jul', invoiced: 31200, collected: 28000 },
-    { month: 'Aug', invoiced: 30916, collected: 8964 },
-  ]
-  const maxVal = 35000
+  // Dynamic 6-month revenue aggregation from actual invoices
+  const now = new Date()
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const monthlyData = Array.from({ length: 6 }).map((_, index) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = monthNames[d.getMonth()]
+
+    const monthInvoices = invoices.filter((inv) => (inv.issueDate || '').startsWith(monthKey))
+    const invoiced = monthInvoices.reduce((sum, inv) => sum + inv.total, 0)
+    const collected = monthInvoices.reduce(
+      (sum, inv) => sum + (inv.amountPaid || (inv.status === 'paid' ? inv.total : 0)),
+      0
+    )
+
+    return {
+      month: label,
+      invoiced,
+      collected,
+    }
+  })
+  const maxVal = Math.max(...monthlyData.map((m) => Math.max(m.invoiced, m.collected)), 1000)
 
   const urgentTasks = tasks.filter((t) => t.status !== 'done').slice(0, 4)
 

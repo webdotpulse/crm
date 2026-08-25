@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   Boxes,
   Truck,
@@ -41,14 +41,17 @@ export const MultiLocationInventoryView: React.FC = () => {
   // Stock Transfer Modal
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false)
   const [transferFromLocation, setTransferFromLocation] = useState(warehouseLocations[0]?.id || '')
-  const [transferToLocation, setTransferToLocation] = useState(warehouseLocations[2]?.id || '')
+  const [transferToLocation, setTransferToLocation] = useState(warehouseLocations[1]?.id || warehouseLocations[0]?.id || '')
   const [transferProductId, setTransferProductId] = useState(products[0]?.id || '')
-  const [transferQuantity, setTransferQuantity] = useState(5)
+  const [transferQuantity, setTransferQuantity] = useState(1)
   const [transferNotes, setTransferNotes] = useState('')
 
-  // Scanner State
-  const [scannedBarcode, setScannedBarcode] = useState<string>('SN-IOT-2026-08491')
+  // Interactive Barcode / Serial Scanner State
+  const [scannedBarcode, setScannedBarcode] = useState<string>('')
   const [scannerNotice, setScannerNotice] = useState<string | null>(null)
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   const handleCreateTransfer = (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,14 +77,55 @@ export const MultiLocationInventoryView: React.FC = () => {
     setTransferNotes('')
   }
 
-  const handleSimulateQuickScan = (code: string) => {
+  const startCamera = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+        })
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play()
+        }
+        setIsCameraActive(true)
+        setScannerNotice('Camera active. Point at item barcode or QR code.')
+      } else {
+        setScannerNotice('Camera access not supported on this browser. Use manual scanner input.')
+      }
+    } catch (err: any) {
+      setScannerNotice(`Camera access: ${err?.message || 'Permission needed'}. Use scanner input.`)
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setIsCameraActive(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+      }
+    }
+  }, [])
+
+  const handleScanInput = (code: string) => {
     setScannedBarcode(code)
-    setScannerNotice(`Barcode recognized: ${code}`)
-    setTimeout(() => setScannerNotice(null), 3000)
+    if (code.trim()) {
+      setScannerNotice(`Recognized barcode: ${code}`)
+    }
   }
 
   const matchedSerialItem = serialBatchItems.find((s) => s.serialNumber === scannedBarcode || s.sku === scannedBarcode)
-  const matchedProduct = products.find((p) => p.sku === matchedSerialItem?.sku || p.sku === scannedBarcode)
+  const matchedProduct = products.find((p) => p.sku === matchedSerialItem?.sku || p.sku === scannedBarcode || p.barcode === scannedBarcode)
 
   return (
     <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
@@ -397,43 +441,79 @@ export const MultiLocationInventoryView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: INTERACTIVE BARCODE / QR SCANNER */}
+      {/* TAB 4: REAL BARCODE / QR SCANNER */}
       {activeTab === 'scanner' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '1.75rem' }}>
-          {/* Left Viewport: Camera / Scanner Simulation */}
+          {/* Left Viewport: Camera & Hardware Barcode Reader */}
           <div className="card-sandbox" style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#0f172a', color: '#ffffff', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'relative', width: '320px', height: '220px', margin: '0 auto 1.5rem', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle, rgba(63,120,224,0.15) 0%, rgba(0,0,0,0.5) 100%)' }}>
+            <div style={{ position: 'relative', width: '320px', height: '220px', margin: '0 auto 1.5rem', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000', overflow: 'hidden' }}>
+              {isCameraActive ? (
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#94a3b8' }}>
+                  <Barcode size={54} color="rgba(255,255,255,0.4)" />
+                  <span style={{ fontSize: '0.78rem' }}>Camera inactive</span>
+                </div>
+              )}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', backgroundColor: '#38b995', boxShadow: '0 0 10px #38b995', animation: 'scanLaser 2s ease-in-out infinite' }} />
-              <Barcode size={64} color="rgba(255,255,255,0.5)" />
             </div>
 
             <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.35rem' }}>
-              Interactive QR & Barcode Camera Viewport
+              Live Camera & Barcode Reader
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
-              Point your smartphone or handheld Honeywell/Zebra scanner at item barcode or test with quick simulation chips below:
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', maxWidth: '420px', margin: '0 auto 1.25rem' }}>
+              Scan items with your device camera or connect any USB/Bluetooth Honeywell or Zebra barcode scanner.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {!isCameraActive ? (
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  className="btn-sandbox btn-sandbox-primary"
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Camera size={15} />
+                  <span>Start Camera Video</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="btn-sandbox btn-sandbox-danger"
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+                >
+                  Stop Camera
+                </button>
+              )}
             </div>
 
-            {/* Quick Test Barcodes */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {['SN-IOT-2026-08491', 'SN-IOT-2026-08492', 'CAB-CAT6A-10M', 'HW-IOT-GW-03'].map((code) => (
-                <button
-                  key={code}
-                  onClick={() => handleSimulateQuickScan(code)}
-                  className="btn-sandbox btn-sandbox-ghost"
+            {/* Direct Hardware Scanner Input */}
+            <div style={{ maxWidth: '360px', margin: '0 auto', textAlign: 'left' }}>
+              <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem', fontWeight: 600 }}>
+                Direct Barcode / Serial Input (Hardware Scanner or Manual):
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Scan or type barcode / SKU / Serial..."
+                  value={scannedBarcode}
+                  onChange={(e) => handleScanInput(e.target.value)}
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    width: '100%',
+                    padding: '0.65rem 1rem 0.65rem 2.2rem',
+                    borderRadius: 'var(--sb-radius)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
                     color: '#ffffff',
-                    fontSize: '0.74rem',
+                    fontSize: '0.85rem',
                     fontFamily: 'monospace',
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '9999px',
-                    border: scannedBarcode === code ? '1px solid #38b995' : '1px solid transparent',
+                    outline: 'none',
+                    boxSizing: 'border-box',
                   }}
-                >
-                  Scan {code}
-                </button>
-              ))}
+                />
+                <Barcode size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
             </div>
           </div>
 
@@ -449,50 +529,68 @@ export const MultiLocationInventoryView: React.FC = () => {
               </div>
             )}
 
-            {matchedSerialItem ? (
+            {matchedSerialItem || matchedProduct ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div style={{ padding: '0.85rem', backgroundColor: 'var(--sb-bg)', borderRadius: 'var(--sb-radius)' }}>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--sb-body)', textTransform: 'uppercase', fontWeight: 700 }}>Scanned Serial Number</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--sb-body)', textTransform: 'uppercase', fontWeight: 700 }}>Scanned Code / SKU</div>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--sb-primary)', fontFamily: 'monospace' }}>
-                    {matchedSerialItem.serialNumber}
+                    {matchedSerialItem?.serialNumber || matchedProduct?.sku || scannedBarcode}
                   </div>
                 </div>
 
-                <div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--sb-body)' }}>Product:</div>
-                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--sb-heading)' }}>
-                    {matchedSerialItem.productName} ({matchedSerialItem.sku})
+                {matchedProduct && (
+                  <div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--sb-body)' }}>Product:</div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--sb-heading)' }}>
+                      {matchedProduct.name} ({matchedProduct.sku})
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--sb-body)', marginTop: '0.2rem' }}>
+                      Price: {formatCurrency(matchedProduct.sellPrice, selectedCurrency)} | Category: {matchedProduct.category}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--sb-body)' }}>Current Location:</div>
-                  <div style={{ fontWeight: 700, color: 'var(--sb-heading)' }}>
-                    {matchedSerialItem.locationName}
+                {matchedSerialItem && (
+                  <div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--sb-body)' }}>Current Location:</div>
+                    <div style={{ fontWeight: 700, color: 'var(--sb-heading)' }}>
+                      {matchedSerialItem.locationName}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--sb-border)' }}>
                   <button
-                    onClick={() => alert(`Allocated ${matchedSerialItem.serialNumber} to current work order job.`)}
+                    onClick={() => {
+                      if (matchedSerialItem) {
+                        alert(`Allocated serial ${matchedSerialItem.serialNumber} to current work order job.`)
+                      } else if (matchedProduct) {
+                        alert(`Allocated product ${matchedProduct.name} to work order.`)
+                      }
+                    }}
                     className="btn-sandbox btn-sandbox-primary"
                     style={{ width: '100%', fontSize: '0.82rem', fontWeight: 800 }}
                   >
-                    ✓ Consume on Field Work Order
+                    ✓ Allocate to Work Order
                   </button>
 
                   <button
-                    onClick={() => setIsTransferModalOpen(true)}
+                    onClick={() => {
+                      if (matchedProduct) {
+                        setTransferProductId(matchedProduct.id)
+                      }
+                      setIsTransferModalOpen(true)
+                    }}
                     className="btn-sandbox btn-sandbox-outline"
                     style={{ width: '100%', fontSize: '0.82rem', fontWeight: 700 }}
                   >
-                    ➔ Initiate Transfer to Another Van
+                    ➔ Initiate Warehouse Transfer
                   </button>
                 </div>
               </div>
             ) : (
               <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--sb-body)', fontSize: '0.85rem' }}>
-                Scan a barcode using the camera simulator on the left to inspect serial warranty and location.
+                {scannedBarcode ? 'No product or serial item matched this barcode.' : 'Scan a barcode or type a SKU/serial code above to inspect inventory details.'}
               </div>
             )}
           </div>

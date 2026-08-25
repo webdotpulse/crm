@@ -42,19 +42,6 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ user, 
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const [backupSavedAcknowledged, setBackupSavedAcknowledged] = useState(false)
 
-  // Live simulation helper (shows current valid code & seconds remaining)
-  const [liveCode, setLiveCode] = useState(() => calculateTotpCode(setupData.secret))
-  const [secondsRemaining, setSecondsRemaining] = useState(() => getTotpRemainingSeconds())
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const remaining = getTotpRemainingSeconds()
-      setSecondsRemaining(remaining)
-      setLiveCode(calculateTotpCode(setupData.secret))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [setupData.secret])
-
   const handleCopySecret = () => {
     navigator.clipboard.writeText(setupData.secret)
     setCopiedSecret(true)
@@ -97,8 +84,8 @@ Security Notice: Never share your backup codes with anyone.
     e.preventDefault()
     setVerificationError(null)
 
-    const isValid = verifyTotpCode(setupData.secret, verificationCode)
-    if (isValid || verificationCode === liveCode || verificationCode === '123456') {
+    const isValid = verifyTotpCode(setupData.secret, verificationCode.trim())
+    if (isValid) {
       setStep(3) // Advance to backup codes
     } else {
       setVerificationError('Invalid 6-digit authentication code. Please check your authenticator app.')
@@ -359,43 +346,6 @@ Security Notice: Never share your backup codes with anyone.
                   {setupData.secret.match(/.{1,4}/g)?.join(' ') || setupData.secret}
                 </code>
               </div>
-
-              {/* Live Testing Simulator Card (Built-in Helper) */}
-              <div
-                style={{
-                  backgroundColor: 'var(--sb-primary-soft)',
-                  borderRadius: 'var(--sb-radius)',
-                  padding: '0.85rem 1rem',
-                  border: '1px solid rgba(63, 120, 224, 0.25)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <Sparkles size={18} style={{ color: 'var(--sb-primary)', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-primary-text)' }}>
-                      In-Browser TOTP Simulator:
-                    </div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--sb-body)' }}>
-                      Current valid code: <strong style={{ fontFamily: 'var(--sb-font-mono)', color: 'var(--sb-heading)' }}>{liveCode}</strong> ({secondsRemaining}s remaining)
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVerificationCode(liveCode)
-                    setStep(2)
-                  }}
-                  className="btn-sandbox btn-sandbox-primary"
-                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                >
-                  Use Code & Next →
-                </button>
-              </div>
             </div>
           )}
 
@@ -437,21 +387,6 @@ Security Notice: Never share your backup codes with anyone.
                     boxShadow: 'var(--sb-shadow-sm)',
                   }}
                 />
-
-                {/* Simulation helper quick autofill */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--sb-body)' }}>
-                    Live App Code: <code style={{ fontWeight: 700, color: 'var(--sb-primary)' }}>{liveCode}</code>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setVerificationCode(liveCode)}
-                    className="btn-sandbox btn-sandbox-ghost"
-                    style={{ padding: '0.15rem 0.4rem', fontSize: '0.72rem' }}
-                  >
-                    Insert
-                  </button>
-                </div>
               </div>
 
               {verificationError && (

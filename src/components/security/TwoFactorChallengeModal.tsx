@@ -9,34 +9,28 @@ export const TwoFactorChallengeModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [isBackupMode, setIsBackupMode] = useState(false)
 
-  // Live simulation helper for testing
-  const [simulatedCode, setSimulatedCode] = useState(() =>
-    currentUser?.twoFactorSecret ? calculateTotpCode(currentUser.twoFactorSecret) : '123456'
-  )
-
-  useEffect(() => {
-    if (!currentUser?.twoFactorSecret) return
-    const interval = setInterval(() => {
-      setSimulatedCode(calculateTotpCode(currentUser.twoFactorSecret!))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [currentUser?.twoFactorSecret])
-
   if (!stepUpChallenge || !stepUpChallenge.isOpen) return null
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    const secret = currentUser.twoFactorSecret || 'JBSWY3DPEHPK3PXP'
+    const secret = currentUser.twoFactorSecret
     const cleanCode = code.trim().toUpperCase()
 
-    const isTotpValid = verifyTotpCode(secret, cleanCode)
-    const isBackupValid =
-      currentUser.backupCodes && currentUser.backupCodes.includes(cleanCode)
-    const isDemoValid = cleanCode === simulatedCode || cleanCode === '123456'
+    if (!secret && !isBackupMode) {
+      // If user has no 2FA secret set, proceed
+      const callback = stepUpChallenge.onConfirmed
+      closeStepUpChallenge()
+      callback()
+      return
+    }
 
-    if (isTotpValid || isBackupValid || isDemoValid) {
+    const isTotpValid = secret ? verifyTotpCode(secret, cleanCode) : false
+    const isBackupValid =
+      Boolean(currentUser.backupCodes && currentUser.backupCodes.includes(cleanCode))
+
+    if (isTotpValid || isBackupValid) {
       const callback = stepUpChallenge.onConfirmed
       closeStepUpChallenge()
       callback()
@@ -160,21 +154,6 @@ export const TwoFactorChallengeModal: React.FC = () => {
                 boxShadow: 'var(--sb-shadow-sm)',
               }}
             />
-
-            {/* Quick Testing helper */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <span style={{ fontSize: '0.74rem', color: 'var(--sb-body)' }}>
-                Demo App Code: <strong style={{ color: 'var(--sb-primary)', fontFamily: 'var(--sb-font-mono)' }}>{simulatedCode}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => setCode(simulatedCode)}
-                className="btn-sandbox btn-sandbox-ghost"
-                style={{ padding: '0.1rem 0.35rem', fontSize: '0.72rem' }}
-              >
-                Autofill
-              </button>
-            </div>
           </div>
 
           {error && (

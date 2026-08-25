@@ -55,9 +55,9 @@ export const InteractiveProposalViewerModal: React.FC<InteractiveProposalViewerM
   // Interactive items state
   const [items, setItems] = useState<ProposalInteractiveItem[]>(() => {
     if (!targetQuote?.items) return []
-    return targetQuote.items.map((item, index) => ({
+    return targetQuote.items.map((item) => ({
       ...item,
-      isOptional: index >= 2, // Optional items for demonstration
+      isOptional: Boolean((item as any).isOptional),
       selected: true,
     }))
   })

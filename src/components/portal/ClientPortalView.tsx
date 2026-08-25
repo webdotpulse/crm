@@ -39,8 +39,8 @@ export const ClientPortalView: React.FC = () => {
   const activeCompany = companies.find((c) => c.id === selectedClientId)
   const activeIndividual = individuals.find((i) => i.id === selectedClientId)
   const clientName = selectedClientType === 'company'
-    ? activeCompany?.name || 'AeroDynamics Belgium BV'
-    : `${activeIndividual?.firstName} ${activeIndividual?.lastName}`
+    ? activeCompany?.name || 'Select a Client'
+    : (activeIndividual ? `${activeIndividual.firstName} ${activeIndividual.lastName}` : 'Select a Client')
 
   // Client Documents
   const clientQuotes = quotations.filter((q) =>
@@ -53,13 +53,13 @@ export const ClientPortalView: React.FC = () => {
     selectedClientType === 'company' ? p.companyId === selectedClientId : p.individualId === selectedClientId
   )
 
-  const handleSimulatePayment = (invoice: any) => {
+  const handleOnlinePayment = (invoice: any) => {
     recordPayment({
       invoiceId: invoice.id,
-      amount: invoice.total - invoice.amountPaid,
+      amount: invoice.total - (invoice.amountPaid || 0),
       paymentDate: new Date().toISOString().slice(0, 10),
       method: 'card',
-      reference: 'Bancontact Online Gateway #99104',
+      reference: `Bancontact Online Payment #${Date.now().toString().slice(-6)}`,
       note: 'Instant online payment via Client Extranet Portal',
     })
     setPaymentSuccessMsg(`🎉 Payment of ${formatCurrency(invoice.total, selectedCurrency)} via Bancontact successful!`)
@@ -72,7 +72,7 @@ export const ClientPortalView: React.FC = () => {
 
   return (
     <div style={{ padding: '2rem 2.5rem', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Simulation Banner */}
+      {/* Client Portal Header */}
       <div
         className="card-sandbox"
         style={{
@@ -104,10 +104,10 @@ export const ClientPortalView: React.FC = () => {
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--sb-heading)' }}>
-              Client Self-Service Extranet Simulator
+              Client Self-Service Portal
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--sb-body)' }}>
-              Magic Link: <code>https://portal.pulsework.io/c/auth_token_9984102948a</code>
+              Extranet URL: <code>{activeLegalEntity ? `https://portal.${activeLegalEntity.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.be` : 'https://portal.pulsework.io'}</code>
             </div>
           </div>
         </div>
@@ -344,7 +344,7 @@ export const ClientPortalView: React.FC = () => {
                       </div>
                       {inv.status !== 'paid' ? (
                         <button
-                          onClick={() => handleSimulatePayment(inv)}
+                          onClick={() => handleOnlinePayment(inv)}
                           className="btn-sandbox btn-sandbox-primary"
                           style={{
                             padding: '0.3rem 0.75rem',
@@ -468,7 +468,7 @@ export const ClientPortalView: React.FC = () => {
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         {inv.status !== 'paid' ? (
                           <button
-                            onClick={() => handleSimulatePayment(inv)}
+                            onClick={() => handleOnlinePayment(inv)}
                             className="btn-sandbox btn-sandbox-primary"
                             style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', backgroundColor: '#10b981', borderColor: '#10b981' }}
                           >

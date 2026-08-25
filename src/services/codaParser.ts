@@ -12,7 +12,7 @@ export function formatBelgianOgm(digits: string): string {
 }
 
 /**
- * Detect structured communication in arbitrary text (e.g. +++090/9337/55493+++ or +++123/4567/89012+++ or 123456789012)
+ * Detect structured communication in arbitrary text (e.g. +++090/9337/55493+++ or +++123/4567/89012+++)
  */
 export function extractStructuredReference(text: string): string | undefined {
   if (!text) return undefined
@@ -40,15 +40,15 @@ export function extractStructuredReference(text: string): string | undefined {
 }
 
 /**
- * Parse Belgian CODA file contents
+ * Parse Belgian CODA 2.2 file contents
  */
 export function parseCodaFile(fileContent: string, fileName: string): { statement: BankStatement; transactions: BankTransaction[] } {
   const lines = fileContent.split(/\r?\n/)
   const transactions: BankTransaction[] = []
-  let accountIban = 'BE68 5390 0754 7034'
-  let statementNumber = '2026-001'
-  let openingBalance = 24500.00
-  let closingBalance = 24500.00
+  let accountIban = ''
+  let statementNumber = `CODA-${new Date().toISOString().slice(0, 10)}`
+  let openingBalance = 0
+  let closingBalance = 0
 
   let currentTx: Partial<BankTransaction> | null = null
 
@@ -59,7 +59,7 @@ export function parseCodaFile(fileContent: string, fileName: string): { statemen
     if (recordType === '0') {
       // Header record
       const stmtNum = line.substring(2, 5).trim()
-      if (stmtNum) statementNumber = `2026-${stmtNum.padStart(3, '0')}`
+      if (stmtNum) statementNumber = `CODA-${stmtNum.padStart(3, '0')}`
     } else if (recordType === '1') {
       // Old balance
       const sign = line.charAt(42) === '1' ? -1 : 1
@@ -101,7 +101,7 @@ export function parseCodaFile(fileContent: string, fileName: string): { statemen
           reconciled: false,
         }
       } else if (subType === '2' && currentTx) {
-        // Movement 2.2 - contains counterparty name & comm
+        // Movement 2.2 - contains counterparty name & communication
         const comm = line.substring(10, 63).trim()
         if (comm) {
           currentTx.description = (currentTx.description ? currentTx.description + ' ' : '') + comm
@@ -128,26 +128,11 @@ export function parseCodaFile(fileContent: string, fileName: string): { statemen
     transactions.push(currentTx as BankTransaction)
   }
 
-  // If no transactions parsed from raw string (e.g. simulated small input), produce demo items
-  if (transactions.length === 0) {
-    transactions.push({
-      id: `tx-coda-${Date.now()}-1`,
-      date: new Date().toISOString().split('T')[0],
-      amount: 4537.50,
-      currency: 'EUR',
-      counterpartyName: 'AeroDynamics Belgium BV',
-      counterpartyIban: 'BE71 0910 1234 5678',
-      description: 'Factuur betaling +++090/9337/55493+++',
-      structuredReference: '+++090/9337/55493+++',
-      reconciled: false,
-    })
-  }
-
   const statement: BankStatement = {
     id: `stmt-${Date.now()}`,
     statementNumber,
-    accountIban,
-    accountName: 'PulseWork Operational Account (KBC)',
+    accountIban: accountIban || 'Main Operating Account',
+    accountName: 'Imported CODA Account',
     fileName,
     importDate: new Date().toISOString(),
     format: 'coda',
@@ -162,14 +147,14 @@ export function parseCodaFile(fileContent: string, fileName: string): { statemen
 }
 
 /**
- * Parse CAMT.053 XML file
+ * Parse CAMT.053 XML file (ISO 20022 Bank-to-Customer Statement)
  */
 export function parseCamt053File(xmlContent: string, fileName: string): { statement: BankStatement; transactions: BankTransaction[] } {
   const transactions: BankTransaction[] = []
-  let accountIban = 'BE68 5390 0754 7034'
-  let statementNumber = 'CAMT-001'
-  let openingBalance = 32000.00
-  let closingBalance = 35400.00
+  let accountIban = ''
+  let statementNumber = `CAMT-${new Date().toISOString().slice(0, 10)}`
+  let openingBalance = 0
+  let closingBalance = 0
 
   try {
     const parser = new DOMParser()
@@ -181,6 +166,7 @@ export function parseCamt053File(xmlContent: string, fileName: string): { statem
     const idNode = xmlDoc.querySelector('Stmt > Id')
     if (idNode && idNode.textContent) statementNumber = idNode.textContent
 
+    const opBalNode = xmlDoc.querySelector('Bal > Tp > CdOrPrtry > Cd:has(:text("OPBD")), Bal > CdtDbtInd')
     const entryNodes = xmlDoc.querySelectorAll('Ntry')
     entryNodes.forEach((entry, idx) => {
       const amtNode = entry.querySelector('Amt')
@@ -193,10 +179,10 @@ export function parseCamt053File(xmlContent: string, fileName: string): { statem
       const date = dateNode?.textContent || new Date().toISOString().split('T')[0]
 
       const partyNameNode = entry.querySelector('RltdPties > Dbtr > Nm') || entry.querySelector('RltdPties > Cdtr > Nm')
-      const counterpartyName = partyNameNode?.textContent || 'Commercial Client'
+      const counterpartyName = partyNameNode?.textContent || 'Counterparty'
 
       const partyIbanNode = entry.querySelector('RltdPties > DbtrAcct > Id > IBAN') || entry.querySelector('RltdPties > CdtrAcct > Id > IBAN')
-      const counterpartyIban = partyIbanNode?.textContent || 'BE-- ---- ---- ----'
+      const counterpartyIban = partyIbanNode?.textContent || ''
 
       const ustrdNode = entry.querySelector('RmtInf > Ustrd')
       const strdNode = entry.querySelector('RmtInf > Strd > CdtrRefInf > Ref')
@@ -219,25 +205,11 @@ export function parseCamt053File(xmlContent: string, fileName: string): { statem
     console.error('Error parsing CAMT.053 XML:', err)
   }
 
-  if (transactions.length === 0) {
-    transactions.push({
-      id: `tx-camt-${Date.now()}-1`,
-      date: new Date().toISOString().split('T')[0],
-      amount: 1815.00,
-      currency: 'EUR',
-      counterpartyName: 'Vandenberghe Logistics NV',
-      counterpartyIban: 'BE42 0012 3456 7890',
-      description: 'Payment invoice +++045/8891/22345+++',
-      structuredReference: '+++045/8891/22345+++',
-      reconciled: false,
-    })
-  }
-
   const statement: BankStatement = {
     id: `stmt-${Date.now()}`,
     statementNumber,
-    accountIban,
-    accountName: 'PulseWork Operating Account',
+    accountIban: accountIban || 'Main Operating Account',
+    accountName: 'Imported CAMT.053 Account',
     fileName,
     importDate: new Date().toISOString(),
     format: 'camt053',
@@ -288,13 +260,13 @@ export function parseCsvBankFile(csvContent: string, fileName: string): { statem
   const statement: BankStatement = {
     id: `stmt-${Date.now()}`,
     statementNumber: `CSV-${new Date().toISOString().slice(0, 10)}`,
-    accountIban: 'BE68 5390 0754 7034',
+    accountIban: 'Imported CSV Account',
     accountName: 'Imported CSV Account',
     fileName,
     importDate: new Date().toISOString(),
     format: 'csv',
-    openingBalance: 15000,
-    closingBalance: 15000 + transactions.reduce((acc, t) => acc + t.amount, 0),
+    openingBalance: 0,
+    closingBalance: transactions.reduce((acc, t) => acc + t.amount, 0),
     currency: 'EUR',
     transactionCount: transactions.length,
     reconciledCount: 0,

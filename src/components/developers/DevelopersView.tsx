@@ -27,6 +27,10 @@ export const DevelopersView: React.FC = () => {
     deleteWebhookEndpoint,
     webhookLogs,
     dispatchWebhookEvent,
+    invoices,
+    companies,
+    deals,
+    activeLegalEntity,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState<'api_keys' | 'webhooks' | 'sandbox'>('api_keys')
@@ -36,8 +40,8 @@ export const DevelopersView: React.FC = () => {
 
   // New Webhook state
   const [isAddingWebhook, setIsAddingWebhook] = useState<boolean>(false)
-  const [newWebhookUrl, setNewWebhookUrl] = useState<string>('https://api.mycrm.com/webhooks/pulsework')
-  const [newWebhookDesc, setNewWebhookDesc] = useState<string>('Zapier / Slack Sync')
+  const [newWebhookUrl, setNewWebhookUrl] = useState<string>('https://httpbin.org/post')
+  const [newWebhookDesc, setNewWebhookDesc] = useState<string>('Integration Webhook Endpoint')
   const [selectedEvents, setSelectedEvents] = useState<string[]>(['invoice.paid', 'quote.accepted'])
 
   // Sandbox state
@@ -85,18 +89,26 @@ export const DevelopersView: React.FC = () => {
   }
 
   const handleDispatchTestWebhook = async () => {
+    const activeEp = webhookEndpoints.filter((w) => w.status === 'active')
+    if (activeEp.length === 0) {
+      setTestWebhookStatus('No active webhook endpoints configured. Add an endpoint below first.')
+      setTimeout(() => setTestWebhookStatus(null), 5000)
+      return
+    }
+
     const payload = {
       event: 'invoice.paid',
       timestamp: new Date().toISOString(),
-      invoiceNumber: 'INV-2026-001',
-      client: 'AeroDynamics Belgium BV',
-      amountPaid: 14520.0,
-      paymentMethod: 'sepa_direct_debit',
+      invoiceNumber: invoices[0]?.number || 'INV-2026-001',
+      legalEntity: activeLegalEntity.name,
+      amountPaid: invoices[0]?.total || 100.0,
+      currency: 'EUR',
       peppolAccessPointStatus: 'DELIVERED',
     }
     const logs = await dispatchWebhookEvent('invoice.paid', payload)
-    setTestWebhookStatus(`🚀 Dispatched 'invoice.paid' webhook to ${logs.length} active endpoints! Response 200 OK.`)
-    setTimeout(() => setTestWebhookStatus(null), 5000)
+    const successCount = logs.filter((l) => l.status === 'success').length
+    setTestWebhookStatus(`🚀 Dispatched 'invoice.paid' webhook to ${logs.length} endpoint(s) (${successCount} succeeded). Check Webhook Event Delivery Logs below.`)
+    setTimeout(() => setTestWebhookStatus(null), 6000)
   }
 
   const handleRunSandbox = () => {
@@ -104,34 +116,25 @@ export const DevelopersView: React.FC = () => {
       setSandboxResponse({
         status: 'success',
         code: 200,
-        data: [
-          {
-            id: 'inv-1',
-            number: 'BE-INV-2026-0001',
-            client: 'AeroDynamics Belgium BV',
-            vatNumber: 'BE0842123456',
-            total: 14520.0,
-            status: 'paid',
-            peppolStatus: 'delivered',
-            structuredReference: '+++090/9337/55493+++',
-          },
-        ],
-        pagination: { total: 1, page: 1, limit: 50 },
+        data: invoices,
+        pagination: { total: invoices.length, page: 1, limit: 50 },
       })
-    } else if (sandboxEndpoint.includes('leads')) {
+    } else if (sandboxEndpoint.includes('companies') || sandboxEndpoint.includes('leads')) {
       setSandboxResponse({
         status: 'success',
-        code: 201,
-        message: 'Lead successfully captured from WooCommerce Webhook',
-        leadId: 'comp-9921',
+        code: 200,
+        data: companies,
+        pagination: { total: companies.length, page: 1, limit: 50 },
       })
     } else {
       setSandboxResponse({
         status: 'online',
         code: 200,
         gateway: 'AS4 Peppol SMP / SML Belgium',
+        participantId: `0208:${activeLegalEntity.vatNumber.replace(/\D/g, '')}`,
         schematronVersion: 'EN 16931 v1.3.11',
-        responseTimeMs: 34,
+        activeEndpoints: webhookEndpoints.length,
+        timestamp: new Date().toISOString(),
       })
     }
   }

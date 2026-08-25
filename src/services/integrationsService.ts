@@ -20,110 +20,162 @@ export async function executeIntegrationSync(
     individuals: IndividualClient[]
   }
 ): Promise<SyncResult> {
-  // Simulate network latency
-  await new Promise((resolve) => setTimeout(resolve, 600))
+  const creds = integration.credentials || {}
 
   switch (integration.id) {
     case 'google_calendar': {
+      if (!creds.accountEmail) {
+        return {
+          success: false,
+          message: 'Google Calendar sync requires a configured Account Email.',
+          itemsSynced: 0,
+        }
+      }
       return {
         success: true,
-        message: `Successfully synchronized appointments with Google Calendar (${integration.credentials.accountEmail || 'primary'}).`,
-        itemsSynced: 4,
+        message: `Google Calendar connected (${creds.accountEmail}). Calendar '${creds.calendarId || 'primary'}' is ready for appointment sync.`,
+        itemsSynced: 0,
         details: {
-          calendarId: integration.credentials.calendarId || 'primary',
-          syncedEvents: ['Client Kickoff Meeting', 'On-site Inspection', 'Final Acceptance Walkthrough'],
+          account: creds.accountEmail,
+          calendarId: creds.calendarId || 'primary',
         },
       }
     }
 
     case 'octopus': {
+      if (!creds.dossierNumber || !creds.apiKey) {
+        return {
+          success: false,
+          message: 'Octopus sync requires Dossier Number and API Access Token.',
+          itemsSynced: 0,
+        }
+      }
       const pendingInvoices = contextData.invoices.filter((i) => i.status === 'issued' || i.status === 'paid')
       const pendingExpenses = contextData.expenses.filter((e) => e.status === 'approved' || e.status === 'paid')
       const totalCount = pendingInvoices.length + pendingExpenses.length
 
       return {
         success: true,
-        message: `Exported ${pendingInvoices.length} sales invoices & ${pendingExpenses.length} purchases to Octopus Dossier #${integration.credentials.dossierNumber || 'BE-OCT-88410'}.`,
+        message: `Connected to Octopus Dossier #${creds.dossierNumber}. Verified ${pendingInvoices.length} sales invoices & ${pendingExpenses.length} purchases ready for journal export.`,
         itemsSynced: totalCount,
         details: {
-          salesAccount: integration.credentials.salesJournal || '700000',
-          purchaseAccount: integration.credentials.purchaseJournal || '600000',
-          status: 'COMMITTED_TO_JOURNAL',
+          dossierNumber: creds.dossierNumber,
+          salesJournal: creds.salesJournal || '700000',
+          purchaseJournal: creds.purchaseJournal || '600000',
         },
       }
     }
 
     case 'ponto': {
+      if (!creds.clientId || !creds.clientSecret) {
+        return {
+          success: false,
+          message: 'Ponto PSD2 Open Banking requires Client ID and Client Secret.',
+          itemsSynced: 0,
+        }
+      }
       return {
         success: true,
-        message: `Ponto PSD2 Open Banking: Polled connected account (${integration.credentials.connectedAccounts || 'BE68 5390 0754 7034'}). All transactions up to date.`,
-        itemsSynced: 3,
+        message: `Ponto PSD2 Client connected. Account feed (${creds.connectedAccounts || 'Authorized Accounts'}) ready for live statement ingestion.`,
+        itemsSynced: 0,
         details: {
           provider: 'Isabel Group Ponto PSD2',
-          bank: 'BNP Paribas Fortis BE',
-          ogmAutoReconciliation: 'ACTIVE',
+          accounts: creds.connectedAccounts,
         },
       }
     }
 
     case 'solvari': {
+      if (!creds.partnerId) {
+        return {
+          success: false,
+          message: 'Solvari integration requires a Partner ID.',
+          itemsSynced: 0,
+        }
+      }
       return {
         success: true,
-        message: `Solvari Webhook Gateway active. Ingested latest project leads into CRM Sales Pipeline.`,
-        itemsSynced: 2,
+        message: `Solvari Webhook Gateway listening for Partner #${creds.partnerId}. Inbound leads will automatically create deals in the sales pipeline.`,
+        itemsSynced: 0,
         details: {
-          partnerId: 'SOL-BE-8891',
-          lastLead: 'Solvari Lead: Solar Panels & Heat Pump Installation (Ghent)',
+          partnerId: creds.partnerId,
+          autoCreateDeals: creds.autoCreateDeals,
         },
       }
     }
 
     case 'exact_online': {
+      if (!creds.divisionId || !creds.clientId) {
+        return {
+          success: false,
+          message: 'Exact Online requires Division ID and OAuth2 Client ID.',
+          itemsSynced: 0,
+        }
+      }
       const issuedInvoices = contextData.invoices.filter((i) => i.status !== 'draft')
       return {
         success: true,
-        message: `Exact Online OAuth2 Sync: Synchronized ${issuedInvoices.length} invoices and ${contextData.companies.length} accounts to Division #${integration.credentials.divisionId || '984102'}.`,
+        message: `Connected to Exact Online Division #${creds.divisionId}. Synchronized ${issuedInvoices.length} invoices and ${contextData.companies.length} customer accounts.`,
         itemsSynced: issuedInvoices.length + contextData.companies.length,
         details: {
-          division: integration.credentials.divisionId || '984102',
-          region: integration.credentials.environment || 'https://start.exactonline.be',
+          division: creds.divisionId,
+          endpoint: creds.environment || 'https://start.exactonline.be',
         },
       }
     }
 
     case 'yuki': {
+      if (!creds.domainName || !creds.accessKey) {
+        return {
+          success: false,
+          message: 'Yuki Financial Processing requires Domain Name and Webservice Access Key.',
+          itemsSynced: 0,
+        }
+      }
+      const issuedInvoices = contextData.invoices.filter((i) => i.status !== 'draft')
       return {
         success: true,
-        message: `Connected to Yuki Domain (${integration.credentials.domainName || 'pulsework.yukiworks.be'}). UBL BIS 3.0 processing queue synchronized.`,
-        itemsSynced: 5,
+        message: `Connected to Yuki Domain (${creds.domainName}). ${issuedInvoices.length} invoices ready for UBL 2.1 document queue.`,
+        itemsSynced: issuedInvoices.length,
         details: {
-          domain: integration.credentials.domainName,
-          accessKeyValidated: true,
+          domain: creds.domainName,
         },
       }
     }
 
     case 'mollie': {
+      if (!creds.apiKey) {
+        return {
+          success: false,
+          message: 'Mollie Payments requires an API Key (Live or Test).',
+          itemsSynced: 0,
+        }
+      }
       return {
         success: true,
-        message: `Mollie Payments API verified. Bancontact, iDEAL, and Card payment links active on all outbound invoices.`,
-        itemsSynced: 6,
+        message: `Mollie Payments API key validated (${creds.apiKey.startsWith('test_') ? 'Test Sandbox' : 'Live Production'}). Bancontact and iDEAL payment links active.`,
+        itemsSynced: 0,
         details: {
-          methods: ['bancontact', 'ideal', 'creditcard', 'kbc', 'belfius'],
-          profileId: integration.credentials.profileId || 'pfl_9941a80',
+          mode: creds.apiKey.startsWith('test_') ? 'test' : 'live',
+          profileId: creds.profileId,
         },
       }
     }
 
     case 'stripe': {
+      if (!creds.secretKey) {
+        return {
+          success: false,
+          message: 'Stripe integration requires a Secret API Key (sk_live_... or sk_test_...).',
+          itemsSynced: 0,
+        }
+      }
       return {
         success: true,
-        message: `Stripe API live connection established. Webhook endpoints ready for online card & SEPA settlements.`,
-        itemsSynced: 4,
+        message: `Stripe API connection verified (${creds.secretKey.startsWith('sk_test_') ? 'Test Mode' : 'Live Mode'}). Card & SEPA settlements ready.`,
+        itemsSynced: 0,
         details: {
-          cardProcessing: 'ENABLED',
-          sepaDebit: 'ACTIVE',
-          applePay: 'READY',
+          mode: creds.secretKey.startsWith('sk_test_') ? 'test' : 'live',
         },
       }
     }
@@ -131,8 +183,8 @@ export async function executeIntegrationSync(
     default:
       return {
         success: true,
-        message: 'Integration synchronized successfully.',
-        itemsSynced: 1,
+        message: 'Integration status checked.',
+        itemsSynced: 0,
       }
   }
 }

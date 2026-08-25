@@ -21,7 +21,7 @@ import {
 import { formatCurrency } from '../../services/currencyService'
 
 export const AccountantView: React.FC = () => {
-  const { invoices, expenses, companies, ossVatRates, activeLegalEntity, selectedCurrency } = useApp()
+  const { invoices, expenses, companies, individuals, ossVatRates, activeLegalEntity, selectedCurrency } = useApp()
 
   const [selectedYear, setSelectedYear] = useState<number>(2026)
   const [selectedQuarter, setSelectedQuarter] = useState<1 | 2 | 3 | 4 | 'all'>(3)
@@ -535,8 +535,15 @@ export const AccountantView: React.FC = () => {
               </thead>
               <tbody>
                 {ossVatRates.map((c) => {
-                  const demoNet = c.countryCode === 'NL' ? 4850 : c.countryCode === 'FR' ? 6200 : c.countryCode === 'DE' ? 8400 : 1200
-                  const demoVat = (demoNet * c.standardVatRate) / 100
+                  const matchingInvoices = invoices.filter((inv) => {
+                    if (inv.status === 'draft') return false
+                    const company = companies.find((comp) => comp.id === inv.companyId)
+                    const individual = individuals.find((ind) => ind.id === inv.individualId)
+                    const country = company?.countryCode || individual?.countryCode
+                    return country === c.countryCode
+                  })
+                  const stateNet = matchingInvoices.reduce((sum, inv) => sum + inv.subtotal, 0)
+                  const stateVat = matchingInvoices.reduce((sum, inv) => sum + inv.taxTotal, 0)
 
                   return (
                     <tr key={c.countryCode} style={{ borderBottom: '1px solid var(--sb-border)' }}>
@@ -551,10 +558,10 @@ export const AccountantView: React.FC = () => {
                         {c.standardVatRate}%
                       </td>
                       <td style={{ padding: '0.9rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--sb-heading)' }}>
-                        {formatCurrency(demoNet, selectedCurrency)}
+                        {formatCurrency(stateNet, selectedCurrency)}
                       </td>
                       <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right', fontWeight: 800, color: 'var(--sb-primary)' }}>
-                        {formatCurrency(demoVat, selectedCurrency)}
+                        {formatCurrency(stateVat, selectedCurrency)}
                       </td>
                     </tr>
                   )

@@ -513,7 +513,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
-const STORAGE_KEY = 'pulsework_crm_state_v2'
+const STORAGE_KEY = 'pulsework_crm_state_v3'
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<AppView>('dashboard')
@@ -1874,18 +1874,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newLogs: WebhookEventLog[] = []
 
     for (const ep of activeEndpoints) {
+      const startTime = performance.now()
+      let statusCode = 200
+      let status: 'success' | 'failed' = 'success'
+
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 6000)
+
+        const res = await fetch(ep.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-PulseWork-Event': event,
+            'X-PulseWork-Signature': ep.secret || '',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        statusCode = res.status
+        status = res.ok ? 'success' : 'failed'
+      } catch (err: any) {
+        statusCode = 0
+        status = 'failed'
+      }
+
+      const durationMs = Math.round(performance.now() - startTime)
+
       const log: WebhookEventLog = {
         id: `wh-log-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
         endpointId: ep.id,
         url: ep.url,
         event,
         payloadJson: JSON.stringify(payload, null, 2),
-        statusCode: 200,
-        status: 'success',
-        responseTimeMs: Math.floor(60 + Math.random() * 90),
+        statusCode,
+        status,
+        responseTimeMs: durationMs,
         timestamp: new Date().toISOString(),
       }
       newLogs.push(log)
+
+      if (status === 'failed') {
+        setWebhookEndpoints((prev) =>
+          prev.map((w) => (w.id === ep.id ? { ...w, failureCount: w.failureCount + 1 } : w))
+        )
+      }
     }
 
     if (newLogs.length > 0) {
@@ -2001,159 +2035,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const simulateIntegrationEvent = async (id: IntegrationId): Promise<{ success: boolean; message: string }> => {
-    const nowIso = new Date().toISOString()
-    const today = nowIso.slice(0, 10)
-
-    if (id === 'solvari') {
-      const solvariDealId = `deal-solvari-${Date.now()}`
-      const newCompany: Company = {
-        id: `comp-solvari-${Date.now()}`,
-        name: 'Vermeulen Residence (Solvari Lead)',
-        vatNumber: 'BE0988410294',
-        peppolScheme: '0208',
-        peppolEndpoint: '0988410294',
-        email: 'jan.vermeulen@telenet.be',
-        phone: '+32 9 224 88 19',
-        address: 'Kortrijksesteenweg 144',
-        city: 'Ghent',
-        postalCode: '9000',
-        country: 'Belgium',
-        countryCode: 'BE',
-        status: 'lead',
-        tags: ['Solvari Lead', 'Heat Pump', 'Ghent'],
-        notes: 'Inbound lead via Solvari.be: Request for 12kW Air-to-Water Heat Pump & Solar PV quotation.',
-        createdAt: nowIso,
-      }
-      addCompany(newCompany)
-
-      const newDeal: Deal = {
-        id: solvariDealId,
-        title: 'Solvari Lead: Heat Pump & Solar Panels Ghent',
-        companyId: newCompany.id,
-        value: 12850,
-        currency: 'EUR',
-        stage: 'lead',
-        probability: 60,
-        expectedCloseDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-        notes: 'Lead captured via Solvari Partner Webhook #SOL-9941. Contact within 2 hours.',
-        createdAt: nowIso,
-      }
-      addDeal(newDeal)
-
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === 'solvari'
-            ? {
-                ...i,
-                lastSyncAt: nowIso,
-                syncCount: (i.syncCount || 0) + 1,
-                logs: [
-                  {
-                    id: `log-${Date.now()}`,
-                    timestamp: nowIso,
-                    type: 'webhook',
-                    status: 'success',
-                    message: 'Captured live Solvari lead: Vermeulen Residence (Ghent) — €12,850.00 deal created.',
-                  },
-                  ...i.logs,
-                ],
-              }
-            : i
-        )
-      )
-
-      return {
-        success: true,
-        message: '🎉 Solvari Webhook received! Created CRM Company "Vermeulen Residence" & €12,850 Deal in Pipeline.',
-      }
-    } else if (id === 'ponto') {
-      const newTx: BankTransaction = {
-        id: `tx-ponto-${Date.now()}`,
-        statementId: bankStatements[0]?.id || 'stmt-1',
-        date: today,
-        valueDate: today,
-        amount: 3630.0,
-        currency: 'EUR',
-        counterpartyName: 'AeroDynamics Belgium BV',
-        counterpartyIban: 'BE40 0012 3456 7890',
-        counterpartyBic: 'GEBABEBB',
-        structuredReference: '+++090/9337/55493+++',
-        description: 'PONTO PSD2 LIVE FEED / INV-2026-001 SETTLEMENT +++090/9337/55493+++',
-        reconciled: false,
-      }
-
-      setBankTransactions((prev) => [newTx, ...prev])
-      autoReconcileAllTransactions()
-
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === 'ponto'
-            ? {
-                ...i,
-                lastSyncAt: nowIso,
-                syncCount: (i.syncCount || 0) + 1,
-                logs: [
-                  {
-                    id: `log-${Date.now()}`,
-                    timestamp: nowIso,
-                    type: 'sync',
-                    status: 'success',
-                    message: `Ponto PSD2: Ingested credit movement €3,630.00. Reconciled with OGM +++090/9337/55493+++.`,
-                  },
-                  ...i.logs,
-                ],
-              }
-            : i
-        )
-      )
-
-      return {
-        success: true,
-        message: '⚡ Ponto PSD2 live transaction ingested (€3,630.00) & automatically matched with Belgian OGM reference!',
-      }
-    } else if (id === 'mollie' || id === 'stripe') {
-      const openInv = invoices.find((i) => i.status === 'issued') || invoices[0]
-      if (openInv) {
-        recordPayment({
-          invoiceId: openInv.id,
-          amount: openInv.total - openInv.amountPaid,
-          paymentDate: today,
-          method: id === 'mollie' ? 'bancontact' : 'card',
-          reference: `${id.toUpperCase()} Gateway Settlement #${Math.floor(100000 + Math.random() * 900000)}`,
-          note: `Online payment via ${id === 'mollie' ? 'Mollie (Bancontact)' : 'Stripe (Credit Card)'}`,
-        })
-      }
-
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? {
-                ...i,
-                lastSyncAt: nowIso,
-                syncCount: (i.syncCount || 0) + 1,
-                logs: [
-                  {
-                    id: `log-${Date.now()}`,
-                    timestamp: nowIso,
-                    type: 'webhook',
-                    status: 'success',
-                    message: `${i.name} Webhook: Payment received for Invoice ${openInv?.number || 'INV-2026-001'}. Ledger updated.`,
-                  },
-                  ...i.logs,
-                ],
-              }
-            : i
-        )
-      )
-
-      return {
-        success: true,
-        message: `💳 ${id === 'mollie' ? 'Mollie Bancontact' : 'Stripe'} payment webhook processed! Invoice ${openInv?.number || ''} marked as Paid.`,
-      }
-    } else {
-      const syncRes = await syncIntegration(id)
-      return { success: syncRes.success, message: syncRes.message }
-    }
+    const syncRes = await syncIntegration(id)
+    return { success: syncRes.success, message: syncRes.message }
   }
 
   // Work Orders (Werkbonnen)
@@ -2538,18 +2421,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const unlockScreen = (pinOrCode: string): boolean => {
+    const clean = pinOrCode.trim()
+    const targetPin = currentUser.pinCode || '1234'
+
+    const isPinValid = clean === targetPin
     const isTotpValid = currentUser.twoFactorSecret
-      ? verifyTotpCode(currentUser.twoFactorSecret, pinOrCode) ||
-        (currentUser.backupCodes && currentUser.backupCodes.includes(pinOrCode.toUpperCase()))
-      : true
+      ? verifyTotpCode(currentUser.twoFactorSecret, clean) ||
+        Boolean(currentUser.backupCodes && currentUser.backupCodes.includes(clean.toUpperCase()))
+      : false
 
-    const isPinValid =
-      pinOrCode === '1234' ||
-      pinOrCode === 'admin' ||
-      pinOrCode === currentUser.pinCode ||
-      pinOrCode.length >= 4
-
-    if (isTotpValid || isPinValid) {
+    if (isPinValid || isTotpValid) {
       setIsScreenLocked(false)
       addSecurityAuditLog({
         action: 'Screen Unlocked',
@@ -2559,6 +2440,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       return true
     }
+
+    addSecurityAuditLog({
+      action: 'Screen Unlock Failed',
+      category: 'auth',
+      severity: 'warning',
+      details: `Failed unlock attempt for ${currentUser.name}.`,
+    })
     return false
   }
 
