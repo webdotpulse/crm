@@ -57,6 +57,7 @@ export const SecurityHubView: React.FC = () => {
     triggerStepUp2FA,
     twoFactorSetupModalUser,
     setTwoFactorSetupModalUser,
+    setCurrentView,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'sessions' | 'audit' | 'gdpr'>('overview')
@@ -826,16 +827,25 @@ export const SecurityHubView: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                setSelectedUserForEdit(null)
-                setIsUserModalOpen(true)
-              }}
-              className="btn-sandbox btn-sandbox-primary"
-              style={{ gap: '0.35rem', fontWeight: 700 }}
-            >
-              <Plus size={16} /> Invite Team Member
-            </button>
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button
+                onClick={() => setCurrentView('users')}
+                className="btn-sandbox btn-sandbox-outline"
+                style={{ gap: '0.35rem', fontSize: '0.82rem' }}
+              >
+                <Users size={15} color="var(--sb-primary)" /> Open User Management Module
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedUserForEdit(null)
+                  setIsUserModalOpen(true)
+                }}
+                className="btn-sandbox btn-sandbox-primary"
+                style={{ gap: '0.35rem', fontWeight: 700 }}
+              >
+                <Plus size={16} /> Invite Team Member
+              </button>
+            </div>
           </div>
 
           {/* Users Table */}

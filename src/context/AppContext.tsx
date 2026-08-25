@@ -146,6 +146,9 @@ import {
   calculateTotpCode,
   syncComputeLogHash,
   hashPassword,
+  verifyPassword,
+  generateSecurePassword,
+  ROLE_DEFINITIONS,
   ALL_ADMIN_PERMISSIONS,
 } from '../services/securityService'
 import { getDefaultModuleSettings, getPresetModuleSettings, MODULE_REGISTRY } from '../services/moduleRegistry'
@@ -175,6 +178,7 @@ export type AppView =
   | 'integrations'
   | 'settings'
   | 'security'
+  | 'users'
   | 'helpdesk'
   | 'hr'
   | 'bi'
@@ -411,7 +415,17 @@ interface AppContextType {
   syncIntegration: (id: IntegrationId) => Promise<SyncResult>
   simulateIntegrationEvent: (id: IntegrationId) => Promise<{ success: boolean; message: string }>
 
-  // Enterprise Security, RBAC & 2FA
+  // Enterprise Security, RBAC, Auth & 2FA
+  isAuthenticated: boolean
+  login: (
+    emailOrName: string,
+    password?: string,
+    totpCode?: string,
+    rememberMe?: boolean
+  ) => Promise<{ success: boolean; requires2fa?: boolean; error?: string }>
+  logout: () => void
+  resetUserPassword: (userId: string, newPassword?: string) => Promise<string>
+  setUserSuspended: (userId: string, suspended: boolean) => void
   users: UserAccount[]
   currentUser: UserAccount
   switchUser: (userId: string) => void
@@ -795,7 +809,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false
   })
 
-  // Enterprise Security & RBAC & 2FA State
+  // Enterprise Security, Auth, RBAC & 2FA State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const localAuth = localStorage.getItem('pulsework_authenticated')
+    const sessionAuth = sessionStorage.getItem('pulsework_authenticated')
+    if (localAuth === 'true' || sessionAuth === 'true') return true
+    return false
+  })
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_users`)
     return saved ? JSON.parse(saved) : initialUsers
@@ -2415,6 +2435,148 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })
   }
 
+  const login = async (
+    emailOrName: string,
+    password?: string,
+    totpCode?: string,
+    rememberMe: boolean = true
+  ): Promise<{ success: boolean; requires2fa?: boolean; error?: string }> => {
+    const targetUser = users.find(
+      (u) =>
+        u.email.toLowerCase() === emailOrName.trim().toLowerCase() ||
+        u.name.toLowerCase() === emailOrName.trim().toLowerCase()
+    )
+
+    if (!targetUser) {
+      return { success: false, error: 'User account not found. Please verify your email or username.' }
+    }
+
+    if (targetUser.status === 'suspended') {
+      return { success: false, error: 'This account has been suspended by a workspace administrator.' }
+    }
+
+    // Check password if provided or required
+    if (password !== undefined) {
+      const isPwdValid = await verifyPassword(password, targetUser.passwordHash, targetUser.pinCode)
+      if (!isPwdValid) {
+        addSecurityAuditLog({
+          actorId: targetUser.id,
+          actorName: targetUser.name,
+          actorEmail: targetUser.email,
+          action: 'Failed Login Attempt',
+          category: 'auth',
+          severity: 'warning',
+          details: `Failed password login attempt for ${targetUser.name} (${targetUser.email}).`,
+        })
+        return { success: false, error: 'Incorrect password or security PIN code.' }
+      }
+    }
+
+    // 2FA Verification check
+    if (targetUser.twoFactorEnabled) {
+      if (!totpCode) {
+        return { success: false, requires2fa: true }
+      }
+      const cleanCode = totpCode.trim()
+      const isTotpValid = targetUser.twoFactorSecret
+        ? verifyTotpCode(targetUser.twoFactorSecret, cleanCode) ||
+          Boolean(targetUser.backupCodes && targetUser.backupCodes.includes(cleanCode.toUpperCase()))
+        : false
+
+      if (!isTotpValid) {
+        addSecurityAuditLog({
+          actorId: targetUser.id,
+          actorName: targetUser.name,
+          actorEmail: targetUser.email,
+          action: '2FA TOTP Verification Failed',
+          category: '2fa',
+          severity: 'warning',
+          details: `Invalid 2FA code supplied for user ${targetUser.name}.`,
+        })
+        return { success: false, requires2fa: true, error: 'Invalid 6-digit authenticator code or recovery code.' }
+      }
+    }
+
+    // Authentication Success
+    setCurrentUserId(targetUser.id)
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_current_user_id`, targetUser.id)
+    } catch (e) {}
+
+    const nowIso = new Date().toISOString()
+    const updatedUser: UserAccount = { ...targetUser, lastLogin: nowIso }
+    setUsers((prev) => prev.map((u) => (u.id === targetUser.id ? updatedUser : u)))
+
+    setIsAuthenticated(true)
+    if (rememberMe) {
+      localStorage.setItem('pulsework_authenticated', 'true')
+    } else {
+      sessionStorage.setItem('pulsework_authenticated', 'true')
+    }
+
+    addSecurityAuditLog({
+      actorId: targetUser.id,
+      actorName: targetUser.name,
+      actorEmail: targetUser.email,
+      action: 'User Authenticated',
+      category: 'auth',
+      severity: 'info',
+      details: `User ${targetUser.name} (${targetUser.roleLabel}) successfully logged in.`,
+    })
+
+    return { success: true }
+  }
+
+  const logout = () => {
+    setIsAuthenticated(false)
+    try {
+      localStorage.removeItem('pulsework_authenticated')
+      sessionStorage.removeItem('pulsework_authenticated')
+    } catch (e) {}
+    addSecurityAuditLog({
+      action: 'User Logged Out',
+      category: 'auth',
+      severity: 'info',
+      details: `Session terminated for ${currentUser.name}.`,
+    })
+  }
+
+  const resetUserPassword = async (userId: string, newPassword?: string): Promise<string> => {
+    const targetUser = users.find((u) => u.id === userId)
+    if (!targetUser) throw new Error('User not found')
+
+    const pwd = newPassword || generateSecurePassword(14)
+    const hash = await hashPassword(pwd)
+    const updatedUser: UserAccount = {
+      ...targetUser,
+      passwordHash: hash,
+      mustChangePassword: true,
+    }
+    setUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)))
+    addSecurityAuditLog({
+      action: 'Password Reset',
+      category: 'rbac',
+      severity: 'warning',
+      details: `Password credentials reset for ${targetUser.name} (${targetUser.email}) by ${currentUser.name}.`,
+    })
+    return pwd
+  }
+
+  const setUserSuspended = (userId: string, suspended: boolean) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, status: suspended ? 'suspended' : 'active' } : u
+      )
+    )
+    const target = users.find((u) => u.id === userId)
+    addSecurityAuditLog({
+      action: suspended ? 'User Account Suspended' : 'User Account Re-Activated',
+      category: 'rbac',
+      severity: 'warning',
+      details: `User account ${target?.name || userId} status set to ${suspended ? 'suspended' : 'active'} by ${currentUser.name}.`,
+    })
+  }
+
   const switchUser = (userId: string) => {
     const targetUser = users.find((u) => u.id === userId)
     if (targetUser) {
@@ -2435,12 +2597,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const addUser = (newUser: UserAccount) => {
-    setUsers((prev) => [...prev, newUser])
+    const roleMeta = ROLE_DEFINITIONS[newUser.role] || {
+      label: newUser.roleLabel || 'Team Member',
+      description: '',
+      defaultPermissions: [],
+    }
+    const userWithDefaults: UserAccount = {
+      ...newUser,
+      roleLabel: newUser.roleLabel || roleMeta.label,
+      customPermissions: newUser.customPermissions || roleMeta.defaultPermissions,
+      createdAt: newUser.createdAt || new Date().toISOString(),
+      lastLogin: newUser.lastLogin || new Date().toISOString(),
+      status: newUser.status || 'active',
+    }
+    setUsers((prev) => [...prev, userWithDefaults])
     addSecurityAuditLog({
       action: 'Team Member Created',
       category: 'rbac',
       severity: 'warning',
-      details: `Created new user account for ${newUser.name} with role ${newUser.role}.`,
+      details: `Created new user account for ${userWithDefaults.name} (${userWithDefaults.email}) with role ${userWithDefaults.roleLabel}.`,
     })
   }
 
@@ -3109,6 +3284,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     localStorage.setItem('pulsework_installed', 'true')
     localStorage.setItem('pulsework_installation_finalized', 'true')
+    localStorage.setItem('pulsework_authenticated', 'true')
+    setIsAuthenticated(true)
     setIsInstalled(true)
   }
 
@@ -3370,6 +3547,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateIntegrationCredentials,
         syncIntegration,
         simulateIntegrationEvent,
+        isAuthenticated,
+        login,
+        logout,
+        resetUserPassword,
+        setUserSuspended,
         users,
         currentUser,
         switchUser,

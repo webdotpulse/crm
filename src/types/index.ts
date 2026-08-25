@@ -1084,6 +1084,8 @@ export type UserRole =
   | 'sales'
   | 'project_manager'
   | 'accountant'
+  | 'hr'
+  | 'support'
 
 export type UserPermission =
   | 'manage_crm'
@@ -1094,6 +1096,9 @@ export type UserPermission =
   | 'manage_api_keys'
   | 'view_audit_logs'
   | 'manage_settings'
+  | 'manage_hr'
+  | 'manage_support'
+  | 'manage_inventory'
 
 export interface UserAccount {
   id: string
@@ -1112,6 +1117,9 @@ export interface UserAccount {
   customPermissions?: UserPermission[]
   phone?: string
   department?: string
+  jobTitle?: string
+  createdAt?: string
+  mustChangePassword?: boolean
 }
 
 export interface SecurityPolicy {

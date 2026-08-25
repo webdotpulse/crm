@@ -28,6 +28,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ userTo
     sales: 'Senior Account Executive',
     project_manager: 'Technical Project Lead',
     accountant: 'External Chartered Auditor (Read-Only)',
+    hr: 'HR & People Operations',
+    support: 'Customer Support Lead',
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -191,6 +193,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({ userTo
                 <option value="sales">Sales & Commercial</option>
                 <option value="project_manager">Project Manager & Delivery</option>
                 <option value="accountant">External Auditor (Read-Only)</option>
+                <option value="hr">HR & People Operations</option>
+                <option value="support">Customer Support Specialist</option>
               </select>
             </div>
 

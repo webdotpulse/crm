@@ -10,6 +10,7 @@ import {
   Building2,
   ChevronDown,
   User,
+  Users,
   Package,
   Palette,
   Clock,
@@ -52,6 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
     currentUser,
     users,
     switchUser,
+    logout,
     lockScreen,
     isPrivacyModeActive,
     togglePrivacyMode,
@@ -518,6 +520,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
               {/* Navigation Actions */}
               <button
                 onClick={() => {
+                  setCurrentView('users')
+                  setIsUserMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
+              >
+                <Users size={16} color="var(--sb-primary)" />
+                <strong>Team & User Management</strong>
+              </button>
+
+              <button
+                onClick={() => {
                   setCurrentView('security')
                   setIsUserMenuOpen(false)
                 }}
@@ -525,7 +539,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
                 style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
               >
                 <ShieldCheck size={16} color="var(--sb-success)" />
-                <strong>Security & 2FA Hub</strong>
+                <span>Security & 2FA Hub</span>
               </button>
 
               <button
@@ -548,6 +562,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
                 style={{ width: '100%', justifyContent: 'flex-start', padding: '0.5rem 0.6rem', gap: '0.5rem', fontSize: '0.82rem' }}
               >
                 <Palette size={15} /> Settings & Themes
+              </button>
+
+              {/* Sign Out / Log Out */}
+              <button
+                onClick={() => {
+                  logout()
+                  setIsUserMenuOpen(false)
+                }}
+                className="btn-sandbox btn-sandbox-ghost"
+                style={{
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                  padding: '0.5rem 0.6rem',
+                  gap: '0.5rem',
+                  fontSize: '0.82rem',
+                  color: 'var(--sb-danger)',
+                }}
+              >
+                <LogOut size={15} color="var(--sb-danger)" />
+                <span>Sign Out / Log Out</span>
               </button>
 
               {/* Switch User Submenu */}

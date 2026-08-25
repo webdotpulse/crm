@@ -50,10 +50,13 @@ import { ThemeCustomizerModal } from './components/settings/ThemeCustomizerModal
 
 import { Deal, Invoice, Quotation } from './types'
 import { FirstRunInstaller } from './components/setup/FirstRunInstaller'
+import { LoginView } from './components/auth/LoginView'
+import { UserManagementView } from './components/users/UserManagementView'
 
 export const App: React.FC = () => {
   const {
     isInstalled,
+    isAuthenticated,
     currentView,
     setCurrentView,
     isPrivacyModeActive,
@@ -64,6 +67,11 @@ export const App: React.FC = () => {
   // If first run installation has not been executed, display the installer
   if (!isInstalled) {
     return <FirstRunInstaller />
+  }
+
+  // If user is not authenticated, display enterprise login screen
+  if (!isAuthenticated) {
+    return <LoginView />
   }
 
   // Quick Action Modal states
@@ -174,6 +182,8 @@ export const App: React.FC = () => {
           {currentView === 'integrations' && <IntegrationsView />}
 
           {currentView === 'security' && <SecurityHubView />}
+
+          {currentView === 'users' && <UserManagementView />}
 
           {currentView === 'pulse_ai' && <PulseAIHubView />}
 

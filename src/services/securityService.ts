@@ -673,7 +673,86 @@ export const ALL_ADMIN_PERMISSIONS: UserAccount['customPermissions'] = [
   'manage_api_keys',
   'view_audit_logs',
   'manage_settings',
+  'manage_hr',
+  'manage_support',
+  'manage_inventory',
 ]
+
+export const ROLE_DEFINITIONS: Record<
+  import('../types').UserRole,
+  { label: string; description: string; defaultPermissions: import('../types').UserPermission[] }
+> = {
+  owner: {
+    label: 'Managing Director & Super Admin',
+    description: 'Unrestricted full access across all workspace domains, security, billing, and developer APIs.',
+    defaultPermissions: [
+      'manage_crm',
+      'manage_invoices',
+      'manage_peppol',
+      'export_financials',
+      'manage_users',
+      'manage_api_keys',
+      'view_audit_logs',
+      'manage_settings',
+      'manage_hr',
+      'manage_support',
+      'manage_inventory',
+    ],
+  },
+  admin: {
+    label: 'System Administrator',
+    description: 'System configuration, user management, audit logs, and operational controls.',
+    defaultPermissions: [
+      'manage_crm',
+      'manage_invoices',
+      'manage_peppol',
+      'export_financials',
+      'manage_users',
+      'manage_api_keys',
+      'view_audit_logs',
+      'manage_settings',
+      'manage_hr',
+      'manage_support',
+      'manage_inventory',
+    ],
+  },
+  finance: {
+    label: 'Finance & Invoicing Director',
+    description: 'Invoicing, Peppol BIS e-invoicing, bank reconciliation, expense audits, and tax reporting.',
+    defaultPermissions: [
+      'manage_crm',
+      'manage_invoices',
+      'manage_peppol',
+      'export_financials',
+      'view_audit_logs',
+    ],
+  },
+  sales: {
+    label: 'Senior Account Executive',
+    description: 'CRM deals pipeline, quotations, client contracts, and digital work orders.',
+    defaultPermissions: ['manage_crm', 'manage_invoices'],
+  },
+  project_manager: {
+    label: 'Technical Project Lead',
+    description: 'Project delivery, task tracking, work orders, stock allocation, and mileage logs.',
+    defaultPermissions: ['manage_crm', 'manage_inventory'],
+  },
+  accountant: {
+    label: 'External Chartered Auditor (Read-Only)',
+    description: 'Read-only audit access to general ledger, VAT reports, OSS returns, and issued invoices.',
+    defaultPermissions: ['export_financials', 'view_audit_logs'],
+  },
+  hr: {
+    label: 'HR & People Operations',
+    description: 'Staff capacity planning, leave requests, employee records, and payroll expense batches.',
+    defaultPermissions: ['manage_hr', 'view_audit_logs'],
+  },
+  support: {
+    label: 'Customer Support Lead',
+    description: 'Helpdesk ticket management, omnichannel responses, customer portal support.',
+    defaultPermissions: ['manage_support', 'manage_crm'],
+  },
+}
 
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -692,3 +771,45 @@ export async function hashPassword(password: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
 }
+
+export async function verifyPassword(
+  inputPassword: string,
+  storedHash?: string,
+  pinCode?: string
+): Promise<boolean> {
+  if (!storedHash && !pinCode) {
+    return inputPassword.length >= 3
+  }
+  if (storedHash) {
+    const inputHash = await hashPassword(inputPassword)
+    if (inputHash === storedHash) return true
+  }
+  if (pinCode && inputPassword === pinCode) {
+    return true
+  }
+  return false
+}
+
+export function generateSecurePassword(length = 16): string {
+  const lowercase = 'abcdefghijkmnpqrstuvwxyz'
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const numbers = '23456789'
+  const symbols = '!@#$%^&*'
+  const all = lowercase + uppercase + numbers + symbols
+
+  let password = ''
+  password += lowercase[Math.floor(Math.random() * lowercase.length)]
+  password += uppercase[Math.floor(Math.random() * uppercase.length)]
+  password += numbers[Math.floor(Math.random() * numbers.length)]
+  password += symbols[Math.floor(Math.random() * symbols.length)]
+
+  for (let i = 4; i < length; i++) {
+    password += all[Math.floor(Math.random() * all.length)]
+  }
+
+  return password
+    .split('')
+    .sort(() => 0.5 - Math.random())
+    .join('')
+}
+

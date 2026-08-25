@@ -28,6 +28,7 @@ import {
   Sparkles,
   Server,
   HardDrive,
+  Users,
 } from 'lucide-react'
 import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate, FontFamilyOption, BorderRadiusOption, DensityOption } from '../../types'
 import { useApp } from '../../context/AppContext'
@@ -1149,6 +1150,14 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button
+                  onClick={() => setCurrentView('users')}
+                  className="btn-sandbox btn-sandbox-outline"
+                  style={{ gap: '0.35rem' }}
+                >
+                  <Users size={15} color="var(--sb-primary)" />
+                  <span>Manage Users & Roles</span>
+                </button>
                 <button
                   onClick={() => setTwoFactorSetupModalUser(currentUser)}
                   className="btn-sandbox btn-sandbox-primary"

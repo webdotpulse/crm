@@ -71,6 +71,7 @@ export const Sidebar: React.FC = () => {
     tickets,
     staffCapacities,
     warehouseLocations,
+    users,
     isModuleEnabled,
   } = useApp()
 
@@ -182,6 +183,13 @@ export const Sidebar: React.FC = () => {
     {
       title: 'PEOPLE & SUPPORT',
       items: [
+        {
+          id: 'users',
+          label: 'User Management',
+          icon: <Users size={17} />,
+          badge: users.length,
+          badgeType: 'primary',
+        },
         {
           id: 'helpdesk',
           label: 'PulseDesk Support',

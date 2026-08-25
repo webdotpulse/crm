@@ -18,6 +18,7 @@ import {
   Car,
   Truck,
   ShieldAlert,
+  Users,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -185,6 +186,14 @@ export const SpotlightSearchModal: React.FC = () => {
       category: 'Views',
       icon: <Sparkles size={16} />,
       view: 'cashflow',
+    },
+    {
+      id: 'view-users',
+      title: 'Team & User Management',
+      subtitle: 'Create users, RBAC roles, passwords & 2FA permissions',
+      category: 'Views',
+      icon: <Users size={16} />,
+      view: 'users',
     },
     {
       id: 'view-settings',
