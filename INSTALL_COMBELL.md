@@ -169,13 +169,35 @@ Combell provides free Let's Encrypt SSL certificates for all domains and subdoma
 
 ---
 
-## 8. Peppol & Security Configuration on Combell
+## 8. Combell MySQL Database Setup & First-Run Installer
 
-### Peppol E-Invoicing Readiness
-PulseWork uses browser-based UBL 2.1 XML generation compliant with **EN 16931** / **Peppol BIS Billing 3.0**:
-- No special PHP extensions or backend modules are required on Combell.
-- All Schematron checks, XML downloads, and directory lookups operate securely over HTTPS.
-- In **Settings & Profile**, enter your Belgian Enterprise Number (KBO/BCE `0208`) or Dutch KvK (`0106`) and bank IBAN/BIC coordinates.
+PulseWork supports full persistence on your **Combell MySQL Database Cluster** via a high-performance PHP PDO backend bridge (`/api/db.php`).
+
+### Step 1: Create a MySQL Database in Combell Control Panel
+1. Log in to **[https://controlpanel.combell.com](https://controlpanel.combell.com)**.
+2. Go to **My Products** ➔ **Web Hosting** ➔ Select your domain.
+3. In the left menu, select **Databases** ➔ **MySQL**.
+4. Click **+ Add Database**.
+5. Enter a database suffix (e.g. `pulsework` which becomes `ID123456_pulsework`).
+6. Create a database user and generate a strong password.
+7. Note your connection details:
+   - **MySQL Hostname**: e.g., `mysql123.combell-hosting.com` (or `localhost`)
+   - **Port**: `3306`
+   - **Database Name**: e.g., `ID123456_pulsework`
+   - **Username**: e.g., `ID123456_usr`
+   - **Password**: `YourChosenPassword`
+
+---
+
+### Step 2: Configure Database in First-Run Wizard
+1. Open your browser and navigate to your website (e.g. `https://crm.yourdomain.be/`).
+2. The **First-Run Installation Wizard** will automatically launch.
+3. In **Step 2 (Database Configuration)**:
+   - Select **Combell MySQL Database (Recommended for Hosting)**.
+   - Enter your MySQL Host, Port, Database Name, Username, and Password.
+   - Click **Test MySQL Connection**. PulseWork will ping the Combell MySQL server, display latency, and verify database access.
+4. Continue through the wizard to configure your Organization and create your **Primary Super Administrator** account.
+5. Click **Initialize & Launch PulseWork** — the installer will automatically generate all relational tables and securely provision your administrator credentials into MySQL!
 
 ---
 

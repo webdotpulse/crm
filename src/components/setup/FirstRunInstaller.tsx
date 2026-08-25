@@ -30,6 +30,9 @@ import {
   FileText,
   Clock,
   Terminal,
+  Database,
+  Server,
+  HardDrive,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { useApp } from '../../context/AppContext'
@@ -37,6 +40,7 @@ import {
   FirstRunInstallPayload,
   SupportedCurrency,
   TwoFactorSetupData,
+  DatabaseStorageMode,
 } from '../../types'
 import {
   themePresets,
@@ -46,12 +50,16 @@ import {
   verifyTotpCode as verifyTotp,
   evaluatePasswordStrength as evalPwd,
 } from '../../services/securityService'
+import {
+  testMySqlConnection,
+  ConnectionTestResult,
+} from '../../services/mysqlService'
 
 export const FirstRunInstaller: React.FC = () => {
   const { completeFirstRunInstall, securityPolicy } = useApp()
 
   const [currentStep, setCurrentStep] = useState<number>(1)
-  const totalSteps = 6
+  const totalSteps = 7
 
   // Step 1: Preflight checks state
   const [preflightStatus, setPreflightStatus] = useState<{
@@ -69,7 +77,19 @@ export const FirstRunInstaller: React.FC = () => {
   })
   const [isPreflightChecking, setIsPreflightChecking] = useState(true)
 
-  // Step 2: Company Profile state
+  // Step 2: Database Configuration state
+  const [dbMode, setDbMode] = useState<DatabaseStorageMode>('mysql')
+  const [mysqlHost, setMysqlHost] = useState('mysql123.combell-hosting.com')
+  const [mysqlPort, setMysqlPort] = useState(3306)
+  const [mysqlDatabase, setMysqlDatabase] = useState('ID123456_pulsework')
+  const [mysqlUsername, setMysqlUsername] = useState('ID123456_user')
+  const [mysqlPassword, setMysqlPassword] = useState('')
+  const [showMysqlPassword, setShowMysqlPassword] = useState(false)
+  const [mysqlTablePrefix, setMysqlTablePrefix] = useState('pw_')
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
+  const [connectionTestResult, setConnectionTestResult] = useState<ConnectionTestResult | null>(null)
+
+  // Step 3: Company Profile state
   const [companyName, setCompanyName] = useState('PulseWork Solutions BV')
   const [legalName, setLegalName] = useState('PulseWork Solutions BV')
   const [vatNumber, setVatNumber] = useState('BE0849294901')
@@ -88,7 +108,7 @@ export const FirstRunInstaller: React.FC = () => {
   const [defaultCurrency, setDefaultCurrency] = useState<SupportedCurrency>('EUR')
   const [defaultVatRate, setDefaultVatRate] = useState<number>(21)
 
-  // Step 3: Admin User state
+  // Step 4: Admin User state
   const [adminName, setAdminName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
@@ -98,7 +118,7 @@ export const FirstRunInstaller: React.FC = () => {
   const [adminDepartment, setAdminDepartment] = useState('Executive Management')
   const [adminPhone, setAdminPhone] = useState('')
 
-  // Step 4: Security & 2FA state
+  // Step 5: Security & 2FA state
   const [enable2FaNow, setEnable2FaNow] = useState(false)
   const [totpSetupData, setTotpSetupData] = useState<TwoFactorSetupData | null>(null)
   const [testTotpCode, setTestTotpCode] = useState('')
@@ -110,7 +130,7 @@ export const FirstRunInstaller: React.FC = () => {
   const [enforce2faOrgWide, setEnforce2faOrgWide] = useState(false)
   const [screenSharePrivacyDefault, setScreenSharePrivacyDefault] = useState(false)
 
-  // Step 5: Workspace Customization state
+  // Step 6: Workspace Customization state
   const [selectedThemePreset, setSelectedThemePreset] = useState('sandbox_default')
   const [enabledModules, setEnabledModules] = useState<{
     crm: boolean
@@ -132,7 +152,7 @@ export const FirstRunInstaller: React.FC = () => {
     pulse_ai: true,
   })
 
-  // Step 6: Finalizing / Installation execution state
+  // Step 7: Finalizing / Installation execution state
   const [isInstalling, setIsInstalling] = useState(false)
   const [installProgress, setInstallProgress] = useState(0)
   const [installStatusMessage, setInstallStatusMessage] = useState('')
@@ -143,7 +163,7 @@ export const FirstRunInstaller: React.FC = () => {
     const runDiagnostics = async () => {
       setIsPreflightChecking(true)
       await new Promise((resolve) => setTimeout(resolve, 600))
-      
+
       const storageOk = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
       const cryptoOk = typeof window !== 'undefined' && Boolean(window.crypto)
       const totpOk = true
@@ -179,6 +199,24 @@ export const FirstRunInstaller: React.FC = () => {
     requireNumbers: true,
     requireSymbols: true,
   })
+
+  // Handle MySQL connection test
+  const handleTestMySqlConnection = async () => {
+    setIsTestingConnection(true)
+    setConnectionTestResult(null)
+    setErrorMessage(null)
+
+    const result = await testMySqlConnection({
+      host: mysqlHost.trim(),
+      port: Number(mysqlPort) || 3306,
+      database: mysqlDatabase.trim(),
+      username: mysqlUsername.trim(),
+      password: mysqlPassword,
+    })
+
+    setIsTestingConnection(false)
+    setConnectionTestResult(result)
+  }
 
   // Auto-update Peppol Endpoint when VAT number changes
   const handleVatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -255,7 +293,24 @@ export const FirstRunInstaller: React.FC = () => {
   const validateStep = (step: number): boolean => {
     setErrorMessage(null)
 
-    if (step === 2) {
+    // Step 2: Database Configuration
+    if (step === 2 && dbMode === 'mysql') {
+      if (!mysqlHost.trim()) {
+        setErrorMessage('MySQL Host is required (e.g. mysqlXXX.combell-hosting.com).')
+        return false
+      }
+      if (!mysqlDatabase.trim()) {
+        setErrorMessage('MySQL Database Name is required.')
+        return false
+      }
+      if (!mysqlUsername.trim()) {
+        setErrorMessage('MySQL Username is required.')
+        return false
+      }
+    }
+
+    // Step 3: Organization Profile
+    if (step === 3) {
       if (!companyName.trim()) {
         setErrorMessage('Company Name is required.')
         return false
@@ -270,7 +325,8 @@ export const FirstRunInstaller: React.FC = () => {
       }
     }
 
-    if (step === 3) {
+    // Step 4: Admin Account
+    if (step === 4) {
       if (!adminName.trim()) {
         setErrorMessage('Administrator Full Name is required.')
         return false
@@ -293,7 +349,8 @@ export const FirstRunInstaller: React.FC = () => {
       }
     }
 
-    if (step === 4 && enable2FaNow) {
+    // Step 5: 2FA Setup
+    if (step === 5 && enable2FaNow) {
       if (!isTotpVerified) {
         setErrorMessage('Please enter and verify a 6-digit TOTP code from your authenticator app.')
         return false
@@ -323,15 +380,19 @@ export const FirstRunInstaller: React.FC = () => {
 
     try {
       setInstallProgress(15)
-      setInstallStatusMessage('Generating secure administrator cryptographic credentials...')
+      setInstallStatusMessage(
+        dbMode === 'mysql'
+          ? 'Connecting to Combell MySQL cluster & creating database tables...'
+          : 'Initializing persistent client storage engine...'
+      )
       await new Promise((r) => setTimeout(r, 400))
 
       setInstallProgress(35)
-      setInstallStatusMessage('Configuring primary organization profile & Peppol BIS 3.0 scheme...')
+      setInstallStatusMessage('Generating secure administrator cryptographic credentials...')
       await new Promise((r) => setTimeout(r, 400))
 
       setInstallProgress(60)
-      setInstallStatusMessage('Enforcing enterprise security policies & RBAC matrices...')
+      setInstallStatusMessage('Configuring primary organization profile & Peppol BIS 3.0 scheme...')
       await new Promise((r) => setTimeout(r, 400))
 
       setInstallProgress(85)
@@ -368,6 +429,17 @@ export const FirstRunInstaller: React.FC = () => {
           bic: companyBic.trim(),
           defaultCurrency: defaultCurrency,
           defaultVatRate: defaultVatRate,
+        },
+        databaseConfig: {
+          mode: dbMode,
+          host: mysqlHost.trim(),
+          port: Number(mysqlPort) || 3306,
+          database: mysqlDatabase.trim(),
+          username: mysqlUsername.trim(),
+          password: mysqlPassword,
+          tablePrefix: mysqlTablePrefix.trim() || 'pw_',
+          isConfigured: dbMode === 'mysql',
+          lastTestedAt: new Date().toISOString(),
         },
         securityPolicy: {
           sessionTimeoutMinutes: sessionTimeoutMinutes,
@@ -425,7 +497,7 @@ export const FirstRunInstaller: React.FC = () => {
       <div
         style={{
           width: '100%',
-          maxWidth: '900px',
+          maxWidth: '960px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -460,7 +532,7 @@ export const FirstRunInstaller: React.FC = () => {
               PulseWork
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-              Work Management & Peppol Hub
+              Work Management, CRM & Combell MySQL Engine
             </div>
           </div>
         </div>
@@ -480,7 +552,7 @@ export const FirstRunInstaller: React.FC = () => {
               fontWeight: 600,
             }}
           >
-            <ShieldCheck size={14} /> Native VPS / Bare-Metal Edition
+            <Server size={14} /> Combell Cloud / VPS Ready
           </span>
           <span
             style={{
@@ -502,7 +574,7 @@ export const FirstRunInstaller: React.FC = () => {
       <div
         style={{
           width: '100%',
-          maxWidth: '900px',
+          maxWidth: '960px',
           backgroundColor: 'rgba(21, 31, 50, 0.85)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -531,11 +603,12 @@ export const FirstRunInstaller: React.FC = () => {
           >
             {[
               { num: 1, label: 'Preflight' },
-              { num: 2, label: 'Organization' },
-              { num: 3, label: 'Admin Account' },
-              { num: 4, label: 'Security & 2FA' },
-              { num: 5, label: 'Customization' },
-              { num: 6, label: 'Review & Launch' },
+              { num: 2, label: 'Database' },
+              { num: 3, label: 'Organization' },
+              { num: 4, label: 'Admin Account' },
+              { num: 5, label: 'Security & 2FA' },
+              { num: 6, label: 'Customization' },
+              { num: 7, label: 'Review & Launch' },
             ].map((step) => {
               const isDone = currentStep > step.num
               const isCurrent = currentStep === step.num
@@ -556,13 +629,13 @@ export const FirstRunInstaller: React.FC = () => {
                 >
                   <div
                     style={{
-                      width: '32px',
-                      height: '32px',
+                      width: '30px',
+                      height: '30px',
                       borderRadius: '50%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '0.85rem',
+                      fontSize: '0.82rem',
                       fontWeight: 700,
                       backgroundColor: isDone
                         ? '#38b995'
@@ -579,11 +652,11 @@ export const FirstRunInstaller: React.FC = () => {
                       transition: 'all 0.2s ease',
                     }}
                   >
-                    {isDone ? <Check size={16} /> : step.num}
+                    {isDone ? <Check size={14} /> : step.num}
                   </div>
                   <span
                     style={{
-                      fontSize: '0.72rem',
+                      fontSize: '0.7rem',
                       fontWeight: isCurrent ? 700 : 500,
                       color: isCurrent
                         ? '#ffffff'
@@ -661,8 +734,8 @@ export const FirstRunInstaller: React.FC = () => {
                     margin: '0 auto',
                   }}
                 >
-                  Let's initialize your secure, high-performance Work Management &
-                  Peppol Hub. First, we test your environment prerequisites.
+                  Let's initialize your secure, high-performance Work Management,
+                  CRM & Peppol Hub. First, we test your environment prerequisites.
                 </p>
               </div>
 
@@ -678,8 +751,8 @@ export const FirstRunInstaller: React.FC = () => {
               >
                 {[
                   {
-                    title: 'Web Storage & IndexedDB Subsystem',
-                    desc: 'Safe sandboxed client storage for lightning-fast zero-latency offline persistence.',
+                    title: 'Web Storage & Local Persistence Engine',
+                    desc: 'Instant zero-latency local caching and rapid client execution.',
                     ok: preflightStatus.storage,
                   },
                   {
@@ -771,8 +844,467 @@ export const FirstRunInstaller: React.FC = () => {
             </div>
           )}
 
-          {/* ================= STEP 2: ORGANIZATION PROFILE ================= */}
+          {/* ================= STEP 2: DATABASE CONFIGURATION ================= */}
           {currentStep === 2 && (
+            <div>
+              <div style={{ marginBottom: '1.75rem' }}>
+                <h2
+                  style={{
+                    fontFamily: 'var(--sb-font-heading)',
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    marginBottom: '0.35rem',
+                    color: '#ffffff',
+                  }}
+                >
+                  Database Storage & Combell Server Connection
+                </h2>
+                <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                  Choose where your CRM data, users, and invoices are stored. You can connect
+                  directly to your Combell MySQL database instance.
+                </p>
+              </div>
+
+              {/* Mode Selection Cards */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '1rem',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                {/* Combell MySQL Mode */}
+                <div
+                  onClick={() => setDbMode('mysql')}
+                  style={{
+                    padding: '1.25rem',
+                    backgroundColor:
+                      dbMode === 'mysql'
+                        ? 'rgba(63, 120, 224, 0.15)'
+                        : 'rgba(255, 255, 255, 0.03)',
+                    border:
+                      dbMode === 'mysql'
+                        ? '2px solid #3f78e0'
+                        : '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        color: dbMode === 'mysql' ? '#ffffff' : '#cbd5e1',
+                      }}
+                    >
+                      <Database
+                        size={18}
+                        color={dbMode === 'mysql' ? '#3f78e0' : '#94a3b8'}
+                      />
+                      Combell MySQL Database
+                    </div>
+                    {dbMode === 'mysql' && (
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          backgroundColor: '#3f78e0',
+                          color: '#ffffff',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '9999px',
+                        }}
+                      >
+                        Recommended for Hosting
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+                    Centralized database stored on your Combell MySQL server with multi-user persistence and automated backups.
+                  </p>
+                </div>
+
+                {/* Local Storage Mode */}
+                <div
+                  onClick={() => setDbMode('local')}
+                  style={{
+                    padding: '1.25rem',
+                    backgroundColor:
+                      dbMode === 'local'
+                        ? 'rgba(63, 120, 224, 0.15)'
+                        : 'rgba(255, 255, 255, 0.03)',
+                    border:
+                      dbMode === 'local'
+                        ? '2px solid #3f78e0'
+                        : '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '0.85rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        color: dbMode === 'local' ? '#ffffff' : '#cbd5e1',
+                      }}
+                    >
+                      <HardDrive
+                        size={18}
+                        color={dbMode === 'local' ? '#3f78e0' : '#94a3b8'}
+                      />
+                      Browser Local Database
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+                    Zero-config standalone client database using browser storage. Ideal for single-device offline usage.
+                  </p>
+                </div>
+              </div>
+
+              {/* MySQL Configuration Form */}
+              {dbMode === 'mysql' && (
+                <div
+                  style={{
+                    padding: '1.5rem',
+                    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                    borderRadius: '0.85rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  {/* Combell Guidance Callout */}
+                  <div
+                    style={{
+                      padding: '0.85rem 1rem',
+                      backgroundColor: 'rgba(63, 120, 224, 0.1)',
+                      border: '1px solid rgba(63, 120, 224, 0.25)',
+                      borderRadius: '0.65rem',
+                      marginBottom: '1.25rem',
+                      fontSize: '0.82rem',
+                      color: '#cbd5e1',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.65rem',
+                    }}
+                  >
+                    <Server size={18} color="#3f78e0" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong style={{ color: '#ffffff' }}>Where to find Combell MySQL details:</strong> In the{' '}
+                      <span style={{ color: '#3f78e0', fontWeight: 600 }}>Combell Control Panel</span> ➔ <strong>My Products</strong> ➔ <strong>Web Hosting</strong> ➔ Select domain ➔ <strong>Databases</strong> (MySQL).
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: '1.15rem',
+                      marginBottom: '1.25rem',
+                    }}
+                  >
+                    {/* MySQL Host */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        MySQL Host *
+                      </label>
+                      <input
+                        type="text"
+                        value={mysqlHost}
+                        onChange={(e) => setMysqlHost(e.target.value)}
+                        placeholder="mysql123.combell-hosting.com or localhost"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.65rem',
+                          color: '#ffffff',
+                          fontSize: '0.9rem',
+                          fontFamily: 'var(--sb-font-mono)',
+                        }}
+                      />
+                    </div>
+
+                    {/* MySQL Port */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        Port
+                      </label>
+                      <input
+                        type="number"
+                        value={mysqlPort}
+                        onChange={(e) => setMysqlPort(Number(e.target.value))}
+                        placeholder="3306"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.65rem',
+                          color: '#ffffff',
+                          fontSize: '0.9rem',
+                          fontFamily: 'var(--sb-font-mono)',
+                        }}
+                      />
+                    </div>
+
+                    {/* Database Name */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        Database Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={mysqlDatabase}
+                        onChange={(e) => setMysqlDatabase(e.target.value)}
+                        placeholder="ID123456_pulsework"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.65rem',
+                          color: '#ffffff',
+                          fontSize: '0.9rem',
+                          fontFamily: 'var(--sb-font-mono)',
+                        }}
+                      />
+                    </div>
+
+                    {/* Username */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        Database Username *
+                      </label>
+                      <input
+                        type="text"
+                        value={mysqlUsername}
+                        onChange={(e) => setMysqlUsername(e.target.value)}
+                        placeholder="ID123456_user"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.65rem',
+                          color: '#ffffff',
+                          fontSize: '0.9rem',
+                          fontFamily: 'var(--sb-font-mono)',
+                        }}
+                      />
+                    </div>
+
+                    {/* Password */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        Database Password
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showMysqlPassword ? 'text' : 'password'}
+                          value={mysqlPassword}
+                          onChange={(e) => setMysqlPassword(e.target.value)}
+                          placeholder="Enter MySQL user password"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem 2.5rem 0.75rem 1rem',
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: '0.65rem',
+                            color: '#ffffff',
+                            fontSize: '0.9rem',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowMysqlPassword(!showMysqlPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          {showMysqlPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Table Prefix */}
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: '#cbd5e1',
+                          marginBottom: '0.4rem',
+                        }}
+                      >
+                        Table Prefix
+                      </label>
+                      <input
+                        type="text"
+                        value={mysqlTablePrefix}
+                        onChange={(e) => setMysqlTablePrefix(e.target.value)}
+                        placeholder="pw_"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '0.65rem',
+                          color: '#38b995',
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          fontFamily: 'var(--sb-font-mono)',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Test Connection Button & Result */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      disabled={isTestingConnection}
+                      onClick={handleTestMySqlConnection}
+                      style={{
+                        padding: '0.75rem 1.25rem',
+                        borderRadius: '0.65rem',
+                        backgroundColor: 'rgba(63, 120, 224, 0.2)',
+                        border: '1px solid #3f78e0',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '0.88rem',
+                        cursor: isTestingConnection ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      {isTestingConnection ? (
+                        <>
+                          <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                          Testing Connection...
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={16} color="#3f78e0" />
+                          Test MySQL Connection
+                        </>
+                      )}
+                    </button>
+
+                    {connectionTestResult && (
+                      <div
+                        style={{
+                          padding: '0.5rem 1rem',
+                          borderRadius: '0.5rem',
+                          backgroundColor: connectionTestResult.success
+                            ? 'rgba(56, 185, 149, 0.15)'
+                            : 'rgba(226, 98, 107, 0.15)',
+                          border: connectionTestResult.success
+                            ? '1px solid rgba(56, 185, 149, 0.4)'
+                            : '1px solid rgba(226, 98, 107, 0.4)',
+                          color: connectionTestResult.success ? '#38b995' : '#fca5a5',
+                          fontSize: '0.82rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        {connectionTestResult.success ? (
+                          <>
+                            <CheckCircle2 size={16} />
+                            <span>
+                              {connectionTestResult.message} ({connectionTestResult.version} • {connectionTestResult.latencyMs}ms)
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle size={16} />
+                            <span>{connectionTestResult.message}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= STEP 3: ORGANIZATION PROFILE ================= */}
+          {currentStep === 3 && (
             <div>
               <div style={{ marginBottom: '1.75rem' }}>
                 <h2
@@ -1138,8 +1670,8 @@ export const FirstRunInstaller: React.FC = () => {
             </div>
           )}
 
-          {/* ================= STEP 3: ADMIN ACCOUNT CREATION ================= */}
-          {currentStep === 3 && (
+          {/* ================= STEP 4: ADMIN ACCOUNT CREATION ================= */}
+          {currentStep === 4 && (
             <div>
               <div style={{ marginBottom: '1.75rem' }}>
                 <h2
@@ -1549,8 +2081,8 @@ export const FirstRunInstaller: React.FC = () => {
             </div>
           )}
 
-          {/* ================= STEP 4: SECURITY & 2FA ================= */}
-          {currentStep === 4 && (
+          {/* ================= STEP 5: SECURITY & 2FA ================= */}
+          {currentStep === 5 && (
             <div>
               <div style={{ marginBottom: '1.75rem' }}>
                 <h2
@@ -2000,8 +2532,8 @@ export const FirstRunInstaller: React.FC = () => {
             </div>
           )}
 
-          {/* ================= STEP 5: CUSTOMIZATION & MODULES ================= */}
-          {currentStep === 5 && (
+          {/* ================= STEP 6: CUSTOMIZATION & MODULES ================= */}
+          {currentStep === 6 && (
             <div>
               <div style={{ marginBottom: '1.75rem' }}>
                 <h2
@@ -2230,8 +2762,8 @@ export const FirstRunInstaller: React.FC = () => {
             </div>
           )}
 
-          {/* ================= STEP 6: REVIEW & LAUNCH ================= */}
-          {currentStep === 6 && (
+          {/* ================= STEP 7: REVIEW & LAUNCH ================= */}
+          {currentStep === 7 && (
             <div>
               <div style={{ marginBottom: '1.75rem', textAlign: 'center' }}>
                 <div
@@ -2275,6 +2807,55 @@ export const FirstRunInstaller: React.FC = () => {
                   marginBottom: '2rem',
                 }}
               >
+                {/* Database Card */}
+                <div
+                  style={{
+                    padding: '1.25rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '0.75rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      color: '#ffffff',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <Database size={16} color="#3f78e0" /> Database Storage
+                  </div>
+                  <div style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
+                    <div>
+                      <strong style={{ color: '#cbd5e1' }}>Engine:</strong>{' '}
+                      {dbMode === 'mysql' ? (
+                        <span style={{ color: '#38b995', fontWeight: 600 }}>
+                          Combell MySQL Database
+                        </span>
+                      ) : (
+                        'Browser Local Database'
+                      )}
+                    </div>
+                    {dbMode === 'mysql' && (
+                      <>
+                        <div>
+                          <strong style={{ color: '#cbd5e1' }}>Host:</strong> {mysqlHost}
+                        </div>
+                        <div>
+                          <strong style={{ color: '#cbd5e1' }}>Database:</strong> {mysqlDatabase}
+                        </div>
+                        <div>
+                          <strong style={{ color: '#cbd5e1' }}>Prefix:</strong> {mysqlTablePrefix}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {/* Admin Card */}
                 <div
                   style={{
@@ -2310,13 +2891,13 @@ export const FirstRunInstaller: React.FC = () => {
                       Administrator (Owner)
                     </div>
                     <div>
-                      <strong style={{ color: '#cbd5e1' }}>2FA Protection:</strong>{' '}
+                      <strong style={{ color: '#cbd5e1' }}>2FA:</strong>{' '}
                       {enable2FaNow && isTotpVerified ? (
                         <span style={{ color: '#38b995', fontWeight: 600 }}>
-                          ● Active (TOTP RFC 6238)
+                          ● Active (TOTP)
                         </span>
                       ) : (
-                        <span style={{ color: '#fab758' }}>Optional (Disabled)</span>
+                        <span style={{ color: '#fab758' }}>Optional</span>
                       )}
                     </div>
                   </div>
@@ -2360,47 +2941,6 @@ export const FirstRunInstaller: React.FC = () => {
                     <div>
                       <strong style={{ color: '#cbd5e1' }}>Currency:</strong>{' '}
                       {defaultCurrency}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Security & Workspace Card */}
-                <div
-                  style={{
-                    padding: '1.25rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '0.75rem',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                      color: '#ffffff',
-                      marginBottom: '0.75rem',
-                    }}
-                  >
-                    <Shield size={16} color="#7452d6" /> Workspace Policy
-                  </div>
-                  <div style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
-                    <div>
-                      <strong style={{ color: '#cbd5e1' }}>Auto-lock:</strong>{' '}
-                      {sessionTimeoutMinutes > 0
-                        ? `${sessionTimeoutMinutes} minutes`
-                        : 'Disabled'}
-                    </div>
-                    <div>
-                      <strong style={{ color: '#cbd5e1' }}>Audit Trail:</strong>{' '}
-                      Active (SHA-256 Chained)
-                    </div>
-                    <div>
-                      <strong style={{ color: '#cbd5e1' }}>Theme Preset:</strong>{' '}
-                      {themePresets.find((p) => p.id === selectedThemePreset)?.name ||
-                        'Standard'}
                     </div>
                   </div>
                 </div>
@@ -2538,7 +3078,7 @@ export const FirstRunInstaller: React.FC = () => {
                     style={{ animation: 'spin 1s linear infinite' }}
                     color="#ffffff"
                   />{' '}
-                  Initializing Workspace...
+                  Initializing Workspace & Database...
                 </>
               ) : (
                 <>

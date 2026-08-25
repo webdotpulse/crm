@@ -25,8 +25,10 @@ cd "$SCRIPT_DIR"
 echo -e "${BLUE}[1/3] Building production assets with Vite...${NC}"
 npm run build
 
-echo -e "${BLUE}[2/3] Copying Combell .htaccess configuration into ./dist/...${NC}"
+echo -e "${BLUE}[2/3] Copying Combell .htaccess & PHP Database Bridge into ./dist/...${NC}"
 cp public/.htaccess dist/.htaccess
+mkdir -p dist/api
+cp -r public/api/* dist/api/
 
 echo -e "${BLUE}[3/3] Creating ready-to-upload ZIP archive: combell_upload.zip...${NC}"
 rm -f combell_upload.zip

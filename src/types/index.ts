@@ -1625,9 +1625,29 @@ export interface FirstRunCompanyConfig {
   defaultVatRate: number
 }
 
+// ==========================================
+// 26. COMBELL / MYSQL DATABASE CONFIGURATION
+// ==========================================
+export type DatabaseStorageMode = 'mysql' | 'local'
+
+export interface MySqlDatabaseConfig {
+  mode: DatabaseStorageMode
+  host: string
+  port: number
+  database: string
+  username: string
+  password?: string
+  tablePrefix?: string
+  ssl?: boolean
+  isConfigured: boolean
+  lastTestedAt?: string
+  lastSyncAt?: string
+}
+
 export interface FirstRunInstallPayload {
   admin: FirstRunAdminConfig
   company: FirstRunCompanyConfig
+  databaseConfig?: MySqlDatabaseConfig
   securityPolicy?: Partial<SecurityPolicy>
   moduleSettings?: Partial<ModuleSettings>
   themePresetId?: string

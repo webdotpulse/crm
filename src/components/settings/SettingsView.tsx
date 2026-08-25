@@ -26,6 +26,8 @@ import {
   Maximize2,
   Code2,
   Sparkles,
+  Server,
+  HardDrive,
 } from 'lucide-react'
 import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate, FontFamilyOption, BorderRadiusOption, DensityOption } from '../../types'
 import { useApp } from '../../context/AppContext'
@@ -51,6 +53,7 @@ export const SettingsView: React.FC = () => {
     resetToDemoData,
     exportDataJson,
     importDataJson,
+    databaseConfig,
     isInstalled,
     resetToInstaller,
     customTheme,
@@ -1191,6 +1194,45 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
+          {/* Database Storage Engine & Combell MySQL Info */}
+          <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Server size={16} color="var(--sb-primary)" />
+              <h4 style={{ fontSize: '0.95rem', margin: 0 }}>Database Storage Engine</h4>
+            </div>
+            <div
+              style={{
+                padding: '1rem',
+                backgroundColor: 'var(--sb-card-bg)',
+                border: '1px solid var(--sb-border)',
+                borderRadius: 'var(--sb-radius)',
+                fontSize: '0.85rem',
+                lineHeight: '1.6',
+                marginBottom: '0.85rem',
+              }}
+            >
+              <div>
+                <strong>Active Engine:</strong>{' '}
+                <span
+                  style={{
+                    color: databaseConfig.mode === 'mysql' ? 'var(--sb-success)' : 'var(--sb-primary)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {databaseConfig.mode === 'mysql' ? '● Combell MySQL Database' : '● Browser Local Storage (Standalone)'}
+                </span>
+              </div>
+              {databaseConfig.mode === 'mysql' && (
+                <>
+                  <div><strong>Host:</strong> {databaseConfig.host}</div>
+                  <div><strong>Database:</strong> {databaseConfig.database}</div>
+                  <div><strong>Table Prefix:</strong> {databaseConfig.tablePrefix || 'pw_'}</div>
+                  <div><strong>Status:</strong> Connected via PHP PDO Bridge (<code>/api/db.php</code>)</div>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* First-Run Setup & Provisioning Tools */}
           <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -1199,7 +1241,7 @@ export const SettingsView: React.FC = () => {
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--sb-body)', marginBottom: '0.85rem' }}>
               System status: <strong style={{ color: isInstalled ? 'var(--sb-success)' : 'var(--sb-danger)' }}>{isInstalled ? '● Provisioned & Installed' : '○ Uninitialized'}</strong>.
-              You can re-launch the First-Run Setup Wizard to re-provision the workspace or configure a new administrator.
+              You can re-launch the First-Run Setup Wizard to re-provision the workspace or configure a new administrator and MySQL connection.
             </p>
             <button
               onClick={() => {

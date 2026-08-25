@@ -79,7 +79,9 @@ import {
   WysiwygDocumentTemplate,
   TemplateStyleConfig,
   FirstRunInstallPayload,
+  MySqlDatabaseConfig,
 } from '../types'
+import { initializeMySqlSchema } from '../services/mysqlService'
 import {
   initialCompanyProfile,
   initialLegalEntities,
@@ -518,6 +520,10 @@ interface AppContextType {
   exportDataJson: () => string
   importDataJson: (jsonString: string) => boolean
 
+  // Database Management
+  databaseConfig: MySqlDatabaseConfig
+  updateDatabaseConfig: (cfg: Partial<MySqlDatabaseConfig>) => void
+
   // First-Run Installer & Provisioning
   isInstalled: boolean
   completeFirstRunInstall: (payload: FirstRunInstallPayload) => Promise<void>
@@ -752,6 +758,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(`${STORAGE_KEY}_dunningnotices`)
     return saved ? JSON.parse(saved) : []
   })
+
+  // Database Configuration State
+  const defaultDatabaseConfig: MySqlDatabaseConfig = {
+    mode: 'local',
+    host: '127.0.0.1',
+    port: 3306,
+    database: '',
+    username: '',
+    tablePrefix: 'pw_',
+    isConfigured: false,
+  }
+  const [databaseConfig, setDatabaseConfig] = useState<MySqlDatabaseConfig>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_db_config`)
+    return saved ? JSON.parse(saved) : defaultDatabaseConfig
+  })
+  const updateDatabaseConfig = (cfg: Partial<MySqlDatabaseConfig>) => {
+    setDatabaseConfig((prev) => {
+      const updated = { ...prev, ...cfg }
+      localStorage.setItem(`${STORAGE_KEY}_db_config`, JSON.stringify(updated))
+      return updated
+    })
+  }
 
   // First-Run Installer State
   const [isInstalled, setIsInstalled] = useState<boolean>(() => {
@@ -3033,6 +3061,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSecurityAuditLogs([initialAuditLog])
     localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify([initialAuditLog]))
 
+    if (payload.databaseConfig) {
+      updateDatabaseConfig(payload.databaseConfig)
+      if (payload.databaseConfig.mode === 'mysql') {
+        try {
+          await initializeMySqlSchema(payload.databaseConfig, {
+            admin: newAdminUser,
+            companyProfile: updatedProfile,
+            legalEntity: updatedLegalEntity,
+            auditLog: initialAuditLog,
+          })
+        } catch (e) {
+          console.warn('MySQL schema setup notice:', e)
+        }
+      }
+    }
+
     localStorage.setItem('pulsework_installed', 'true')
     setIsInstalled(true)
   }
@@ -3041,6 +3085,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('pulsework_installed')
     localStorage.removeItem(`${STORAGE_KEY}_users`)
     localStorage.removeItem(`${STORAGE_KEY}_current_user_id`)
+    localStorage.removeItem(`${STORAGE_KEY}_db_config`)
+    setDatabaseConfig(defaultDatabaseConfig)
     setUsers([])
     setCurrentUserId('')
     setIsInstalled(false)
@@ -3370,6 +3416,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetToDemoData,
         exportDataJson,
         importDataJson,
+        databaseConfig,
+        updateDatabaseConfig,
         isInstalled,
         completeFirstRunInstall,
         resetToInstaller,
