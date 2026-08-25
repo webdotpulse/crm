@@ -78,6 +78,7 @@ import {
   OssVatCountryRate,
   WysiwygDocumentTemplate,
   TemplateStyleConfig,
+  FirstRunInstallPayload,
 } from '../types'
 import {
   initialCompanyProfile,
@@ -137,7 +138,14 @@ import { executeIntegrationSync, SyncResult } from '../services/integrationsServ
 import { calculateDunningEscalation, BELGIAN_STATUTORY_RECOVERY_FEE, STATUTORY_LATE_INTEREST_RATE } from '../services/dunningService'
 import { translate } from '../services/i18nService'
 import { defaultThemeConfig, themePresets, applyThemeConfig } from '../services/themeService'
-import { createTwoFactorSetup, verifyTotpCode, calculateTotpCode, syncComputeLogHash } from '../services/securityService'
+import {
+  createTwoFactorSetup,
+  verifyTotpCode,
+  calculateTotpCode,
+  syncComputeLogHash,
+  hashPassword,
+  ALL_ADMIN_PERMISSIONS,
+} from '../services/securityService'
 import { getDefaultModuleSettings, getPresetModuleSettings, MODULE_REGISTRY } from '../services/moduleRegistry'
 
 export type AppView =
@@ -509,6 +517,11 @@ interface AppContextType {
   resetToDemoData: () => void
   exportDataJson: () => string
   importDataJson: (jsonString: string) => boolean
+
+  // First-Run Installer & Provisioning
+  isInstalled: boolean
+  completeFirstRunInstall: (payload: FirstRunInstallPayload) => Promise<void>
+  resetToInstaller: () => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -740,6 +753,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : []
   })
 
+  // First-Run Installer State
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => {
+    const installedFlag = localStorage.getItem('pulsework_installed')
+    if (installedFlag === 'true') return true
+    const savedUsers = localStorage.getItem(`${STORAGE_KEY}_users`)
+    if (savedUsers) {
+      try {
+        const parsed = JSON.parse(savedUsers)
+        if (Array.isArray(parsed) && parsed.length > 0) return true
+      } catch {}
+    }
+    return false
+  })
+
   // Enterprise Security & RBAC & 2FA State
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_users`)
@@ -747,7 +774,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   })
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_current_user_id`)
-    return saved || initialUsers[0].id
+    return saved || (initialUsers[0]?.id || '')
   })
   const [securityPolicy, setSecurityPolicy] = useState<SecurityPolicy>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_secpolicy`)
@@ -844,7 +871,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Interactive Web Proposals Viewer
   const [activeInteractiveProposalQuote, setActiveInteractiveProposalQuote] = useState<Quotation | null>(null)
 
-  const currentUser = users.find((u) => u.id === currentUserId) || users[0] || initialUsers[0]
+  const defaultFallbackAdmin: UserAccount = {
+    id: 'usr-admin-initial',
+    name: 'Administrator',
+    email: 'admin@pulsework.local',
+    role: 'admin',
+    roleLabel: 'System Administrator',
+    twoFactorEnabled: false,
+    status: 'active',
+    lastLogin: new Date().toISOString(),
+    customPermissions: ALL_ADMIN_PERMISSIONS,
+  }
+
+  const currentUser = users.find((u) => u.id === currentUserId) || users[0] || defaultFallbackAdmin
 
   const activeLegalEntity =
     legalEntities.find((e) => e.id === activeLegalEntityId) || legalEntities[0] || initialLegalEntities[0]
@@ -2847,6 +2886,164 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveWysiwygTemplateId(initialWysiwygTemplates[0].id)
     setActiveInteractiveProposalQuote(null)
     localStorage.clear()
+    setIsInstalled(false)
+  }
+
+  const completeFirstRunInstall = async (payload: FirstRunInstallPayload) => {
+    const adminId = `usr-admin-${Date.now().toString(36)}`
+    const passHash = payload.admin.password
+      ? await hashPassword(payload.admin.password)
+      : payload.admin.passwordHash
+
+    const newAdminUser: UserAccount = {
+      id: adminId,
+      name: payload.admin.name.trim(),
+      email: payload.admin.email.trim().toLowerCase(),
+      role: 'admin',
+      roleLabel: 'System Administrator',
+      twoFactorEnabled: Boolean(payload.admin.twoFactorEnabled),
+      twoFactorSecret: payload.admin.twoFactorSecret,
+      backupCodes: payload.admin.backupCodes,
+      passwordHash: passHash,
+      pinCode: payload.admin.pinCode || '1234',
+      status: 'active',
+      lastLogin: new Date().toISOString(),
+      department: payload.admin.department || 'Management',
+      phone: payload.admin.phone,
+      customPermissions: ALL_ADMIN_PERMISSIONS,
+    }
+
+    const updatedUsers = [newAdminUser]
+    setUsers(updatedUsers)
+    setCurrentUserId(adminId)
+    localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(updatedUsers))
+    localStorage.setItem(`${STORAGE_KEY}_current_user_id`, adminId)
+
+    const adminCapacity: StaffMemberCapacity = {
+      id: `cap-${adminId}`,
+      name: newAdminUser.name,
+      email: newAdminUser.email,
+      role: 'Administrator',
+      department: newAdminUser.department || 'Management',
+      weeklyContractHours: 38,
+      hourlyCostRate: 0,
+      hourlyBillRate: 125,
+      totalStatutoryLeaveDays: 20,
+      usedLeaveDays: 0,
+      weeklyAllocations: [],
+    }
+    setStaffCapacities([adminCapacity])
+    localStorage.setItem(`${STORAGE_KEY}_staff_cap`, JSON.stringify([adminCapacity]))
+
+    const updatedProfile: CompanyProfile = {
+      ...companyProfile,
+      name: payload.company.name || 'PulseWork Solutions',
+      legalName: payload.company.legalName || payload.company.name || 'PulseWork Solutions BV',
+      vatNumber: payload.company.vatNumber,
+      peppolScheme: payload.company.peppolScheme || '0208',
+      peppolEndpoint: payload.company.peppolEndpoint,
+      email: payload.company.email || payload.admin.email,
+      phone: payload.company.phone || payload.admin.phone || '',
+      website: payload.company.website || '',
+      address: payload.company.address || '',
+      city: payload.company.city || '',
+      postalCode: payload.company.postalCode || '',
+      country: payload.company.country || 'Belgium',
+      countryCode: payload.company.countryCode || 'BE',
+      iban: payload.company.iban || '',
+      bic: payload.company.bic || '',
+      defaultCurrency: (payload.company.defaultCurrency as SupportedCurrency) || 'EUR',
+      defaultVatRate: payload.company.defaultVatRate || 21,
+      peppolSenderId: `iso6523-actorid-upis::${payload.company.peppolScheme || '0208'}:${(payload.company.peppolEndpoint || '').replace(/[^0-9A-Za-z]/g, '')}`,
+    }
+    setCompanyProfile(updatedProfile)
+    localStorage.setItem(`${STORAGE_KEY}_profile`, JSON.stringify(updatedProfile))
+
+    const updatedLegalEntity: LegalEntity = {
+      id: `ent-${Date.now().toString(36)}`,
+      name: updatedProfile.name,
+      legalName: updatedProfile.legalName,
+      vatNumber: updatedProfile.vatNumber,
+      peppolScheme: updatedProfile.peppolScheme,
+      peppolEndpoint: updatedProfile.peppolEndpoint,
+      email: updatedProfile.email,
+      phone: updatedProfile.phone,
+      website: updatedProfile.website,
+      address: updatedProfile.address,
+      city: updatedProfile.city,
+      postalCode: updatedProfile.postalCode,
+      country: updatedProfile.country,
+      countryCode: updatedProfile.countryCode,
+      iban: updatedProfile.iban,
+      bic: updatedProfile.bic,
+      defaultCurrency: updatedProfile.defaultCurrency,
+      invoicePrefix: `${updatedProfile.countryCode || 'BE'}-INV-`,
+      isDefault: true,
+      accentColor: '#3f78e0',
+    }
+    setLegalEntities([updatedLegalEntity])
+    setActiveLegalEntityId(updatedLegalEntity.id)
+    localStorage.setItem(`${STORAGE_KEY}_entities`, JSON.stringify([updatedLegalEntity]))
+
+    if (payload.securityPolicy) {
+      const updatedSec = { ...securityPolicy, ...payload.securityPolicy }
+      setSecurityPolicy(updatedSec)
+      localStorage.setItem(`${STORAGE_KEY}_secpolicy`, JSON.stringify(updatedSec))
+    }
+
+    if (payload.moduleSettings) {
+      const updatedModules = { ...moduleSettings, ...payload.moduleSettings }
+      setModuleSettings(updatedModules)
+      localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(updatedModules))
+    }
+
+    if (payload.themePresetId) {
+      const preset = themePresets.find((p) => p.id === payload.themePresetId)
+      if (preset) {
+        setCustomTheme(preset.config)
+        applyThemeConfig(preset.config, false)
+        localStorage.setItem(`${STORAGE_KEY}_custom_theme`, JSON.stringify(preset.config))
+      }
+    }
+
+    const initialAuditLog: SecurityAuditLog = {
+      id: `log-install-${Date.now().toString(36)}`,
+      timestamp: new Date().toISOString(),
+      actorId: adminId,
+      actorName: newAdminUser.name,
+      actorEmail: newAdminUser.email,
+      category: 'security',
+      action: 'First-Run Installation Complete',
+      severity: 'info',
+      ipAddress: '127.0.0.1 (Local)',
+      details: `Workspace successfully initialized and configured by primary Administrator ${newAdminUser.name} (${newAdminUser.email}).`,
+      integrityHash: syncComputeLogHash({
+        id: `log-install-${Date.now().toString(36)}`,
+        timestamp: new Date().toISOString(),
+        actorId: adminId,
+        actorName: newAdminUser.name,
+        actorEmail: newAdminUser.email,
+        category: 'security',
+        action: 'First-Run Installation Complete',
+        severity: 'info',
+        ipAddress: '127.0.0.1 (Local)',
+        details: `Workspace successfully initialized and configured by primary Administrator ${newAdminUser.name} (${newAdminUser.email}).`,
+      }),
+    }
+    setSecurityAuditLogs([initialAuditLog])
+    localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify([initialAuditLog]))
+
+    localStorage.setItem('pulsework_installed', 'true')
+    setIsInstalled(true)
+  }
+
+  const resetToInstaller = () => {
+    localStorage.removeItem('pulsework_installed')
+    localStorage.removeItem(`${STORAGE_KEY}_users`)
+    localStorage.removeItem(`${STORAGE_KEY}_current_user_id`)
+    setUsers([])
+    setCurrentUserId('')
+    setIsInstalled(false)
   }
 
   const exportDataJson = (): string => {
@@ -3173,6 +3370,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetToDemoData,
         exportDataJson,
         importDataJson,
+        isInstalled,
+        completeFirstRunInstall,
+        resetToInstaller,
       }}
     >
       {children}

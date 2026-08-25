@@ -49,15 +49,22 @@ import { SpotlightSearchModal } from './components/layout/SpotlightSearchModal'
 import { ThemeCustomizerModal } from './components/settings/ThemeCustomizerModal'
 
 import { Deal, Invoice, Quotation } from './types'
+import { FirstRunInstaller } from './components/setup/FirstRunInstaller'
 
 export const App: React.FC = () => {
   const {
+    isInstalled,
     currentView,
     setCurrentView,
     isPrivacyModeActive,
     activeInteractiveProposalQuote,
     setActiveInteractiveProposalQuote,
   } = useApp()
+
+  // If first run installation has not been executed, display the installer
+  if (!isInstalled) {
+    return <FirstRunInstaller />
+  }
 
   // Quick Action Modal states
   const [quickModalType, setQuickModalType] = useState<

@@ -84,6 +84,27 @@ The script will automatically:
    ./start.sh --prod
    ```
 
+4. Open your browser at `http://localhost:5173/` (or `http://localhost:3000/`).
+
+---
+
+### 🌟 First-Run Setup Wizard & Administrator Creation
+
+On initial launch, PulseWork automatically loads the **First-Run Installation Wizard**:
+
+1. **System Preflight Diagnostics**: Verifies WebCrypto SHA-256 subsystem, LocalDB storage persistence, TOTP engine, and Peppol BIS 3.0 UBL parser.
+2. **Organization & Legal Entity Profile**: Enter company name, VAT / Enterprise number (e.g. `BE0849294901`), country, address, IBAN, and auto-generated Peppol Endpoint ID (`0208:0849294901`).
+3. **Primary Super Administrator**: Create the master Superuser / Owner account with full RBAC permissions:
+   - Full Name & Admin Email
+   - Master Password with live strength verification (10+ characters, numbers, uppercase/lowercase, symbols)
+   - Quick-Unlock PIN Code (4–6 digits for lock-screen overlay)
+4. **Security & Two-Factor Authentication (2FA)**:
+   - Optional instant TOTP 2FA setup with authenticator secret key & emergency backup recovery codes
+   - Session auto-lock timer preference (5 to 60 minutes)
+   - Screen-share privacy mode toggle
+5. **Workspace Customization**: Select starting theme preset (SandBox Crisp White, Dark Indigo, Royal Violet, Emerald Growth, Ocean Teal) and enable desired core modules (CRM, Invoices, Peppol, Projects, HR, Inventory, Helpdesk, AI Copilot).
+6. **Initialization & Launch**: Automatically provisions the database, seeds the cryptographic SHA-256 audit ledger, and seamlessly logs into the main dashboard.
+
 ---
 
 ### On Windows:

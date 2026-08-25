@@ -1589,3 +1589,47 @@ export interface WysiwygDocumentTemplate {
   createdAt: string
 }
 
+// ==========================================
+// 25. FIRST-RUN INSTALLER & SYSTEM PROVISIONING
+// ==========================================
+export interface FirstRunAdminConfig {
+  name: string
+  email: string
+  password?: string
+  passwordHash?: string
+  pinCode: string
+  department?: string
+  phone?: string
+  twoFactorEnabled: boolean
+  twoFactorSecret?: string
+  backupCodes?: string[]
+}
+
+export interface FirstRunCompanyConfig {
+  name: string
+  legalName: string
+  vatNumber: string
+  peppolScheme: string
+  peppolEndpoint: string
+  email: string
+  phone: string
+  website: string
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  countryCode: string
+  iban: string
+  bic: string
+  defaultCurrency: string
+  defaultVatRate: number
+}
+
+export interface FirstRunInstallPayload {
+  admin: FirstRunAdminConfig
+  company: FirstRunCompanyConfig
+  securityPolicy?: Partial<SecurityPolicy>
+  moduleSettings?: Partial<ModuleSettings>
+  themePresetId?: string
+}
+

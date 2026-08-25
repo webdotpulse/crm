@@ -47,10 +47,15 @@ echo ===========================================================================
 echo   PulseWork Installation Complete!
 echo ==============================================================================
 echo.
+echo Launch PulseWork in your browser to complete the First-Run Setup Wizard
+echo and provision your primary Administrator account.
+echo.
 echo To start development server:
 echo   npm run dev
+echo   Access at: http://localhost:5173/
 echo.
 echo To start production server:
 echo   npm run preview
+echo   Access at: http://localhost:3000/
 echo.
 pause

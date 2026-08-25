@@ -384,48 +384,12 @@ export const initialWysiwygTemplates: WysiwygDocumentTemplate[] = [
 ]
 
 // ============================================================================
-// 4. SECURITY, RBAC & USER ACCOUNTS
+// 4. SECURITY, RBAC & USER ACCOUNTS (EMPTY FOR FIRST-RUN INITIALIZATION)
 // ============================================================================
 
-export const initialUsers: UserAccount[] = [
-  {
-    id: 'usr-admin-1',
-    name: 'Administrator',
-    email: 'admin@pulsework.local',
-    role: 'admin',
-    roleLabel: 'System Administrator',
-    twoFactorEnabled: false,
-    pinCode: '1234',
-    status: 'active',
-    lastLogin: new Date().toISOString(),
-    customPermissions: [
-      'manage_crm',
-      'manage_invoices',
-      'manage_peppol',
-      'export_financials',
-      'manage_users',
-      'manage_api_keys',
-      'view_audit_logs',
-      'manage_settings',
-    ],
-  },
-]
+export const initialUsers: UserAccount[] = []
 
-export const initialStaffCapacities: StaffMemberCapacity[] = [
-  {
-    id: 'cap-admin-1',
-    name: 'Administrator',
-    email: 'admin@pulsework.local',
-    role: 'Administrator',
-    department: 'Management',
-    weeklyContractHours: 38,
-    hourlyCostRate: 0,
-    hourlyBillRate: 110,
-    totalStatutoryLeaveDays: 20,
-    usedLeaveDays: 0,
-    weeklyAllocations: [],
-  },
-]
+export const initialStaffCapacities: StaffMemberCapacity[] = []
 
 export const initialSecurityPolicy: SecurityPolicy = {
   passwordMinLength: 10,
@@ -441,37 +405,9 @@ export const initialSecurityPolicy: SecurityPolicy = {
   auditLoggingRetentionDays: 365,
 }
 
-export const initialActiveSessions: ActiveSession[] = [
-  {
-    id: `sess-${Date.now()}`,
-    userId: 'usr-admin-1',
-    userName: 'Administrator',
-    device: 'Desktop Workstation',
-    browser: 'Chrome / Safari / Firefox',
-    os: 'Linux / macOS / Windows',
-    ipAddress: '127.0.0.1 (Local)',
-    location: 'Brussels, Belgium',
-    isCurrent: true,
-    createdAt: new Date().toISOString(),
-    lastActive: new Date().toISOString(),
-  },
-]
+export const initialActiveSessions: ActiveSession[] = []
 
-export const initialSecurityAuditLogs: SecurityAuditLog[] = [
-  {
-    id: `sec-log-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    actorId: 'usr-admin-1',
-    actorName: 'Administrator',
-    actorEmail: 'admin@pulsework.local',
-    action: 'System Initialized',
-    category: 'security',
-    severity: 'info',
-    ipAddress: '127.0.0.1',
-    details: 'Clean CRM system started with enterprise security policy and audit logging.',
-    integrityHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-  },
-]
+export const initialSecurityAuditLogs: SecurityAuditLog[] = []
 
 // ============================================================================
 // 5. INTEGRATIONS HUB (CLEAN READY-TO-CONNECT STATE)

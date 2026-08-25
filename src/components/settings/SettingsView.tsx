@@ -25,6 +25,7 @@ import {
   Type,
   Maximize2,
   Code2,
+  Sparkles,
 } from 'lucide-react'
 import { CompanyProfile, LegalEntity, VatRate, EmailTemplate, DocumentTemplate, FontFamilyOption, BorderRadiusOption, DensityOption } from '../../types'
 import { useApp } from '../../context/AppContext'
@@ -50,6 +51,8 @@ export const SettingsView: React.FC = () => {
     resetToDemoData,
     exportDataJson,
     importDataJson,
+    isInstalled,
+    resetToInstaller,
     customTheme,
     updateCustomTheme,
     setThemePreset,
@@ -1171,7 +1174,7 @@ export const SettingsView: React.FC = () => {
           </div>
 
           {/* Import Box */}
-          <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem' }}>
+          <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
             <label className="form-label">Restore from JSON Backup</label>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <input
@@ -1186,6 +1189,30 @@ export const SettingsView: React.FC = () => {
                 <span>Import</span>
               </button>
             </div>
+          </div>
+
+          {/* First-Run Setup & Provisioning Tools */}
+          <div style={{ borderTop: '1px solid var(--sb-border)', paddingTop: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Sparkles size={16} color="var(--sb-primary)" />
+              <h4 style={{ fontSize: '0.95rem', margin: 0 }}>System Provisioning & First-Run Wizard</h4>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--sb-body)', marginBottom: '0.85rem' }}>
+              System status: <strong style={{ color: isInstalled ? 'var(--sb-success)' : 'var(--sb-danger)' }}>{isInstalled ? '● Provisioned & Installed' : '○ Uninitialized'}</strong>.
+              You can re-launch the First-Run Setup Wizard to re-provision the workspace or configure a new administrator.
+            </p>
+            <button
+              onClick={() => {
+                if (confirm('Re-running the setup wizard will reset administrator session and prompt the first-run installer on next page load. Proceed?')) {
+                  resetToInstaller()
+                  showToast('✓ Redirecting to First-Run Setup Wizard...')
+                }
+              }}
+              className="btn-sandbox btn-sandbox-secondary"
+            >
+              <RotateCcw size={14} />
+              <span>Re-run First-Run Installer Wizard</span>
+            </button>
           </div>
         </div>
       )}

@@ -663,3 +663,32 @@ export function computeSecurityPostureScore(
 
   return { score: totalScore, grade, checks }
 }
+
+export const ALL_ADMIN_PERMISSIONS: UserAccount['customPermissions'] = [
+  'manage_crm',
+  'manage_invoices',
+  'manage_peppol',
+  'export_financials',
+  'manage_users',
+  'manage_api_keys',
+  'view_audit_logs',
+  'manage_settings',
+]
+
+export async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(password)
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+    try {
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+    } catch {
+      // Fallback
+    }
+  }
+  const sha1Res = sha1(data)
+  return Array.from(sha1Res)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
