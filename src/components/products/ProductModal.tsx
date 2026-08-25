@@ -99,7 +99,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             {/* SKU & Name */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">SKU / Item Code *</label>
                 <input
@@ -127,7 +127,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             </div>
 
             {/* Category, Type & Unit */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Category</label>
                 <select
@@ -174,7 +174,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             </div>
 
             {/* Pricing & VAT */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Cost / Buy Price (€)</label>
                 <input
@@ -220,13 +220,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             {/* Inventory Stock & Low-Stock Alerts */}
             {formData.type !== 'service' && (
               <div
-                className="card-sandbox"
+                className="card-sandbox modal-form-grid"
                 style={{
                   padding: '1rem',
                   backgroundColor: 'var(--sb-bg)',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '1rem',
                 }}
               >
                 <div>

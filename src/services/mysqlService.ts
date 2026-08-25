@@ -11,6 +11,16 @@ export interface ConnectionTestResult {
   error?: string
 }
 
+export interface BootstrapResult {
+  configured: boolean
+  installed: boolean
+  engine?: string
+  data?: any
+  dbConfig?: Partial<MySqlDatabaseConfig>
+  message?: string
+  error?: string
+}
+
 export async function testMySqlConnection(
   config: Partial<MySqlDatabaseConfig>
 ): Promise<ConnectionTestResult> {
@@ -39,7 +49,7 @@ export async function testMySqlConnection(
     if (result.success) {
       return {
         success: true,
-        message: result.message || 'Connected to Combell MySQL server successfully.',
+        message: result.message || 'Connected to MySQL server successfully.',
         version: result.server_version || 'MySQL 8.0',
         latencyMs: result.latency_ms || 15,
         tablesCount: result.tables_count || 0,
@@ -47,7 +57,7 @@ export async function testMySqlConnection(
     } else {
       return {
         success: false,
-        message: result.message || result.error || 'Failed to connect to MySQL database.',
+        message: result.message || result.error || 'Failed to connect to database.',
         error: result.error,
       }
     }
@@ -55,14 +65,12 @@ export async function testMySqlConnection(
     if (err.name === 'AbortError') {
       return {
         success: false,
-        message: 'Connection timed out. Please verify host, port, and firewall rules on Combell.',
+        message: 'Connection timed out. Please verify host, port, and database firewall rules.',
       }
     }
-    // If running in pure Vite dev mode without a PHP server running locally
     return {
       success: false,
-      message:
-        'Could not reach /api/db.php bridge. On Combell Web Hosting, this connects natively to your MySQL cluster.',
+      message: 'Could not reach database bridge API (/api/db.php).',
       error: err.message,
     }
   }
@@ -98,29 +106,20 @@ export async function initializeMySqlSchema(
     return {
       success: Boolean(result.success),
       message: result.message || 'Database schema initialized.',
-      tablesCreated: result.tables_created || 14,
+      tablesCreated: result.tables_created || 30,
     }
   } catch (err: any) {
     return {
       success: false,
-      message: err.message || 'Failed to initialize MySQL schema.',
+      message: err.message || 'Failed to initialize database schema.',
     }
   }
-}
-
-export interface BootstrapResult {
-  configured: boolean
-  installed: boolean
-  data?: any
-  dbConfig?: Partial<MySqlDatabaseConfig>
-  message?: string
-  error?: string
 }
 
 export async function checkServerBootstrap(): Promise<BootstrapResult> {
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 4000)
+    const timeoutId = setTimeout(() => controller.abort(), 6000)
 
     const response = await fetch(`${API_BASE}?action=bootstrap`, {
       signal: controller.signal,
@@ -135,6 +134,7 @@ export async function checkServerBootstrap(): Promise<BootstrapResult> {
     return {
       configured: Boolean(result.configured),
       installed: Boolean(result.installed),
+      engine: result.engine,
       data: result.data,
       dbConfig: result.dbConfig,
       message: result.message,
@@ -164,7 +164,7 @@ export async function checkMySqlStatus(): Promise<{
       installed: Boolean(result.installed),
       host: result.host,
       database: result.database,
-      tablesCount: result.tables_count,
+      tablesCount: result.users_count || 0,
       message: result.message,
     }
   } catch (err: any) {
@@ -188,7 +188,7 @@ export async function syncDataToMySql(data: any): Promise<{ success: boolean; me
     const result = await response.json()
     return {
       success: Boolean(result.success),
-      message: result.message || 'Data synchronized with MySQL.',
+      message: result.message || 'Data synchronized with database.',
     }
   } catch (err: any) {
     return {
@@ -197,3 +197,6 @@ export async function syncDataToMySql(data: any): Promise<{ success: boolean; me
     }
   }
 }
+
+export const saveDataToDatabase = syncDataToMySql
+export const fetchDatabaseState = checkServerBootstrap

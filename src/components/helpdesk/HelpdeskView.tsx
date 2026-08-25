@@ -521,128 +521,111 @@ export const HelpdeskView: React.FC = () => {
 
       {/* New Ticket Modal */}
       {isCreateModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-          }}
-        >
-          <div
-            className="card-sandbox"
-            style={{
-              width: '540px',
-              maxWidth: '100%',
-              backgroundColor: 'var(--sb-surface)',
-              borderRadius: 'var(--sb-radius-lg)',
-              padding: '1.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--sb-heading)', margin: 0 }}>
-                Create Support Ticket
-              </h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="btn-sandbox btn-sandbox-ghost" style={{ padding: '0.3rem' }}>
-                <X size={18} />
+        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--sb-primary-soft)',
+                    color: 'var(--sb-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Headphones size={20} />
+                </div>
+                <div>
+                  <h3>Create Support Ticket</h3>
+                  <p>Customer Service, SLA Tracking & Technical Support</p>
+                </div>
+              </div>
+              <button onClick={() => setIsCreateModalOpen(false)} className="btn-sandbox btn-icon btn-sandbox-secondary" style={{ borderRadius: '50%' }}>
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Client / Company
-                </label>
-                <select
-                  value={newCompanyId}
-                  onChange={(e) => setNewCompanyId(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.vatNumber})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Ticket Subject / Issue Summary
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Peppol validation error on invoice #BE-INV-001"
-                  value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    Priority
-                  </label>
+                  <label className="form-label">Client / Company *</label>
                   <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
+                    value={newCompanyId}
+                    onChange={(e) => setNewCompanyId(e.target.value)}
+                    className="form-select-sandbox"
                   >
-                    <option value="urgent">🔴 Urgent (4h SLA)</option>
-                    <option value="high">🟠 High (8h SLA)</option>
-                    <option value="medium">🔵 Medium (24h SLA)</option>
-                    <option value="low">🟢 Low (48h SLA)</option>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.vatNumber})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    Category
-                  </label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
-                  >
-                    <option value="billing">Billing & Invoicing</option>
-                    <option value="technical">Technical Support</option>
-                    <option value="sla_breach">SLA & Contract</option>
-                    <option value="feature_request">Feature Request</option>
-                    <option value="general">General Inquiry</option>
-                  </select>
+                  <label className="form-label">Ticket Subject / Issue Summary *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Peppol validation error on invoice #BE-INV-001"
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
+                    className="form-input-sandbox"
+                  />
+                </div>
+
+                <div className="modal-form-grid">
+                  <div>
+                    <label className="form-label">Priority</label>
+                    <select
+                      value={newPriority}
+                      onChange={(e) => setNewPriority(e.target.value as any)}
+                      className="form-select-sandbox"
+                    >
+                      <option value="urgent">🔴 Urgent (4h SLA)</option>
+                      <option value="high">🟠 High (8h SLA)</option>
+                      <option value="medium">🔵 Medium (24h SLA)</option>
+                      <option value="low">🟢 Low (48h SLA)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Category</label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value as any)}
+                      className="form-select-sandbox"
+                    >
+                      <option value="billing">Billing & Invoicing</option>
+                      <option value="technical">Technical Support</option>
+                      <option value="sla_breach">SLA & Contract</option>
+                      <option value="feature_request">Feature Request</option>
+                      <option value="general">General Inquiry</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Initial Message / Client Issue Details</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Provide full description of the reported issue..."
+                    value={newInitialMessage}
+                    onChange={(e) => setNewInitialMessage(e.target.value)}
+                    className="form-input-sandbox"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Initial Message / Client Issue Details
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Provide full description of the reported issue..."
-                  value={newInitialMessage}
-                  onChange={(e) => setNewInitialMessage(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem', fontSize: '0.84rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="btn-sandbox btn-sandbox-outline"
+                  className="btn-sandbox btn-sandbox-secondary"
                 >
                   Cancel
                 </button>

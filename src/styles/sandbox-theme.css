@@ -391,30 +391,40 @@ a:hover {
   border-bottom: none;
 }
 
-/* Modals */
-.modal-overlay {
+/* Modals System */
+.modal-overlay,
+.modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(4px);
+  background-color: rgba(11, 17, 32, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
-  padding: 1rem;
-  animation: fadeIn 0.2s ease-out;
+  z-index: 9999;
+  padding: 1.25rem;
+  animation: modalFadeIn 0.22s ease-out;
+  overflow-y: auto;
 }
 
 .modal-content {
   background: var(--sb-surface);
   border-radius: var(--sb-radius-lg);
-  box-shadow: var(--sb-shadow-lg);
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--sb-border);
   border: 1px solid var(--sb-border);
   width: 100%;
-  max-width: 650px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 640px;
+  max-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.modal-content-sm {
+  max-width: 440px;
 }
 
 .modal-content-lg {
@@ -422,16 +432,89 @@ a:hover {
 }
 
 .modal-content-xl {
-  max-width: 1100px;
+  max-width: 1150px;
 }
 
-@keyframes fadeIn {
+.modal-content-full {
+  max-width: 1380px;
+  height: calc(100vh - 2.5rem);
+}
+
+.modal-header {
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--sb-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--sb-surface);
+  flex-shrink: 0;
+}
+
+.modal-header h2,
+.modal-header h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--sb-heading);
+  margin: 0;
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-header p {
+  font-size: 0.8rem;
+  color: var(--sb-body);
+  margin-top: 0.2rem;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--sb-border);
+  background: var(--sb-bg);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.modal-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.modal-form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@keyframes modalFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -1011,5 +1094,162 @@ a:hover {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* ==========================================================================
+   Mobile & Responsive Layout System
+   ========================================================================== */
+
+/* Responsive table wrapper with smooth horizontal scrolling */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile Sidebar Drawer & Overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 17, 32, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.mobile-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--sb-radius-sm);
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  color: var(--sb-heading);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mobile-nav-toggle:hover {
+  background: var(--sb-bg-alt);
+}
+
+/* Tablet Breakpoint (< 1024px) */
+@media (max-width: 1024px) {
+  .mobile-nav-toggle {
+    display: flex !important;
+  }
+
+  .sidebar-sandbox {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1010;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--sb-shadow-lg);
+    width: 280px !important;
+  }
+
+  .sidebar-sandbox.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .search-container-sandbox {
+    max-width: 220px !important;
+  }
+}
+
+/* Smartphone Breakpoint (< 768px) */
+@media (max-width: 768px) {
+  .modal-overlay,
+  .modal-backdrop {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+
+  .modal-content,
+  .modal-content-lg,
+  .modal-content-xl {
+    max-width: 100% !important;
+    max-height: 94vh !important;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .modal-form-grid,
+  .modal-form-grid-3,
+  .modal-form-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-header {
+    padding: 1rem 1.15rem;
+  }
+
+  .modal-header h2,
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .modal-body {
+    padding: 1.1rem;
+    gap: 1rem;
+  }
+
+  .modal-footer {
+    padding: 0.85rem 1.1rem;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .navbar-sandbox {
+    padding: 0.5rem 0.75rem !important;
+    gap: 0.4rem;
+  }
+
+  .search-container-sandbox {
+    max-width: 130px !important;
+  }
+
+  .search-kbd-badge {
+    display: none !important;
+  }
+
+  .page-container-responsive {
+    padding: 1rem !important;
+  }
+
+  .page-header-responsive {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.85rem !important;
+  }
+
+  .grid-responsive-2,
+  .grid-responsive-3,
+  .grid-responsive-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Small Smartphone (< 480px) */
+@media (max-width: 480px) {
+  .search-container-sandbox {
+    display: none !important;
+  }
+
+  .navbar-sandbox {
+    padding: 0.45rem 0.6rem !important;
+  }
+}
+
 
 

@@ -109,7 +109,7 @@ export const IndividualModal: React.FC<IndividualModalProps> = ({ individual, on
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Name Fields */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">First Name *</label>
                 <input
@@ -135,7 +135,7 @@ export const IndividualModal: React.FC<IndividualModalProps> = ({ individual, on
             </div>
 
             {/* Email & Phone */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">Email Address *</label>
                 <div style={{ position: 'relative' }}>
@@ -168,7 +168,7 @@ export const IndividualModal: React.FC<IndividualModalProps> = ({ individual, on
             </div>
 
             {/* National ID & Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">National ID / Personal Tax Code</label>
                 <input
@@ -195,7 +195,7 @@ export const IndividualModal: React.FC<IndividualModalProps> = ({ individual, on
             </div>
 
             {/* Address */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Street Address</label>
                 <input

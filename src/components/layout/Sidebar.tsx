@@ -30,6 +30,7 @@ import {
   Boxes,
   LayoutTemplate,
   Sliders,
+  X,
 } from 'lucide-react'
 import { useApp, AppView } from '../../context/AppContext'
 
@@ -73,6 +74,8 @@ export const Sidebar: React.FC = () => {
     warehouseLocations,
     users,
     isModuleEnabled,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
   } = useApp()
 
   const navSections: NavSection[] = [
@@ -328,36 +331,48 @@ export const Sidebar: React.FC = () => {
       : customTheme.sidebarBgMode === 'glass'
       ? 'sidebar-style-glass'
       : ''
-  }`
+  } ${isMobileMenuOpen ? 'mobile-open' : ''}`
 
   return (
     <aside className={sidebarClass}>
       {/* Brand Header */}
       <div style={{ padding: '1.25rem 1.25rem', borderBottom: '1px solid var(--sb-sidebar-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              backgroundColor: 'var(--sb-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: 'var(--sb-shadow-sm)',
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                backgroundColor: 'var(--sb-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                boxShadow: 'var(--sb-shadow-sm)',
+              }}
+            >
+              <ShieldCheck size={22} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '1.12rem', color: 'var(--sb-heading)', letterSpacing: '-0.02em' }}>
+                {customTheme.customBrandName || 'GridCRM'}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Enterprise CRM Suite
+              </div>
+            </div>
+          </div>
+
+          {/* Close button on mobile */}
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="btn-sandbox btn-sandbox-ghost mobile-nav-toggle"
+            style={{ padding: '0.35rem', border: 'none' }}
+            title="Close Menu"
           >
-            <ShieldCheck size={22} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.12rem', color: 'var(--sb-heading)', letterSpacing: '-0.02em' }}>
-              {customTheme.customBrandName || 'GridCRM'}
-            </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--sb-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Enterprise CRM Suite
-            </div>
-          </div>
+            <X size={18} />
+          </button>
         </div>
       </div>
 
@@ -382,7 +397,10 @@ export const Sidebar: React.FC = () => {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setCurrentView(item.id)}
+                      onClick={() => {
+                        setCurrentView(item.id)
+                        setIsMobileMenuOpen(false)
+                      }}
                       className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>

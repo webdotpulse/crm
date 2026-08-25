@@ -568,121 +568,104 @@ export const PulseHRView: React.FC = () => {
 
       {/* Leave Request Modal */}
       {isLeaveModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-          }}
-        >
-          <div
-            className="card-sandbox"
-            style={{
-              width: '480px',
-              maxWidth: '100%',
-              backgroundColor: 'var(--sb-surface)',
-              borderRadius: 'var(--sb-radius-lg)',
-              padding: '1.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--sb-heading)', margin: 0 }}>
-                Submit Time-Off Request
-              </h3>
-              <button onClick={() => setIsLeaveModalOpen(false)} className="btn-sandbox btn-sandbox-ghost" style={{ padding: '0.3rem' }}>
-                <X size={18} />
+        <div className="modal-overlay" onClick={() => setIsLeaveModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--sb-primary-soft)',
+                    color: 'var(--sb-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3>Submit Time-Off Request</h3>
+                  <p>Annual Leave, Sick Leave & Capacity Scheduling</p>
+                </div>
+              </div>
+              <button onClick={() => setIsLeaveModalOpen(false)} className="btn-sandbox btn-icon btn-sandbox-secondary" style={{ borderRadius: '50%' }}>
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateLeaveRequest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Team Member
-                </label>
-                <select
-                  value={selectedStaffId}
-                  onChange={(e) => setSelectedStaffId(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                >
-                  {staffCapacities.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.role})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Leave Type
-                </label>
-                <select
-                  value={leaveType}
-                  onChange={(e) => setLeaveType(e.target.value as any)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                >
-                  <option value="vacation">Statutory Annual Leave (Vakantie)</option>
-                  <option value="sick">Sick Leave (Ziekte)</option>
-                  <option value="training">Training & Certification</option>
-                  <option value="parental">Parental Leave</option>
-                  <option value="special">Special Leave / Force Majeure</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <form onSubmit={handleCreateLeaveRequest} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
-                  />
+                  <label className="form-label">Team Member *</label>
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                    className="form-select-sandbox"
+                  >
+                    {staffCapacities.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.role})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
+                  <label className="form-label">Leave Type *</label>
+                  <select
+                    value={leaveType}
+                    onChange={(e) => setLeaveType(e.target.value as any)}
+                    className="form-select-sandbox"
+                  >
+                    <option value="vacation">Statutory Annual Leave (Vakantie)</option>
+                    <option value="sick">Sick Leave (Ziekte)</option>
+                    <option value="training">Training & Certification</option>
+                    <option value="parental">Parental Leave</option>
+                    <option value="special">Special Leave / Force Majeure</option>
+                  </select>
+                </div>
+
+                <div className="modal-form-grid">
+                  <div>
+                    <label className="form-label">Start Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="form-input-sandbox"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">End Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="form-input-sandbox"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Reason / Handover Notes (Optional)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Summer holiday in France, emergency contact available."
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    className="form-input-sandbox"
                   />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Reason / Handover Notes (Optional)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="e.g. Summer holiday in France, emergency contact available."
-                  value={leaveReason}
-                  onChange={(e) => setLeaveReason(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setIsLeaveModalOpen(false)} className="btn-sandbox btn-sandbox-outline">
+              <div className="modal-footer">
+                <button type="button" onClick={() => setIsLeaveModalOpen(false)} className="btn-sandbox btn-sandbox-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn-sandbox btn-sandbox-primary" style={{ fontWeight: 800 }}>

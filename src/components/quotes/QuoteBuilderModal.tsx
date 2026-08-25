@@ -297,10 +297,10 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="modal-body">
             {/* Client & Title Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Client Type</label>
                 <select
@@ -374,7 +374,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
 
             {/* Line Items Table */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <label className="form-label" style={{ margin: 0 }}>Quotation Line Items</label>
                 <button type="button" onClick={addItem} className="btn-sandbox btn-sandbox-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
                   <Plus size={14} />
@@ -382,11 +382,11 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
                 </button>
               </div>
 
-              <div style={{ border: '1px solid var(--sb-border)', borderRadius: 'var(--sb-radius)', overflow: 'hidden' }}>
-                <table className="table-sandbox">
+              <div className="table-responsive-wrapper" style={{ border: '1px solid var(--sb-border)', borderRadius: 'var(--sb-radius)', overflow: 'hidden' }}>
+                <table className="table-sandbox" style={{ minWidth: '600px' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '45%' }}>Description</th>
+                      <th style={{ width: '40%' }}>Description</th>
                       <th style={{ width: '12%' }}>Qty</th>
                       <th style={{ width: '12%' }}>Unit</th>
                       <th style={{ width: '15%' }}>Unit Price (€)</th>
@@ -481,7 +481,7 @@ export const QuoteBuilderModal: React.FC<QuoteBuilderModalProps> = ({
             </div>
 
             {/* Commercial Terms & Totals Summary */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">Payment Terms & Milestones</label>
                 <textarea

@@ -45,21 +45,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({ contact, defaultComp
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid var(--sb-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      <div className="modal-content modal-content-sm" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '8px',
                 backgroundColor: 'var(--sb-primary-soft)',
                 color: 'var(--sb-primary)',
@@ -70,104 +62,109 @@ export const ContactModal: React.FC<ContactModalProps> = ({ contact, defaultComp
             >
               <User size={20} />
             </div>
-            <h3 style={{ fontSize: '1.2rem' }}>{contact ? 'Edit Contact' : 'Add New Contact'}</h3>
+            <div>
+              <h3>{contact ? 'Edit Contact' : 'Add New Contact'}</h3>
+              <p>Employer / Employee at Client Organization</p>
+            </div>
           </div>
           <button onClick={onClose} className="btn-sandbox btn-icon btn-sandbox-secondary" style={{ borderRadius: '50%' }}>
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label">Associated Company *</label>
-            <select
-              required
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              className="form-select-sandbox"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.city || c.country})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="modal-body">
             <div>
-              <label className="form-label">First Name *</label>
+              <label className="form-label">Associated Company *</label>
+              <select
+                required
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="form-select-sandbox"
+              >
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.city || c.country})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="modal-form-grid">
+              <div>
+                <label className="form-label">First Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Marc"
+                  className="form-input-sandbox"
+                />
+              </div>
+              <div>
+                <label className="form-label">Last Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Vandamme"
+                  className="form-input-sandbox"
+                />
+              </div>
+            </div>
+
+            <div className="modal-form-grid">
+              <div>
+                <label className="form-label">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="m.vandamme@company.com"
+                  className="form-input-sandbox"
+                />
+              </div>
+              <div>
+                <label className="form-label">Phone Number</label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+32 478 00 11 22"
+                  className="form-input-sandbox"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Job Title / Role</label>
               <input
                 type="text"
-                required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Marc"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                placeholder="e.g. Chief Operating Officer"
                 className="form-input-sandbox"
               />
             </div>
-            <div>
-              <label className="form-label">Last Name *</label>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <input
-                type="text"
-                required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Vandamme"
-                className="form-input-sandbox"
+                type="checkbox"
+                id="isPrimary"
+                checked={isPrimary}
+                onChange={(e) => setIsPrimary(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--sb-primary)' }}
               />
+              <label htmlFor="isPrimary" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--sb-heading)', cursor: 'pointer' }}>
+                Primary Decision Maker / Main Point of Contact
+              </label>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label className="form-label">Email Address *</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="m.vandamme@company.com"
-                className="form-input-sandbox"
-              />
-            </div>
-            <div>
-              <label className="form-label">Phone Number</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+32 478 00 11 22"
-                className="form-input-sandbox"
-              />
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label">Job Title / Role</label>
-            <input
-              type="text"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="e.g. Chief Operating Officer"
-              className="form-input-sandbox"
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <input
-              type="checkbox"
-              id="isPrimary"
-              checked={isPrimary}
-              onChange={(e) => setIsPrimary(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: 'var(--sb-primary)' }}
-            />
-            <label htmlFor="isPrimary" style={{ fontSize: '0.85rem', color: 'var(--sb-heading)', cursor: 'pointer' }}>
-              Primary contact person for billing and correspondence
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <div className="modal-footer">
             <button type="button" onClick={onClose} className="btn-sandbox btn-sandbox-secondary">
               Cancel
             </button>

@@ -330,10 +330,10 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Issuing Entity & Client */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.5fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Issuing Legal Entity *</label>
                 <select
@@ -398,7 +398,7 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
             </div>
 
             {/* Dates & Reference */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '1rem' }}>
+            <div className="modal-form-grid-3">
               <div>
                 <label className="form-label">Issue Date *</label>
                 <input
@@ -433,7 +433,7 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
 
             {/* Line Items Table */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <label className="form-label" style={{ margin: 0 }}>Invoice Line Items</label>
                 <button type="button" onClick={addItem} className="btn-sandbox btn-sandbox-secondary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
                   <Plus size={14} />
@@ -441,11 +441,11 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
                 </button>
               </div>
 
-              <div style={{ border: '1px solid var(--sb-border)', borderRadius: 'var(--sb-radius)', overflow: 'hidden' }}>
-                <table className="table-sandbox">
+              <div className="table-responsive-wrapper" style={{ border: '1px solid var(--sb-border)', borderRadius: 'var(--sb-radius)', overflow: 'hidden' }}>
+                <table className="table-sandbox" style={{ minWidth: '600px' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '45%' }}>Description</th>
+                      <th style={{ width: '40%' }}>Description</th>
                       <th style={{ width: '12%' }}>Qty</th>
                       <th style={{ width: '12%' }}>Unit</th>
                       <th style={{ width: '15%' }}>Unit Price (€)</th>
@@ -486,11 +486,11 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
                             className="form-select-sandbox"
                             style={{ padding: '0.4rem 0.5rem' }}
                           >
-                            <option value="service">service</option>
                             <option value="hours">hours</option>
                             <option value="pcs">pcs</option>
                             <option value="days">days</option>
                             <option value="licenses">licenses</option>
+                            <option value="months">months</option>
                             <option value="package">package</option>
                           </select>
                         </td>
@@ -540,7 +540,7 @@ export const InvoiceEditorModal: React.FC<InvoiceEditorModalProps> = ({
             </div>
 
             {/* Notes & Summary */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
+            <div className="modal-form-grid">
               <div>
                 <label className="form-label">Payment Instructions & Notes</label>
                 <textarea

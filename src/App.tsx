@@ -64,6 +64,8 @@ export const App: React.FC = () => {
     isPrivacyModeActive,
     activeInteractiveProposalQuote,
     setActiveInteractiveProposalQuote,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
   } = useApp()
 
   // If server bootstrap check is in progress on a new computer
@@ -152,8 +154,16 @@ export const App: React.FC = () => {
   return (
     <div
       data-privacy={isPrivacyModeActive ? 'true' : undefined}
-      style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)' }}
+      style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)', overflowX: 'hidden' }}
     >
+      {/* Mobile Drawer Overlay Backdrop */}
+      {isMobileMenuOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <Sidebar />
 

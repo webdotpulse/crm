@@ -1446,7 +1446,7 @@ export const SettingsView: React.FC = () => {
 
             <form onSubmit={handleSaveEntity}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid">
                   <div>
                     <label className="form-label">Trading / Display Name *</label>
                     <input
@@ -1471,7 +1471,7 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid-3">
                   <div>
                     <label className="form-label">VAT Identifier *</label>
                     <input
@@ -1509,7 +1509,7 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid-3">
                   <div>
                     <label className="form-label">SEPA IBAN *</label>
                     <input
@@ -1544,7 +1544,7 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid-4">
                   <div>
                     <label className="form-label">Address</label>
                     <input

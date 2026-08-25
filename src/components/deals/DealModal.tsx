@@ -54,20 +54,12 @@ export const DealModal: React.FC<DealModalProps> = ({ deal, defaultCompanyId, on
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content modal-content-lg" onClick={(e) => e.stopPropagation()}>
-        <div
-          style={{
-            padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid var(--sb-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '8px',
                 backgroundColor: 'var(--sb-purple-soft)',
                 color: 'var(--sb-purple)',
@@ -78,139 +70,144 @@ export const DealModal: React.FC<DealModalProps> = ({ deal, defaultCompanyId, on
             >
               <TrendingUp size={20} />
             </div>
-            <h3 style={{ fontSize: '1.2rem' }}>{deal ? 'Edit Deal' : 'New Sales Opportunity'}</h3>
+            <div>
+              <h3>{deal ? 'Edit Deal' : 'New Sales Opportunity'}</h3>
+              <p>Pipeline Stage, Value, Probability & Forecast</p>
+            </div>
           </div>
           <button onClick={onClose} className="btn-sandbox btn-icon btn-sandbox-secondary" style={{ borderRadius: '50%' }}>
             <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label">Deal / Opportunity Title *</label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Telematics Fleet Management Platform"
-              className="form-input-sandbox"
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div className="modal-body">
             <div>
-              <label className="form-label">Client Company *</label>
-              <select
-                required
-                value={companyId}
-                onChange={(e) => {
-                  setCompanyId(e.target.value)
-                  setContactId('')
-                }}
-                className="form-select-sandbox"
-              >
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="form-label">Decision Maker Contact</label>
-              <select
-                value={contactId}
-                onChange={(e) => setContactId(e.target.value)}
-                className="form-select-sandbox"
-              >
-                <option value="">-- Select Contact --</option>
-                {companyContacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.firstName} {c.lastName} ({c.role})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <div>
-              <label className="form-label">Expected Value (€) *</label>
+              <label className="form-label">Deal / Opportunity Title *</label>
               <input
-                type="number"
+                type="text"
                 required
-                min="0"
-                step="100"
-                value={value}
-                onChange={(e) => setValue(Number(e.target.value))}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Telematics Fleet Management Platform"
+                className="form-input-sandbox"
+              />
+            </div>
+
+            <div className="modal-form-grid">
+              <div>
+                <label className="form-label">Client Company *</label>
+                <select
+                  required
+                  value={companyId}
+                  onChange={(e) => {
+                    setCompanyId(e.target.value)
+                    setContactId('')
+                  }}
+                  className="form-select-sandbox"
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Decision Maker Contact</label>
+                <select
+                  value={contactId}
+                  onChange={(e) => setContactId(e.target.value)}
+                  className="form-select-sandbox"
+                >
+                  <option value="">-- Select Contact --</option>
+                  {companyContacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.firstName} {c.lastName} ({c.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-form-grid-3">
+              <div>
+                <label className="form-label">Expected Value (€) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="100"
+                  value={value}
+                  onChange={(e) => setValue(Number(e.target.value))}
+                  className="form-input-sandbox"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Pipeline Stage</label>
+                <select
+                  value={stage}
+                  onChange={(e) => {
+                    const s = e.target.value as DealStage
+                    setStage(s)
+                    if (s === 'lead') setProbability(20)
+                    if (s === 'qualified') setProbability(40)
+                    if (s === 'meeting') setProbability(50)
+                    if (s === 'proposal') setProbability(65)
+                    if (s === 'negotiation') setProbability(85)
+                    if (s === 'won') setProbability(100)
+                    if (s === 'lost') setProbability(0)
+                  }}
+                  className="form-select-sandbox"
+                >
+                  <option value="lead">Lead In</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="meeting">Meeting Scheduled</option>
+                  <option value="proposal">Proposal Sent</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="won">Closed Won 🎉</option>
+                  <option value="lost">Closed Lost</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Win Probability (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={probability}
+                  onChange={(e) => setProbability(Number(e.target.value))}
+                  className="form-input-sandbox"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Expected Closing Date</label>
+              <input
+                type="date"
+                value={expectedCloseDate}
+                onChange={(e) => setExpectedCloseDate(e.target.value)}
                 className="form-input-sandbox"
               />
             </div>
 
             <div>
-              <label className="form-label">Pipeline Stage</label>
-              <select
-                value={stage}
-                onChange={(e) => {
-                  const s = e.target.value as DealStage
-                  setStage(s)
-                  if (s === 'lead') setProbability(20)
-                  if (s === 'qualified') setProbability(40)
-                  if (s === 'meeting') setProbability(50)
-                  if (s === 'proposal') setProbability(65)
-                  if (s === 'negotiation') setProbability(85)
-                  if (s === 'won') setProbability(100)
-                  if (s === 'lost') setProbability(0)
-                }}
-                className="form-select-sandbox"
-              >
-                <option value="lead">Lead In</option>
-                <option value="qualified">Qualified</option>
-                <option value="meeting">Meeting Scheduled</option>
-                <option value="proposal">Proposal Sent</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="won">Closed Won 🎉</option>
-                <option value="lost">Closed Lost</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="form-label">Win Probability (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={probability}
-                onChange={(e) => setProbability(Number(e.target.value))}
+              <label className="form-label">Opportunity Notes & Scope</label>
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Key requirements, budget constraints, timeline expectations..."
                 className="form-input-sandbox"
               />
             </div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label">Expected Closing Date</label>
-            <input
-              type="date"
-              value={expectedCloseDate}
-              onChange={(e) => setExpectedCloseDate(e.target.value)}
-              className="form-input-sandbox"
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label className="form-label">Opportunity Notes & Scope</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Key requirements, budget constraints, timeline expectations..."
-              className="form-textarea-sandbox"
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+          <div className="modal-footer">
             <button type="button" onClick={onClose} className="btn-sandbox btn-sandbox-secondary">
               Cancel
             </button>

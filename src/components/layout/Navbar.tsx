@@ -25,6 +25,9 @@ import {
   Smartphone,
   Check,
   Sliders,
+  Menu,
+  RefreshCw,
+  Database,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
 
@@ -59,6 +62,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
     togglePrivacyMode,
     setCurrentView,
     setTwoFactorSetupModalUser,
+    toggleMobileMenu,
+    syncStatus,
+    syncDatabaseNow,
   } = useApp()
 
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
@@ -89,40 +95,80 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
   return (
     <header className="navbar-sandbox">
-      {/* Upgraded Search Input with Spotlight Trigger */}
-      <div
-        className="search-container-sandbox"
-        id="global-search-container"
-        onClick={() => setIsSpotlightOpen(true)}
-      >
-        <Search
-          size={16}
-          style={{
-            position: 'absolute',
-            left: '0.85rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--sb-body)',
-            pointerEvents: 'none',
-          }}
-        />
-        <input
-          id="global-search-input"
-          type="text"
-          placeholder="Search clients, deals, quotes, invoices..."
-          className="search-input-sandbox"
-          readOnly
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsSpotlightOpen(true)
-          }}
-          style={{ cursor: 'pointer' }}
-        />
-        <span className="search-kbd-badge">⌘K</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+        {/* Mobile menu toggle hamburger */}
+        <button
+          onClick={toggleMobileMenu}
+          className="mobile-nav-toggle"
+          title="Open Menu Drawer"
+        >
+          <Menu size={18} />
+        </button>
+
+        {/* Upgraded Search Input with Spotlight Trigger */}
+        <div
+          className="search-container-sandbox"
+          id="global-search-container"
+          onClick={() => setIsSpotlightOpen(true)}
+        >
+          <Search
+            size={16}
+            style={{
+              position: 'absolute',
+              left: '0.85rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--sb-body)',
+              pointerEvents: 'none',
+            }}
+          />
+          <input
+            id="global-search-input"
+            type="text"
+            placeholder="Search clients, deals, quotes, invoices..."
+            className="search-input-sandbox"
+            readOnly
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsSpotlightOpen(true)
+            }}
+            style={{ cursor: 'pointer' }}
+          />
+          <span className="search-kbd-badge">⌘K</span>
+        </div>
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexShrink: 0 }}>
+        {/* Live Database Sync Badge */}
+        <button
+          onClick={syncDatabaseNow}
+          className={`btn-sandbox ${syncStatus === 'error' ? 'badge-soft-danger' : syncStatus === 'syncing' ? 'badge-soft-warning' : 'btn-sandbox-ghost'}`}
+          style={{
+            padding: '0.35rem 0.6rem',
+            fontSize: '0.74rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            borderRadius: 'var(--sb-radius-pill)',
+            border: '1px solid var(--sb-border)',
+          }}
+          title="Central Server Database Sync Status. Click to force live sync."
+        >
+          <Database size={13} color={syncStatus === 'error' ? 'var(--sb-danger)' : 'var(--sb-primary)'} />
+          {syncStatus === 'syncing' ? (
+            <>
+              <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Syncing</span>
+            </>
+          ) : syncStatus === 'error' ? (
+            <span>Retry</span>
+          ) : (
+            <span>Saved to DB</span>
+          )}
+        </button>
+
         {/* Language Selector (NL / FR / EN / DE / ES) */}
         <select
           value={language}

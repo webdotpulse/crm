@@ -600,119 +600,102 @@ export const MultiLocationInventoryView: React.FC = () => {
 
       {/* Stock Transfer Modal */}
       {isTransferModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-          }}
-        >
-          <div
-            className="card-sandbox"
-            style={{
-              width: '520px',
-              maxWidth: '100%',
-              backgroundColor: 'var(--sb-surface)',
-              borderRadius: 'var(--sb-radius-lg)',
-              padding: '1.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--sb-heading)', margin: 0 }}>
-                Create Stock Transfer Order
-              </h3>
-              <button onClick={() => setIsTransferModalOpen(false)} className="btn-sandbox btn-sandbox-ghost" style={{ padding: '0.3rem' }}>
-                <X size={18} />
+        <div className="modal-overlay" onClick={() => setIsTransferModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--sb-primary-soft)',
+                    color: 'var(--sb-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Boxes size={20} />
+                </div>
+                <div>
+                  <h3>Create Stock Transfer Order</h3>
+                  <p>Multi-Warehouse Inventory Dispatch & Transfer Order</p>
+                </div>
+              </div>
+              <button onClick={() => setIsTransferModalOpen(false)} className="btn-sandbox btn-icon btn-sandbox-secondary" style={{ borderRadius: '50%' }}>
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <form onSubmit={handleCreateTransfer} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
+                <div className="modal-form-grid">
+                  <div>
+                    <label className="form-label">From Source Location *</label>
+                    <select
+                      value={transferFromLocation}
+                      onChange={(e) => setTransferFromLocation(e.target.value)}
+                      className="form-select-sandbox"
+                    >
+                      {warehouseLocations.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">To Destination Location *</label>
+                    <select
+                      value={transferToLocation}
+                      onChange={(e) => setTransferToLocation(e.target.value)}
+                      className="form-select-sandbox"
+                    >
+                      {warehouseLocations.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    From Source Location
-                  </label>
+                  <label className="form-label">Select Product / Hardware Item *</label>
                   <select
-                    value={transferFromLocation}
-                    onChange={(e) => setTransferFromLocation(e.target.value)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
+                    value={transferProductId}
+                    onChange={(e) => setTransferProductId(e.target.value)}
+                    className="form-select-sandbox"
                   >
-                    {warehouseLocations.map((l) => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                    To Destination Location
-                  </label>
-                  <select
-                    value={transferToLocation}
-                    onChange={(e) => setTransferToLocation(e.target.value)}
-                    className="input-sandbox"
-                    style={{ width: '100%', padding: '0.55rem' }}
-                  >
-                    {warehouseLocations.map((l) => (
-                      <option key={l.id} value={l.id}>{l.name}</option>
-                    ))}
-                  </select>
+                  <label className="form-label">Transfer Quantity *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={transferQuantity}
+                    onChange={(e) => setTransferQuantity(parseInt(e.target.value, 10) || 1)}
+                    className="form-input-sandbox"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Transfer Notes & Dispatch Reason</label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Replenishment for Antwerp field maintenance project"
+                    value={transferNotes}
+                    onChange={(e) => setTransferNotes(e.target.value)}
+                    className="form-input-sandbox"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Select Product / Hardware Item
-                </label>
-                <select
-                  value={transferProductId}
-                  onChange={(e) => setTransferProductId(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                >
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Transfer Quantity
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={transferQuantity}
-                  onChange={(e) => setTransferQuantity(parseInt(e.target.value, 10) || 1)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--sb-heading)', display: 'block', marginBottom: '0.3rem' }}>
-                  Transfer Notes & Dispatch Reason
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="e.g. Replenishment for Antwerp field maintenance project"
-                  value={transferNotes}
-                  onChange={(e) => setTransferNotes(e.target.value)}
-                  className="input-sandbox"
-                  style={{ width: '100%', padding: '0.55rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setIsTransferModalOpen(false)} className="btn-sandbox btn-sandbox-outline">
+              <div className="modal-footer">
+                <button type="button" onClick={() => setIsTransferModalOpen(false)} className="btn-sandbox btn-sandbox-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn-sandbox btn-sandbox-primary" style={{ fontWeight: 800 }}>

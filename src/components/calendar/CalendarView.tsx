@@ -601,10 +601,8 @@ export const CalendarView: React.FC = () => {
               >
                 <X size={18} />
               </button>
-            </div>
-
-            <form onSubmit={handleSaveModal}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            </div>            <form onSubmit={handleSaveModal} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="modal-body">
                 {/* Event Title */}
                 <div>
                   <label className="form-label">Event Title *</label>
@@ -619,7 +617,7 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Event Type & Assignee */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid">
                   <div>
                     <label className="form-label">Event Type</label>
                     <select
@@ -657,7 +655,7 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Dates & Times */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid">
                   <div>
                     <label className="form-label">Start Date & Time *</label>
                     <input
@@ -682,7 +680,7 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Client Link (B2B or B2C) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem' }}>
+                <div className="modal-form-grid">
                   <div>
                     <label className="form-label">Client Type</label>
                     <select
@@ -735,7 +733,7 @@ export const CalendarView: React.FC = () => {
                 </div>
 
                 {/* Location & Video Link */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="modal-form-grid">
                   <div>
                     <label className="form-label">Physical Location</label>
                     <input

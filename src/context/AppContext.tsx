@@ -81,7 +81,7 @@ import {
   FirstRunInstallPayload,
   MySqlDatabaseConfig,
 } from '../types'
-import { initializeMySqlSchema, checkServerBootstrap } from '../services/mysqlService'
+import { initializeMySqlSchema, checkServerBootstrap, saveDataToDatabase, fetchDatabaseState } from '../services/mysqlService'
 import {
   initialCompanyProfile,
   initialLegalEntities,
@@ -534,6 +534,15 @@ interface AppContextType {
   exportDataJson: () => string
   importDataJson: (jsonString: string) => boolean
 
+  // Live Database Sync & Persistence
+  syncStatus: 'synced' | 'syncing' | 'error' | 'idle'
+  syncDatabaseNow: () => Promise<void>
+
+  // Mobile Drawer & Responsiveness
+  isMobileMenuOpen: boolean
+  setIsMobileMenuOpen: (open: boolean) => void
+  toggleMobileMenu: () => void
+
   // Database Management
   databaseConfig: MySqlDatabaseConfig
   updateDatabaseConfig: (cfg: Partial<MySqlDatabaseConfig>) => void
@@ -827,6 +836,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return installedFlag !== 'true' && !savedUsers
   })
 
+  const [isInitialHydrated, setIsInitialHydrated] = useState<boolean>(false)
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'idle'>('synced')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false)
+  const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev)
+
   // Auto-detect server database installation on application boot
   useEffect(() => {
     let isMounted = true
@@ -865,11 +879,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setActiveLegalEntityId(res.data.legalEntities[0].id)
           }
 
-          // Hydrate Clients & CRM data
+          // Hydrate CRM Clients & Contacts
           if (res.data.companies && Array.isArray(res.data.companies) && res.data.companies.length > 0) {
             setCompanies(res.data.companies)
             localStorage.setItem(`${STORAGE_KEY}_companies`, JSON.stringify(res.data.companies))
           }
+          if (res.data.individuals && Array.isArray(res.data.individuals) && res.data.individuals.length > 0) {
+            setIndividuals(res.data.individuals)
+            localStorage.setItem(`${STORAGE_KEY}_individuals`, JSON.stringify(res.data.individuals))
+          }
+          if (res.data.contacts && Array.isArray(res.data.contacts) && res.data.contacts.length > 0) {
+            setContacts(res.data.contacts)
+            localStorage.setItem(`${STORAGE_KEY}_contacts`, JSON.stringify(res.data.contacts))
+          }
+
+          // Hydrate Products & Catalog
+          if (res.data.products && Array.isArray(res.data.products) && res.data.products.length > 0) {
+            setProducts(res.data.products)
+            localStorage.setItem(`${STORAGE_KEY}_products`, JSON.stringify(res.data.products))
+          }
+
+          // Hydrate Calendar Events
+          if (res.data.events && Array.isArray(res.data.events) && res.data.events.length > 0) {
+            setEvents(res.data.events)
+            localStorage.setItem(`${STORAGE_KEY}_events`, JSON.stringify(res.data.events))
+          }
+
+          // Hydrate Deals, Quotes, Invoices, Payments
           if (res.data.deals && Array.isArray(res.data.deals) && res.data.deals.length > 0) {
             setDeals(res.data.deals)
             localStorage.setItem(`${STORAGE_KEY}_deals`, JSON.stringify(res.data.deals))
@@ -882,6 +918,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setInvoices(res.data.invoices)
             localStorage.setItem(`${STORAGE_KEY}_invoices`, JSON.stringify(res.data.invoices))
           }
+          if (res.data.payments && Array.isArray(res.data.payments) && res.data.payments.length > 0) {
+            setPayments(res.data.payments)
+            localStorage.setItem(`${STORAGE_KEY}_payments`, JSON.stringify(res.data.payments))
+          }
+
+          // Hydrate Projects, Tasks, Time Entries
           if (res.data.projects && Array.isArray(res.data.projects) && res.data.projects.length > 0) {
             setProjects(res.data.projects)
             localStorage.setItem(`${STORAGE_KEY}_projects`, JSON.stringify(res.data.projects))
@@ -890,10 +932,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setTasks(res.data.tasks)
             localStorage.setItem(`${STORAGE_KEY}_tasks`, JSON.stringify(res.data.tasks))
           }
+          if (res.data.timeEntries && Array.isArray(res.data.timeEntries) && res.data.timeEntries.length > 0) {
+            setTimeEntries(res.data.timeEntries)
+            localStorage.setItem(`${STORAGE_KEY}_time`, JSON.stringify(res.data.timeEntries))
+          }
+
+          // Hydrate Expenses & Suppliers
           if (res.data.expenses && Array.isArray(res.data.expenses) && res.data.expenses.length > 0) {
             setExpenses(res.data.expenses)
             localStorage.setItem(`${STORAGE_KEY}_expenses`, JSON.stringify(res.data.expenses))
           }
+          if (res.data.suppliers && Array.isArray(res.data.suppliers) && res.data.suppliers.length > 0) {
+            setSuppliers(res.data.suppliers)
+            localStorage.setItem(`${STORAGE_KEY}_suppliers`, JSON.stringify(res.data.suppliers))
+          }
+
+          // Hydrate Banking & Statements
+          if (res.data.bankStatements && Array.isArray(res.data.bankStatements) && res.data.bankStatements.length > 0) {
+            setBankStatements(res.data.bankStatements)
+            localStorage.setItem(`${STORAGE_KEY}_bankstatements`, JSON.stringify(res.data.bankStatements))
+          }
+          if (res.data.bankTransactions && Array.isArray(res.data.bankTransactions) && res.data.bankTransactions.length > 0) {
+            setBankTransactions(res.data.bankTransactions)
+            localStorage.setItem(`${STORAGE_KEY}_banktransactions`, JSON.stringify(res.data.bankTransactions))
+          }
+
+          // Hydrate Subscriptions, Contracts, Work Orders, Mileage, Procurement, Dunning
+          if (res.data.subscriptions && Array.isArray(res.data.subscriptions) && res.data.subscriptions.length > 0) {
+            setSubscriptions(res.data.subscriptions)
+            localStorage.setItem(`${STORAGE_KEY}_subscriptions`, JSON.stringify(res.data.subscriptions))
+          }
+          if (res.data.contracts && Array.isArray(res.data.contracts) && res.data.contracts.length > 0) {
+            setContracts(res.data.contracts)
+            localStorage.setItem(`${STORAGE_KEY}_contracts`, JSON.stringify(res.data.contracts))
+          }
+          if (res.data.workOrders && Array.isArray(res.data.workOrders) && res.data.workOrders.length > 0) {
+            setWorkOrders(res.data.workOrders)
+            localStorage.setItem(`${STORAGE_KEY}_workorders`, JSON.stringify(res.data.workOrders))
+          }
+          if (res.data.mileageTrips && Array.isArray(res.data.mileageTrips) && res.data.mileageTrips.length > 0) {
+            setMileageTrips(res.data.mileageTrips)
+            localStorage.setItem(`${STORAGE_KEY}_mileage`, JSON.stringify(res.data.mileageTrips))
+          }
+          if (res.data.purchaseOrders && Array.isArray(res.data.purchaseOrders) && res.data.purchaseOrders.length > 0) {
+            setPurchaseOrders(res.data.purchaseOrders)
+            localStorage.setItem(`${STORAGE_KEY}_purchaseorders`, JSON.stringify(res.data.purchaseOrders))
+          }
+          if (res.data.dunningNotices && Array.isArray(res.data.dunningNotices) && res.data.dunningNotices.length > 0) {
+            setDunningNotices(res.data.dunningNotices)
+            localStorage.setItem(`${STORAGE_KEY}_dunningnotices`, JSON.stringify(res.data.dunningNotices))
+          }
+
+          // Hydrate Helpdesk Tickets, HR, Inventory
+          if (res.data.tickets && Array.isArray(res.data.tickets) && res.data.tickets.length > 0) {
+            setTickets(res.data.tickets)
+          }
+          if (res.data.staffCapacities && Array.isArray(res.data.staffCapacities) && res.data.staffCapacities.length > 0) {
+            setStaffCapacities(res.data.staffCapacities)
+          }
+          if (res.data.warehouseLocations && Array.isArray(res.data.warehouseLocations) && res.data.warehouseLocations.length > 0) {
+            setWarehouseLocations(res.data.warehouseLocations)
+          }
+
+          // Hydrate Templates, Rates, Integrations
+          if (res.data.documentTemplates && Array.isArray(res.data.documentTemplates) && res.data.documentTemplates.length > 0) {
+            setDocumentTemplates(res.data.documentTemplates)
+            localStorage.setItem(`${STORAGE_KEY}_doctemplates`, JSON.stringify(res.data.documentTemplates))
+          }
+          if (res.data.emailTemplates && Array.isArray(res.data.emailTemplates) && res.data.emailTemplates.length > 0) {
+            setEmailTemplates(res.data.emailTemplates)
+            localStorage.setItem(`${STORAGE_KEY}_emailtemplates`, JSON.stringify(res.data.emailTemplates))
+          }
+          if (res.data.vatRates && Array.isArray(res.data.vatRates) && res.data.vatRates.length > 0) {
+            setVatRates(res.data.vatRates)
+            localStorage.setItem(`${STORAGE_KEY}_vatrates`, JSON.stringify(res.data.vatRates))
+          }
+          if (res.data.integrations && Array.isArray(res.data.integrations) && res.data.integrations.length > 0) {
+            setIntegrations(res.data.integrations)
+            localStorage.setItem(`${STORAGE_KEY}_integrations`, JSON.stringify(res.data.integrations))
+          }
+          if (res.data.apiKeys && Array.isArray(res.data.apiKeys) && res.data.apiKeys.length > 0) {
+            setApiKeys(res.data.apiKeys)
+            localStorage.setItem(`${STORAGE_KEY}_apikeys`, JSON.stringify(res.data.apiKeys))
+          }
+          if (res.data.webhooks && Array.isArray(res.data.webhooks) && res.data.webhooks.length > 0) {
+            setWebhookEndpoints(res.data.webhooks)
+            localStorage.setItem(`${STORAGE_KEY}_webhooks`, JSON.stringify(res.data.webhooks))
+          }
+
+          // Hydrate Audit Logs
           if (res.data.auditLogs && Array.isArray(res.data.auditLogs) && res.data.auditLogs.length > 0) {
             setSecurityAuditLogs(res.data.auditLogs)
             localStorage.setItem(`${STORAGE_KEY}_auditlogs`, JSON.stringify(res.data.auditLogs))
@@ -914,6 +1041,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               setModuleSettings(res.data.settings.moduleSettings)
               localStorage.setItem(`${STORAGE_KEY}_modules`, JSON.stringify(res.data.settings.moduleSettings))
             }
+            if (res.data.settings.activeLegalEntityId) {
+              setActiveLegalEntityId(res.data.settings.activeLegalEntityId)
+            }
+            if (res.data.settings.selectedCurrency) {
+              setSelectedCurrency(res.data.settings.selectedCurrency)
+            }
           }
 
           // Hydrate Database Config
@@ -930,6 +1063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } finally {
         if (isMounted) {
           setIsBootstrapChecking(false)
+          setIsInitialHydrated(true)
         }
       }
     }
@@ -3515,6 +3649,166 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }
 
+  const syncDatabaseNow = async () => {
+    setSyncStatus('syncing')
+    try {
+      const payload = {
+        users,
+        companyProfile,
+        legalEntities,
+        companies,
+        individuals,
+        contacts,
+        products,
+        events,
+        deals,
+        quotes: quotations,
+        invoices,
+        payments,
+        projects,
+        tasks,
+        timeEntries,
+        expenses,
+        suppliers,
+        bankStatements,
+        bankTransactions,
+        subscriptions,
+        contracts,
+        workOrders,
+        mileageTrips,
+        purchaseOrders,
+        dunningNotices,
+        tickets,
+        staffCapacities,
+        warehouseLocations,
+        documentTemplates,
+        emailTemplates,
+        vatRates,
+        integrations,
+        apiKeys,
+        webhooks: webhookEndpoints,
+        auditLogs: securityAuditLogs,
+        settings: {
+          customTheme,
+          securityPolicy,
+          moduleSettings,
+          activeLegalEntityId,
+          selectedCurrency,
+          language,
+        },
+      }
+      const res = await saveDataToDatabase(payload)
+      setSyncStatus(res.success ? 'synced' : 'error')
+    } catch {
+      setSyncStatus('error')
+    }
+  }
+
+  // Live real-time debounced auto-sync to backend database
+  useEffect(() => {
+    if (!isInitialHydrated) return
+
+    setSyncStatus('syncing')
+    const timer = setTimeout(async () => {
+      try {
+        const payload = {
+          users,
+          companyProfile,
+          legalEntities,
+          companies,
+          individuals,
+          contacts,
+          products,
+          events,
+          deals,
+          quotes: quotations,
+          invoices,
+          payments,
+          projects,
+          tasks,
+          timeEntries,
+          expenses,
+          suppliers,
+          bankStatements,
+          bankTransactions,
+          subscriptions,
+          contracts,
+          workOrders,
+          mileageTrips,
+          purchaseOrders,
+          dunningNotices,
+          tickets,
+          staffCapacities,
+          warehouseLocations,
+          documentTemplates,
+          emailTemplates,
+          vatRates,
+          integrations,
+          apiKeys,
+          webhooks: webhookEndpoints,
+          auditLogs: securityAuditLogs,
+          settings: {
+            customTheme,
+            securityPolicy,
+            moduleSettings,
+            activeLegalEntityId,
+            selectedCurrency,
+            language,
+          },
+        }
+        const res = await saveDataToDatabase(payload)
+        setSyncStatus(res.success ? 'synced' : 'error')
+      } catch {
+        setSyncStatus('error')
+      }
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [
+    isInitialHydrated,
+    users,
+    companyProfile,
+    legalEntities,
+    companies,
+    individuals,
+    contacts,
+    products,
+    events,
+    deals,
+    quotations,
+    invoices,
+    payments,
+    projects,
+    tasks,
+    timeEntries,
+    expenses,
+    suppliers,
+    bankStatements,
+    bankTransactions,
+    subscriptions,
+    contracts,
+    workOrders,
+    mileageTrips,
+    purchaseOrders,
+    dunningNotices,
+    tickets,
+    staffCapacities,
+    warehouseLocations,
+    documentTemplates,
+    emailTemplates,
+    vatRates,
+    integrations,
+    apiKeys,
+    webhookEndpoints,
+    securityAuditLogs,
+    customTheme,
+    securityPolicy,
+    moduleSettings,
+    activeLegalEntityId,
+    selectedCurrency,
+    language,
+  ])
+
   return (
     <AppContext.Provider
       value={{
@@ -3758,6 +4052,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetToDemoData,
         exportDataJson,
         importDataJson,
+        syncStatus,
+        syncDatabaseNow,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
+        toggleMobileMenu,
         databaseConfig,
         updateDatabaseConfig,
         isInstalled,
