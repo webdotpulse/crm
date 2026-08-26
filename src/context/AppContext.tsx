@@ -81,7 +81,17 @@ import {
   FirstRunInstallPayload,
   MySqlDatabaseConfig,
 } from '../types'
-import { initializeMySqlSchema, checkServerBootstrap, saveDataToDatabase, fetchDatabaseState } from '../services/mysqlService'
+import {
+  initializeMySqlSchema,
+  checkServerBootstrap,
+  saveDataToDatabase,
+  fetchDatabaseState,
+  loginServerApi,
+  setAuthToken,
+  getAuthToken,
+} from '../services/mysqlService'
+import { updateResource, createResource, deleteResource } from '../services/apiService'
+import { enqueueOfflineMutation } from '../services/offlineSyncService'
 import {
   initialCompanyProfile,
   initialLegalEntities,
@@ -552,6 +562,19 @@ interface AppContextType {
   isBootstrapChecking: boolean
   completeFirstRunInstall: (payload: FirstRunInstallPayload) => Promise<void>
   resetToInstaller: () => void
+
+  // Optimistic Concurrency & Conflict Resolution
+  activeConflict: {
+    isOpen: boolean
+    entityName: string
+    entityId: string
+    serverRecord: any
+    localRecord: any
+    serverVersion?: number
+    onResolve?: (action: 'keep_server' | 'overwrite') => void
+  } | null
+  setActiveConflict: (conflict: any | null) => void
+  resolveActiveConflict: (action: 'keep_server' | 'overwrite') => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -840,6 +863,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error' | 'idle'>('synced')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false)
   const toggleMobileMenu = () => setIsMobileMenuOpen((prev) => !prev)
+
+  const [activeConflict, setActiveConflict] = useState<{
+    isOpen: boolean
+    entityName: string
+    entityId: string
+    serverRecord: any
+    localRecord: any
+    serverVersion?: number
+    onResolve?: (action: 'keep_server' | 'overwrite') => void
+  } | null>(null)
+
+  const resolveActiveConflict = (action: 'keep_server' | 'overwrite') => {
+    if (activeConflict?.onResolve) {
+      activeConflict.onResolve(action)
+    }
+    setActiveConflict(null)
+  }
 
   // Auto-detect server database installation on application boot
   useEffect(() => {
@@ -2708,6 +2748,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     totpCode?: string,
     rememberMe: boolean = true
   ): Promise<{ success: boolean; requires2fa?: boolean; error?: string }> => {
+    // 1. Attempt server JWT login
+    try {
+      const serverAuth = await loginServerApi(emailOrName, password, totpCode, rememberMe)
+      if (serverAuth.requires2fa) {
+        return { success: false, requires2fa: true }
+      }
+      if (serverAuth.success && serverAuth.token) {
+        // Find matching local user or populate from server
+        let matchedUser = users.find(
+          (u) =>
+            u.email.toLowerCase() === emailOrName.trim().toLowerCase() ||
+            u.name.toLowerCase() === emailOrName.trim().toLowerCase()
+        )
+        if (!matchedUser && serverAuth.user) {
+          matchedUser = serverAuth.user as UserAccount
+          setUsers((prev) => [matchedUser!, ...prev])
+        }
+
+        if (matchedUser) {
+          setCurrentUserId(matchedUser.id)
+          try {
+            localStorage.setItem(`${STORAGE_KEY}_current_user_id`, matchedUser.id)
+          } catch (e) {}
+        }
+
+        setIsAuthenticated(true)
+        if (rememberMe) {
+          localStorage.setItem('pulsework_authenticated', 'true')
+        } else {
+          sessionStorage.setItem('pulsework_authenticated', 'true')
+        }
+
+        addSecurityAuditLog({
+          actorId: matchedUser?.id || 'usr_session',
+          actorName: matchedUser?.name || emailOrName,
+          actorEmail: matchedUser?.email || emailOrName,
+          action: 'User Authenticated (JWT)',
+          category: 'auth',
+          severity: 'info',
+          details: `User ${matchedUser?.name || emailOrName} successfully authenticated with signed JWT.`,
+        })
+
+        return { success: true }
+      }
+    } catch (e) {
+      // Fall through to local auth
+    }
+
+    // 2. Local fallback verification
     const targetUser = users.find(
       (u) =>
         u.email.toLowerCase() === emailOrName.trim().toLowerCase() ||
@@ -2796,6 +2885,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setIsAuthenticated(false)
+    setAuthToken(null)
     try {
       localStorage.removeItem('pulsework_authenticated')
       sessionStorage.removeItem('pulsework_authenticated')
@@ -4063,6 +4153,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBootstrapChecking,
         completeFirstRunInstall,
         resetToInstaller,
+        activeConflict,
+        setActiveConflict,
+        resolveActiveConflict,
       }}
     >
       {children}

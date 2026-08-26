@@ -1,6 +1,91 @@
-import { MySqlDatabaseConfig, FirstRunInstallPayload } from '../types'
+import { MySqlDatabaseConfig, FirstRunInstallPayload, UserAccount } from '../types'
 
 const API_BASE = '/api/db.php'
+const AUTH_API = '/api/auth.php'
+const JWT_STORAGE_KEY = 'pulsework_jwt_token'
+
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return sessionStorage.getItem(JWT_STORAGE_KEY) || localStorage.getItem(JWT_STORAGE_KEY) || null
+}
+
+export function setAuthToken(token: string | null, remember: boolean = true): void {
+  if (typeof window === 'undefined') return
+  if (token) {
+    if (remember) {
+      localStorage.setItem(JWT_STORAGE_KEY, token)
+    } else {
+      sessionStorage.setItem(JWT_STORAGE_KEY, token)
+    }
+  } else {
+    localStorage.removeItem(JWT_STORAGE_KEY)
+    sessionStorage.removeItem(JWT_STORAGE_KEY)
+  }
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
+
+export interface AuthLoginResult {
+  success: boolean
+  token?: string
+  user?: Partial<UserAccount>
+  requires2fa?: boolean
+  message?: string
+  error?: string
+}
+
+export async function loginServerApi(
+  emailOrName: string,
+  password?: string,
+  totpCode?: string,
+  rememberMe: boolean = true
+): Promise<AuthLoginResult> {
+  try {
+    const response = await fetch(`${AUTH_API}?action=login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        emailOrName,
+        password: password || '',
+        totpCode: totpCode || '',
+      }),
+    })
+
+    const result = await response.json()
+    if (result.success && result.token) {
+      setAuthToken(result.token, rememberMe)
+      return {
+        success: true,
+        token: result.token,
+        user: result.user,
+        message: result.message,
+      }
+    }
+
+    return {
+      success: false,
+      requires2fa: Boolean(result.requires2fa),
+      message: result.message || 'Login failed',
+      error: result.message || result.error || 'Authentication error',
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Could not connect to authentication server.',
+    }
+  }
+}
 
 export interface ConnectionTestResult {
   success: boolean
@@ -30,9 +115,7 @@ export async function testMySqlConnection(
 
     const response = await fetch(`${API_BASE}?action=test_connection`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         host: config.host || '127.0.0.1',
         port: config.port || 3306,
@@ -88,9 +171,7 @@ export async function initializeMySqlSchema(
   try {
     const response = await fetch(`${API_BASE}?action=initialize_schema`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         host: config.host || '127.0.0.1',
         port: config.port || 3306,
@@ -122,6 +203,7 @@ export async function checkServerBootstrap(): Promise<BootstrapResult> {
     const timeoutId = setTimeout(() => controller.abort(), 6000)
 
     const response = await fetch(`${API_BASE}?action=bootstrap`, {
+      headers: getAuthHeaders(),
       signal: controller.signal,
     })
     clearTimeout(timeoutId)
@@ -157,7 +239,9 @@ export async function checkMySqlStatus(): Promise<{
   message?: string
 }> {
   try {
-    const response = await fetch(`${API_BASE}?action=status`)
+    const response = await fetch(`${API_BASE}?action=status`, {
+      headers: getAuthHeaders(),
+    })
     const result = await response.json()
     return {
       configured: Boolean(result.configured),
@@ -180,9 +264,7 @@ export async function syncDataToMySql(data: any): Promise<{ success: boolean; me
   try {
     const response = await fetch(`${API_BASE}?action=sync_all`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ data }),
     })
     const result = await response.json().catch(() => null)

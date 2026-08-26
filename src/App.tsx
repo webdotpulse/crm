@@ -1,9 +1,11 @@
-import React, { useState, Suspense, lazy } from 'react'
+import React, { useState, Suspense, lazy, useCallback } from 'react'
 import { useApp } from './context/AppContext'
 import { Navbar } from './components/layout/Navbar'
 import { Sidebar } from './components/layout/Sidebar'
 import { Deal, Invoice } from './types'
-import { ShieldCheck, RefreshCw } from 'lucide-react'
+import { ShieldCheck, RefreshCw, Bell, Radio, Check, X } from 'lucide-react'
+import { useRealtimeSync, RealtimeEventPayload } from './hooks/useRealtimeSync'
+import { ConflictResolutionDrawer } from './components/layout/ConflictResolutionDrawer'
 
 // View Loading Fallback
 const ViewLoadingFallback: React.FC = () => (
@@ -83,6 +85,7 @@ export const App: React.FC = () => {
     isInstalled,
     isBootstrapChecking,
     isAuthenticated,
+    currentUser,
     currentView,
     setCurrentView,
     isPrivacyModeActive,
@@ -90,7 +93,35 @@ export const App: React.FC = () => {
     setActiveInteractiveProposalQuote,
     isMobileMenuOpen,
     setIsMobileMenuOpen,
+    activeConflict,
+    setActiveConflict,
+    resolveActiveConflict,
   } = useApp()
+
+  // Real-time toast state
+  const [realtimeToast, setRealtimeToast] = useState<{ id: string; message: string; subtext?: string } | null>(null)
+
+  const handleRealtimeEvent = useCallback((event: RealtimeEventPayload) => {
+    const eventName = event.event || 'record.updated'
+    const entity = event.entity || 'item'
+    const cleanEntity = entity.replace(/_/g, ' ')
+    const toastId = 'toast_' + Date.now()
+
+    let actionDesc = 'Updated'
+    if (eventName.includes('.created')) actionDesc = 'Created new'
+    else if (eventName.includes('.deleted')) actionDesc = 'Deleted'
+
+    const toastMessage = `Team Update: ${actionDesc} ${cleanEntity}`
+    const subtext = `ID: ${event.entityId || 'record'} at ${new Date(event.timestamp || Date.now()).toLocaleTimeString()}`
+
+    setRealtimeToast({ id: toastId, message: toastMessage, subtext })
+    setTimeout(() => {
+      setRealtimeToast((curr) => (curr?.id === toastId ? null : curr))
+    }, 4500)
+  }, [])
+
+  // Mount SSE stream hook
+  useRealtimeSync(currentUser?.id, handleRealtimeEvent)
 
   // If server bootstrap check is in progress on a new computer
   if (isBootstrapChecking) {
@@ -125,7 +156,7 @@ export const App: React.FC = () => {
           <ShieldCheck size={28} />
         </div>
         <div style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', marginBottom: '0.35rem' }}>
-          GridCRM
+          PulseWork CRM
         </div>
         <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
@@ -186,7 +217,7 @@ export const App: React.FC = () => {
   return (
     <div
       data-privacy={isPrivacyModeActive ? 'true' : undefined}
-      style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)', overflowX: 'hidden' }}
+      style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--sb-bg)', overflowX: 'hidden', position: 'relative' }}
     >
       {/* Mobile Drawer Overlay Backdrop */}
       {isMobileMenuOpen && (
@@ -292,6 +323,68 @@ export const App: React.FC = () => {
         </main>
       </div>
 
+      {/* Floating Real-time Event Toast Banner */}
+      {realtimeToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(59, 130, 246, 0.4)',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            color: '#f8fafc',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            maxWidth: '380px',
+            animation: 'fadeIn 0.25s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              color: '#60a5fa',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Radio size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc' }}>
+              {realtimeToast.message}
+            </div>
+            {realtimeToast.subtext && (
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                {realtimeToast.subtext}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setRealtimeToast(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              padding: '4px',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <Suspense fallback={null}>
         {/* Interactive Web Proposal Viewer Modal */}
         {activeInteractiveProposalQuote && (
@@ -335,6 +428,20 @@ export const App: React.FC = () => {
             documentType={emailModalData.documentType}
             document={emailModalData.document}
             onClose={() => setEmailModalData(null)}
+          />
+        )}
+
+        {/* Concurrency Conflict Resolution Drawer */}
+        {activeConflict && (
+          <ConflictResolutionDrawer
+            isOpen={activeConflict.isOpen}
+            entityName={activeConflict.entityName}
+            entityId={activeConflict.entityId}
+            serverRecord={activeConflict.serverRecord}
+            localRecord={activeConflict.localRecord}
+            serverVersion={activeConflict.serverVersion}
+            onResolve={resolveActiveConflict}
+            onCancel={() => setActiveConflict(null)}
           />
         )}
 

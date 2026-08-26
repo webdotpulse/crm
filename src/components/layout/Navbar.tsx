@@ -28,8 +28,10 @@ import {
   Menu,
   RefreshCw,
   Database,
+  WifiOff,
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
+import { subscribeSyncStatus, processOfflineQueue } from '../../services/offlineSyncService'
 
 interface NavbarProps {
   onOpenQuickModal: (type: 'deal' | 'quote' | 'project' | 'invoice' | 'company') => void
@@ -70,6 +72,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
   const [isEntityMenuOpen, setIsEntityMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [offlineState, setOfflineState] = useState<{ isOnline: boolean; pendingCount: number; isSyncing: boolean }>({
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    pendingCount: 0,
+    isSyncing: false,
+  })
+
+  useEffect(() => {
+    return subscribeSyncStatus((state) => {
+      setOfflineState(state)
+    })
+  }, [])
 
   // Keyboard shortcut listener for ⌘L (Lock Screen)
   useEffect(() => {
@@ -140,34 +153,76 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenQuickModal }) => {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexShrink: 0 }}>
-        {/* Live Database Sync Badge */}
-        <button
-          onClick={syncDatabaseNow}
-          className={`btn-sandbox ${syncStatus === 'error' ? 'badge-soft-danger' : syncStatus === 'syncing' ? 'badge-soft-warning' : 'btn-sandbox-ghost'}`}
-          style={{
-            padding: '0.35rem 0.6rem',
-            fontSize: '0.74rem',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            borderRadius: 'var(--sb-radius-pill)',
-            border: '1px solid var(--sb-border)',
-          }}
-          title="Central Server Database Sync Status. Click to force live sync."
-        >
-          <Database size={13} color={syncStatus === 'error' ? 'var(--sb-danger)' : 'var(--sb-primary)'} />
-          {syncStatus === 'syncing' ? (
-            <>
-              <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Syncing</span>
-            </>
-          ) : syncStatus === 'error' ? (
-            <span>Retry</span>
-          ) : (
-            <span>Saved to DB</span>
-          )}
-        </button>
+        {/* Offline Mode Badge or Live Database Sync Badge */}
+        {!offlineState.isOnline ? (
+          <button
+            onClick={() => processOfflineQueue()}
+            className="btn-sandbox badge-soft-warning"
+            style={{
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              borderRadius: 'var(--sb-radius-pill)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+              color: '#f59e0b',
+            }}
+            title="Offline Mode — Changes will sync when online. Click to attempt reconnect."
+          >
+            <WifiOff size={13} />
+            <span>Offline ({offlineState.pendingCount} queued)</span>
+          </button>
+        ) : offlineState.pendingCount > 0 || offlineState.isSyncing ? (
+          <button
+            onClick={() => processOfflineQueue()}
+            className="btn-sandbox badge-soft-warning"
+            style={{
+              padding: '0.35rem 0.65rem',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              borderRadius: 'var(--sb-radius-pill)',
+              border: '1px solid var(--sb-border)',
+            }}
+            title="Replaying offline sync mutations to database..."
+          >
+            <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
+            <span>Syncing Queue ({offlineState.pendingCount})</span>
+          </button>
+        ) : (
+          <button
+            onClick={syncDatabaseNow}
+            className={`btn-sandbox ${syncStatus === 'error' ? 'badge-soft-danger' : syncStatus === 'syncing' ? 'badge-soft-warning' : 'btn-sandbox-ghost'}`}
+            style={{
+              padding: '0.35rem 0.6rem',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              borderRadius: 'var(--sb-radius-pill)',
+              border: '1px solid var(--sb-border)',
+            }}
+            title="Central Server Database Sync Status. Click to force live sync."
+          >
+            <Database size={13} color={syncStatus === 'error' ? 'var(--sb-danger)' : 'var(--sb-primary)'} />
+            {syncStatus === 'syncing' ? (
+              <>
+                <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Syncing</span>
+              </>
+            ) : syncStatus === 'error' ? (
+              <span>Retry</span>
+            ) : (
+              <span>Saved to DB</span>
+            )}
+          </button>
+        )}
 
         {/* Language Selector (NL / FR / EN / DE / ES) */}
         <select

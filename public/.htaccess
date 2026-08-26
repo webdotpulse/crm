@@ -22,7 +22,8 @@
   RewriteCond %{HTTP:X-Forwarded-Proto} !https
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # 2. Direct execution for API endpoints
+  # 2. Direct execution for API v1 REST endpoints
+  RewriteRule ^api/v1/(.*)$ api/v1.php?endpoint=$1 [QSA,L]
   RewriteRule ^api/ - [L]
 
   # 3. SPA Fallback Routing: Route all non-file requests to index.html

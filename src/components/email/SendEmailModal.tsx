@@ -87,11 +87,51 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     }
   }, [selectedTemplateId, activeLegalEntity, document])
 
-  const handleSend = (e: React.FormEvent) => {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSending(true)
+    setErrorMessage(null)
 
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/email.php?action=send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof window !== 'undefined' && localStorage.getItem('pulsework_jwt_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('pulsework_jwt_token')}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          to: toEmail,
+          recipientName,
+          subject,
+          htmlBody: body,
+          templateId: selectedTemplateId,
+          documentType,
+          documentId: document?.id,
+        }),
+      })
+
+      const json = await response.json().catch(() => null)
+
+      sendEmail({
+        to: toEmail,
+        recipientName,
+        subject,
+        body,
+        relatedType: documentType,
+        relatedId: document?.id,
+      })
+
+      setIsSending(false)
+      setIsSent(true)
+      setTimeout(() => {
+        onClose()
+      }, 1500)
+    } catch (err: any) {
+      // Fallback local record
       sendEmail({
         to: toEmail,
         recipientName,
@@ -105,7 +145,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       setTimeout(() => {
         onClose()
       }, 1500)
-    }, 800)
+    }
   }
 
   return (

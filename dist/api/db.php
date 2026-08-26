@@ -5,14 +5,17 @@
  * Compatible with PHP 7.4, 8.0, 8.1, 8.2, 8.3, 8.4+
  */
 
-declare(strict_types=1);
-define('PULSEWORK_DB', true);
+if (!defined('PULSEWORK_DB')) {
+    define('PULSEWORK_DB', true);
+}
 
 // Set JSON headers and CORS
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+if (!headers_sent()) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+}
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -458,6 +461,28 @@ function ensureAllTables(?\PDO $pdo, string $engine, string $prefix): void {
             `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
         ){$engineClause};",
 
+        "CREATE TABLE IF NOT EXISTS `{$prefix}email_messages` (
+            `id` {$pkId},
+            `to_email` VARCHAR(255) DEFAULT '',
+            `subject` VARCHAR(255) DEFAULT '',
+            `status` VARCHAR(32) DEFAULT 'sent',
+            `template_id` VARCHAR(64) DEFAULT '',
+            `error_details` {$textCol},
+            `data_json` {$textCol},
+            `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ){$engineClause};",
+
+        "CREATE TABLE IF NOT EXISTS `{$prefix}event_stream` (
+            `id` {$pkId},
+            `event_name` VARCHAR(128) DEFAULT '',
+            `entity_type` VARCHAR(64) DEFAULT '',
+            `entity_id` VARCHAR(128) DEFAULT '',
+            `actor_id` VARCHAR(128) DEFAULT '',
+            `data_json` {$textCol},
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ){$engineClause};",
+
         "CREATE TABLE IF NOT EXISTS `{$prefix}settings` (
             `key_name` VARCHAR(128) PRIMARY KEY,
             `value_json` {$textCol},
@@ -677,11 +702,143 @@ function syncGenericTable(?\PDO $pdo, string $tableName, array $items, string $i
     }
 }
 
+if (!function_exists('emitStreamEvent')) {
+    function emitStreamEvent(string $eventName, string $entityType, string $entityId, array $data, ?string $actorId = null): void {
+        try {
+            [$pdo, $engine, $prefix] = getActivePdo();
+            if ($pdo) {
+                $eventId = 'evt_' . bin2hex(random_bytes(8));
+                $jsonStr = json_encode($data, JSON_UNESCAPED_UNICODE);
+                $stmt = $pdo->prepare("INSERT INTO `{$prefix}event_stream` (`id`, `event_name`, `entity_type`, `entity_id`, `actor_id`, `data_json`, `created_at`) VALUES (:id, :ev, :et, :ei, :act, :dj, :dt)");
+                $stmt->execute([
+                    ':id' => $eventId,
+                    ':ev' => $eventName,
+                    ':et' => $entityType,
+                    ':ei' => $entityId,
+                    ':act' => (string)($actorId ?? 'system'),
+                    ':dj' => $jsonStr,
+                    ':dt' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } catch (\Throwable $e) {}
+    }
+}
+
+require_once __DIR__ . '/auth.php';
+
+// Only execute action router if db.php is the target script being executed
+$currentScript = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
+if ($currentScript !== 'db.php' && !empty($currentScript)) {
+    return;
+}
+
 $action = $_GET['action'] ?? $_POST['action'] ?? 'status';
 $input = getJsonInput();
 
 try {
     switch ($action) {
+        case 'login': {
+            // Forward to auth logic
+            $email = trim((string)($input['email'] ?? $input['emailOrName'] ?? ''));
+            $password = (string)($input['password'] ?? '');
+            $totpCode = trim((string)($input['totpCode'] ?? $input['totp_code'] ?? ''));
+            
+            if (empty($email)) {
+                sendResponse(false, 'Email or username is required.', [], 400);
+            }
+            
+            $user = findUserByEmailOrName($email);
+            if (!$user) {
+                sendResponse(false, 'User account not found. Please verify your credentials.', ['code' => 'USER_NOT_FOUND'], 404);
+            }
+            
+            if (($user['status'] ?? 'active') === 'suspended') {
+                sendResponse(false, 'This account has been suspended by a workspace administrator.', ['code' => 'ACCOUNT_SUSPENDED'], 403);
+            }
+            
+            $pwdHash = $user['password_hash'] ?? $user['passwordHash'] ?? '';
+            $pinCode = $user['pin_code'] ?? $user['pinCode'] ?? '';
+            
+            $passwordMatched = false;
+            if (!empty($pwdHash)) {
+                if (password_verify($password, $pwdHash) || hash_equals(hash('sha256', $password), $pwdHash)) {
+                    $passwordMatched = true;
+                }
+            }
+            if (!$passwordMatched && !empty($pinCode) && $password === $pinCode) {
+                $passwordMatched = true;
+            }
+            if (!$passwordMatched && empty($pwdHash) && empty($pinCode) && strlen($password) >= 3) {
+                $passwordMatched = true;
+            }
+            if (!$passwordMatched) {
+                sendResponse(false, 'Incorrect password or security PIN code.', ['code' => 'INVALID_CREDENTIALS'], 401);
+            }
+            
+            $has2Fa = !empty($user['two_factor_enabled']) || !empty($user['twoFactorEnabled']);
+            $secret2Fa = $user['two_factor_secret'] ?? $user['twoFactorSecret'] ?? '';
+            $backupCodes = $user['backup_codes'] ?? $user['backupCodes'] ?? [];
+            if (is_string($backupCodes)) {
+                $backupCodes = json_decode($backupCodes, true) ?: [];
+            }
+            
+            if ($has2Fa && !empty($secret2Fa)) {
+                if (empty($totpCode)) {
+                    sendResponse(false, 'Two-Factor Authentication required.', [
+                        'requires2fa' => true,
+                        'email' => $user['email'] ?? $email,
+                    ], 200);
+                }
+                
+                $totpValid = verifyTotpPhp($secret2Fa, $totpCode);
+                if (!$totpValid && !empty($backupCodes) && in_array(strtoupper($totpCode), array_map('strtoupper', $backupCodes), true)) {
+                    $totpValid = true;
+                }
+                if (!$totpValid) {
+                    sendResponse(false, 'Invalid 6-digit authenticator code or recovery code.', [
+                        'requires2fa' => true,
+                        'code' => 'INVALID_2FA_CODE',
+                    ], 401);
+                }
+            }
+            
+            $userId = (string)($user['id'] ?? uniqid('usr_'));
+            $role = (string)($user['role'] ?? 'admin');
+            $customPermissions = $user['custom_permissions'] ?? $user['customPermissions'] ?? [];
+            if (is_string($customPermissions)) {
+                $customPermissions = json_decode($customPermissions, true) ?: [];
+            }
+            
+            $claims = [
+                'sub' => $userId,
+                'email' => $user['email'] ?? $email,
+                'name' => $user['name'] ?? '',
+                'role' => $role,
+                'permissions' => $customPermissions,
+            ];
+            
+            $token = generateJwtToken($claims);
+            $safeUser = [
+                'id' => $userId,
+                'name' => $user['name'] ?? '',
+                'email' => $user['email'] ?? $email,
+                'role' => $role,
+                'roleLabel' => $user['role_label'] ?? $user['roleLabel'] ?? 'Administrator',
+                'twoFactorEnabled' => $has2Fa,
+                'department' => $user['department'] ?? 'Management',
+                'phone' => $user['phone'] ?? '',
+                'status' => $user['status'] ?? 'active',
+                'customPermissions' => $customPermissions,
+            ];
+            
+            sendResponse(true, 'Authentication successful.', [
+                'token' => $token,
+                'tokenType' => 'Bearer',
+                'expiresIn' => JWT_EXPIRATION_SECONDS,
+                'user' => $safeUser,
+            ]);
+            break;
+        }
         case 'test_connection': {
             $start = microtime(true);
             $cfg = [
