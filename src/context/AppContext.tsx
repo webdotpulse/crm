@@ -3625,17 +3625,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (payload.databaseConfig) {
       updateDatabaseConfig(payload.databaseConfig)
-      if (payload.databaseConfig.mode === 'mysql') {
-        try {
-          await initializeMySqlSchema(payload.databaseConfig, {
-            admin: newAdminUser,
-            companyProfile: updatedProfile,
-            legalEntity: updatedLegalEntity,
-            auditLog: initialAuditLog,
-          })
-        } catch (e) {
-          console.warn('MySQL schema setup notice:', e)
-        }
+      try {
+        await initializeMySqlSchema(payload.databaseConfig, {
+          admin: newAdminUser,
+          companyProfile: updatedProfile,
+          legalEntity: updatedLegalEntity,
+          auditLog: initialAuditLog,
+        })
+      } catch (e) {
+        console.warn('Server schema setup notice:', e)
       }
     }
 

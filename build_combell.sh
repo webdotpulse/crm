@@ -29,6 +29,9 @@ echo -e "${BLUE}[2/3] Copying Combell .htaccess & PHP Database Bridge into ./dis
 cp public/.htaccess dist/.htaccess
 mkdir -p dist/api
 cp -r public/api/* dist/api/
+# Ensure clean fresh installation state in package
+rm -f dist/api/config.php dist/api/data.sqlite dist/api/data.sqlite-wal dist/api/data.sqlite-shm
+echo "{}" > dist/api/store.json
 
 echo -e "${BLUE}[3/3] Creating ready-to-upload ZIP archive: combell_upload.zip...${NC}"
 rm -f combell_upload.zip

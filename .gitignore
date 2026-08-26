@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+public/api/config.php
+public/api/data.sqlite
+public/api/data.sqlite-wal
+public/api/data.sqlite-shm
+.env
+.env.local
+.DS_Store
+*.log

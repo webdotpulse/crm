@@ -1089,7 +1089,9 @@ try {
                 $settings = $store['settings'] ?? [];
             }
 
-            $hasInstalledData = !empty($users) || !empty($companies) || !empty($companyProfile);
+            // Installation is only considered complete if at least one user account exists
+            $hasInstalledUsers = !empty($users) && is_array($users) && count($users) > 0;
+            $hasInstalledData = $hasInstalledUsers;
 
             sendResponse(true, 'State loaded successfully from database.', [
                 'configured' => true,
