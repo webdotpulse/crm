@@ -81,6 +81,7 @@ const FirstRunInstaller = lazy(() => import('./components/setup/FirstRunInstalle
 const LoginView = lazy(() => import('./components/auth/LoginView').then(m => ({ default: m.LoginView })))
 
 export const App: React.FC = () => {
+  const appContext = useApp()
   const {
     isInstalled,
     isBootstrapChecking,
@@ -96,7 +97,11 @@ export const App: React.FC = () => {
     activeConflict,
     setActiveConflict,
     resolveActiveConflict,
-  } = useApp()
+  } = appContext
+
+  if (typeof window !== 'undefined') {
+    ;(window as any).__crm_app = appContext
+  }
 
   // Real-time toast state
   const [realtimeToast, setRealtimeToast] = useState<{ id: string; message: string; subtext?: string } | null>(null)
@@ -188,6 +193,9 @@ export const App: React.FC = () => {
   const [quickModalType, setQuickModalType] = useState<
     'deal' | 'quote' | 'project' | 'invoice' | 'company' | null
   >(null)
+  if (typeof window !== 'undefined') {
+    ;(window as any).__setQuickModalType = setQuickModalType
+  }
   const [dealForQuote, setDealForQuote] = useState<Deal | null>(null)
   const [peppolSelectedInvoice, setPeppolSelectedInvoice] = useState<Invoice | null>(null)
 
